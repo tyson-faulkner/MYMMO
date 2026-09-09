@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://bx7mq8t8hjn7q" path="res://scenes/ui/main_menu_ui.tscn" id="6_x9g3h"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu_ui.tscn" id="8_pause"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_list_ui.tscn" id="9_player_list"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/training_dummy.tscn" id="10_dummy"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_main"]
 sky_top_color = Color(0.22, 0.46, 0.72, 1)
@@ -55,6 +56,7 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2542782, 0)
 
 [node name="Arena" parent="Environment" unique_id=318485284 instance=ExtResource("2_arena")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7005961, -1.8729463, 0.7831876)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Environment" unique_id=824936187]
 environment = SubResource("Environment_qb4jd")
@@ -67,6 +69,9 @@ shadow_enabled = true
 shadow_blur = 0.5
 
 [node name="ItemContainer" type="Node3D" parent="Environment" unique_id=1445003613]
+
+[node name="TrainingDummy" parent="Environment" instance=ExtResource("10_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
 
 [node name="PlayersContainer" type="Node3D" parent="." unique_id=1732952398 groups=["Players"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6891646, 0)
