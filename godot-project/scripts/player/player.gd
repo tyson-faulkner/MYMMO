@@ -13,6 +13,8 @@ const SERVER_ANIMATION_REQUEST_BURST := 6.0
 const PICKUP_ANIMATION_DELAY_MSEC := 1000
 const PICKUP_ANIMATION_WINDOW_MSEC := 2500
 const PICKUP_REQUEST_COOLDOWN_MSEC := 1000
+const MELEE_DAMAGE := 25
+const MELEE_COOLDOWN_MSEC := 700
 const ALLOWED_ANIMATION_STATES := {
 	&"Idle": true,
 	&"Run": true,
@@ -70,6 +72,7 @@ var _server_animation_request_tokens := SERVER_ANIMATION_REQUEST_BURST
 var _last_server_animation_token_update_msec := 0
 var _server_pickup_animation_started_msec := -1
 var _last_server_pickup_request_msec := -PICKUP_REQUEST_COOLDOWN_MSEC
+var _last_melee_hit_msec := -MELEE_COOLDOWN_MSEC
 var _pickup_area_camera_yaw_offset := 0.0
 var _equipped_hat_visual_id := ""
 
@@ -228,6 +231,28 @@ func _start_attack() -> void:
 	velocity.x = 0
 	velocity.z = 0
 	_request_animation(&"Attack1", true)
+	if multiplayer.is_server():
+		request_melee_hit()
+	else:
+		request_melee_hit.rpc_id(1)
+
+
+# The client asks; the SERVER decides who actually got hit and for how much.
+# Never trust the client to report its own damage.
+@rpc("any_peer", "call_local", "reliable")
+func request_melee_hit() -> void:
+	if not multiplayer.is_server() or not _is_owner_request():
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_melee_hit_msec < MELEE_COOLDOWN_MSEC:
+		return
+	_last_melee_hit_msec = now
+	if not _pickup_area:
+		return
+	for body in _pickup_area.get_overlapping_bodies():
+		var target_stats := body.get_node_or_null("Stats") as Stats
+		if target_stats and not target_stats.is_dead:
+			target_stats.apply_damage(MELEE_DAMAGE)
 
 
 func _on_animation_finished(animation_name: StringName) -> void:

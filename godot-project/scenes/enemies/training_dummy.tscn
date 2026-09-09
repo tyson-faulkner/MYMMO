@@ -1,0 +1,42 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/training_dummy.gd" id="1_dummy"]
+[ext_resource type="Script" path="res://scripts/combat/stats.gd" id="2_stats"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dummy"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Material_dummy"]
+albedo_color = Color(0.55, 0.34, 0.18, 1)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dummy"]
+radius = 0.4
+height = 1.8
+
+[node name="TrainingDummy" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_dummy")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_dummy")
+surface_material_override/0 = SubResource("Material_dummy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_dummy")
+
+[node name="HealthLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+pixel_size = 0.004
+billboard = 1
+no_depth_test = true
+font_size = 64
+outline_size = 20
+text = "Training Dummy"
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2_stats")
+max_health = 200
