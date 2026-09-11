@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://c2si8gkbnde0c" path="res://scripts/player/player.gd" id="1_tdh26"]
 [ext_resource type="Script" path="res://scripts/combat/stats.gd" id="90_stats"]
 [ext_resource type="Script" path="res://scripts/quests/quest_log.gd" id="91_qlog"]
+[ext_resource type="Script" path="res://scripts/combat/targeting.gd" id="92_target"]
+[ext_resource type="Script" path="res://scripts/combat/ability_bar.gd" id="93_bar"]
 [ext_resource type="Script" uid="uid://v8j54rbc0ik" path="res://scripts/player/3d_godot_robot.gd" id="2_mexc5"]
 [ext_resource type="ArrayMesh" uid="uid://dm4j7r8tq2x5c" path="res://assets/characters/player/meshes/godot_robot_chest.tres" id="3_chest"]
 [ext_resource type="ArrayMesh" uid="uid://c6oak2v5p8s1a" path="res://assets/characters/player/meshes/godot_robot_face.tres" id="3_face"]
@@ -4903,3 +4905,9 @@ max_mana = 100
 
 [node name="QuestLog" type="Node" parent="."]
 script = ExtResource("91_qlog")
+
+[node name="Targeting" type="Node" parent="."]
+script = ExtResource("92_target")
+
+[node name="AbilityBar" type="Node" parent="."]
+script = ExtResource("93_bar")

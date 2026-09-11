@@ -25,10 +25,25 @@ const HOME_TOLERANCE := 0.6
 var state: State = State.IDLE
 var target: Node3D = null
 
+## A summoned pet fights FOR a player instead of against them. Necromancers
+## raise levies and Tinkers bolt down turrets, so the same Mob has to be able to
+## stand on either side of a fight.
+var is_friendly: bool = false
+var owner_peer_id: int = 0
+
+## Pets don't stay forever. Below zero means "no expiry", which is every mob
+## that was placed in the world rather than summoned.
+var lifetime_seconds: float = -1.0
+
+## Temporary speed change from a snare or a march buff.
+var speed_multiplier: float = 1.0
+
 var _stats: Stats = null
 var _attack_timer: float = 0.0
 var _respawn_timer: float = 0.0
 var _last_damage_source: int = 0
+var _speed_modifier_remaining: float = 0.0
+var _forced_target_remaining: float = 0.0
 
 @onready var _mesh: MeshInstance3D = $Body/Mesh
 @onready var _name_label: Label3D = $NameLabel
@@ -43,6 +58,7 @@ func _ready() -> void:
 	_stats.health_changed.connect(_on_health_changed)
 	_stats.died.connect(_on_died)
 	_on_health_changed(_stats.health, _stats.max_health)
+	add_to_group("Hostiles")
 
 
 func _apply_mob_data() -> void:
@@ -101,6 +117,19 @@ func _physics_process(delta: float) -> void:
 
 	_attack_timer = maxf(0.0, _attack_timer - delta)
 
+	if _speed_modifier_remaining > 0.0:
+		_speed_modifier_remaining -= delta
+		if _speed_modifier_remaining <= 0.0:
+			speed_multiplier = 1.0
+	if _forced_target_remaining > 0.0:
+		_forced_target_remaining -= delta
+	if lifetime_seconds > 0.0:
+		lifetime_seconds -= delta
+		if lifetime_seconds <= 0.0:
+			despawn.rpc()
+			despawn()
+			return
+
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 	else:
@@ -122,13 +151,21 @@ func _physics_process(delta: float) -> void:
 func _tick_idle() -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
-	var nearest := _find_nearest_player(_aggro_radius())
+	var nearest := _find_hostile_toward_me(_aggro_radius())
 	if nearest:
 		target = nearest
 		state = State.CHASING
 
 
 func _tick_chasing() -> void:
+	if _forced_target_remaining > 0.0 and _is_target_valid():
+		# Taunted. It does not get to change its mind until this runs out.
+		var taunt_distance := global_position.distance_to(target.global_position)
+		if taunt_distance <= _attack_range():
+			state = State.ATTACKING
+		else:
+			_move_toward(target.global_position)
+		return
 	if not _is_target_valid():
 		_begin_return()
 		return
@@ -199,7 +236,7 @@ func _move_toward(destination: Vector3) -> void:
 		velocity.z = 0.0
 		return
 	direction = direction.normalized()
-	var speed: float = mob_data.move_speed if mob_data else 3.2
+	var speed: float = (mob_data.move_speed if mob_data else 3.2) * speed_multiplier
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	_face(destination)
@@ -239,6 +276,89 @@ func _find_nearest_player(radius: float) -> Node3D:
 	return best
 
 
+## Whoever this mob considers an enemy. A placed mob looks for players and for
+## anyone's pets; a pet looks for placed mobs.
+func _find_hostile_toward_me(radius: float) -> Node3D:
+	if is_friendly:
+		return _find_nearest_enemy_mob(radius)
+	var nearest_player := _find_nearest_player(radius)
+	var nearest_pet := _find_nearest_pet(radius)
+	if nearest_player == null:
+		return nearest_pet
+	if nearest_pet == null:
+		return nearest_player
+	var to_player := global_position.distance_to(nearest_player.global_position)
+	var to_pet := global_position.distance_to(nearest_pet.global_position)
+	return nearest_player if to_player <= to_pet else nearest_pet
+
+
+func _find_nearest_enemy_mob(radius: float) -> Node3D:
+	var best: Node3D = null
+	var best_distance := radius
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var other := node as Mob
+		if other == null or other == self or other.is_friendly or other.state == State.DEAD:
+			continue
+		var distance := global_position.distance_to(other.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = other
+	return best
+
+
+func _find_nearest_pet(radius: float) -> Node3D:
+	var best: Node3D = null
+	var best_distance := radius
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var pet := node as Mob
+		if pet == null or pet == self or not pet.is_friendly or pet.state == State.DEAD:
+			continue
+		var distance := global_position.distance_to(pet.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = pet
+	return best
+
+
+## Turn this mob into somebody's summon: it changes sides and gets a clock.
+func become_pet(new_owner_peer_id: int, seconds: float) -> void:
+	is_friendly = true
+	owner_peer_id = new_owner_peer_id
+	lifetime_seconds = seconds
+	# A pet has no home to leash back to, and should not respawn when killed.
+	home_position = global_position
+	if mob_data:
+		var pet_data: MobData = mob_data.duplicate()
+		pet_data.leash_radius = 9999.0
+		pet_data.respawn_seconds = 99999.0
+		mob_data = pet_data
+	if _name_label:
+		_name_label.modulate = Color(0.6, 0.9, 1.0)
+
+
+## A Valkyr claiming something: it attacks her and nothing else until this runs
+## out.
+func force_target(new_target: Node3D, seconds: float) -> void:
+	if not multiplayer.is_server() or new_target == null:
+		return
+	target = new_target
+	_forced_target_remaining = maxf(seconds, 4.0)
+	if state == State.IDLE or state == State.RETURNING:
+		state = State.CHASING
+
+
+func apply_speed_modifier(multiplier: float, seconds: float) -> void:
+	if not multiplayer.is_server():
+		return
+	speed_multiplier = maxf(0.1, multiplier)
+	_speed_modifier_remaining = seconds
+
+
+@rpc("authority", "call_local", "reliable")
+func despawn() -> void:
+	queue_free()
+
+
 func _count_players() -> int:
 	var total := 0
 	for container in get_tree().get_nodes_in_group("Players"):
@@ -274,7 +394,7 @@ func _on_health_changed(current: int, maximum: int) -> void:
 		and current > 0
 		and state == State.IDLE
 	):
-		var attacker := _find_nearest_player(_leash_radius())
+		var attacker := _find_hostile_toward_me(_leash_radius())
 		if attacker:
 			target = attacker
 			state = State.CHASING
@@ -288,6 +408,11 @@ func _on_died(killer_peer_id: int) -> void:
 	set_visual_dead.rpc(true)
 	set_visual_dead(true)
 	if not multiplayer.is_server():
+		return
+	if is_friendly:
+		# Summons don't respawn. They were only ever borrowed.
+		despawn.rpc()
+		despawn()
 		return
 	_award_kill(killer_peer_id)
 	_respawn_timer = mob_data.respawn_seconds if mob_data else 25.0

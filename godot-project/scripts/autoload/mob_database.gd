@@ -133,6 +133,22 @@ const DEFINITIONS := {
 		"loot": {"chalice": 0.12, "sword_big": 0.06},
 		"currency": 10
 	},
+	# --- Summons. Spawned as pets, never placed in the world. ---
+	&"tinker_turret_pet":
+	{
+		"name": "Field Turret",
+		"level": 6,
+		"health": 70,
+		"damage": 14,
+		"speed": 0.6,
+		"aggro": 16.0,
+		"xp": 0,
+		"tags": [&"construct", &"summon"],
+		"color": Color(0.72, 0.52, 0.22),
+		"scale": 0.8,
+		"loot": {},
+		"currency": 0
+	},
 	# --- The Barrow of the First King (dungeon) ---
 	&"barrow_guardian":
 	{

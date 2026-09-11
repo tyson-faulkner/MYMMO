@@ -73,13 +73,13 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] Class tint on the placeholder body so four players are visually distinct.
 
 ### M2 — Targeting and abilities
-- [ ] Tab-target system: Tab cycles nearest hostile, click selects, target
+- [x] Tab-target system: Tab cycles nearest hostile, click selects, target
       frame UI with name/health, target cleared on death or out of range.
-- [ ] `AbilityData` resource: id, name, cost, cooldown, range, cast time,
+- [x] `AbilityData` resource: id, name, cost, cooldown, range, cast time,
       effect type (damage / heal / buff / summon / taunt), power, target rule.
-- [ ] `AbilityBar` component on the player: keys 1–7, cooldown tracking,
+- [x] `AbilityBar` component on the player: keys 1–7, cooldown tracking,
       server-authoritative execution, resource cost enforced on the server.
-- [ ] Seven abilities per class as data (28 total), effects implemented
+- [x] Seven abilities per class as data (28 total), effects implemented
       generically so new abilities are data, not code.
 - [ ] Action bar UI with cooldown sweeps + resource bar + health bar.
 
@@ -90,7 +90,7 @@ Work top to bottom. Each milestone ends in a playable state.
       XP, loot table, tint. Mobs are data entries.
 - [x] Mob spawner node: place one in a scene, give it a MobData and a count,
       it handles spawning and respawning.
-- [ ] At least 8 mob types for the first zone (bandits, wolves, risen dead,
+- [x] At least 8 mob types for the first zone (bandits, wolves, risen dead,
       house soldiers) — all sharing the humanoid placeholder per the design doc.
 
 ### M4 — NPCs and quests
@@ -105,14 +105,14 @@ Work top to bottom. Each milestone ends in a playable state.
 ### M5 — The first zone
 - [x] Zone scene: town square, outer farmland, road, river, hills, dungeon
       approach. Built from the modular kit pieces (or primitives standing in).
-- [ ] Populate: 6+ NPCs (quest givers, innkeeper, two vendors, guard captain),
+- [x] Populate: 6+ NPCs (quest givers, innkeeper, two vendors, guard captain),
       mob spawns by level band (1–5 near town, 6–12 outward), gathering nodes.
 - [ ] Zone transitions + spawn/graveyard points + spirit-healer corpse run.
 - [ ] Vendors and the shared quest/dungeon currency.
 
 ### M6 — The first dungeon
 - [x] Instanced dungeon scene loaded per group, with its own spawn point.
-- [ ] Three trash packs + two bosses with scripted mechanics.
+- [x] Three trash packs + two bosses with scripted mechanics.
 - [x] Boss scaling by player count (one system, per the design doc).
 - [ ] Dungeon loot tables: armour + weapons only (world owns rings, trinkets,
       cloaks — never break slot ownership).

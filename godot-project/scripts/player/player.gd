@@ -80,6 +80,11 @@ var _spawn_point = Vector3(0, 5, 0)
 ## these, because "too low" means something different inside a barrow that sits
 ## five hundred metres underground.
 var fall_limit_y: float = -15.0
+
+## Snares and march buffs. The server decides it; the owning client is the one
+## that actually moves, so the value has to travel to them.
+var speed_multiplier: float = 1.0
+var _speed_modifier_remaining: float = 0.0
 var _animation_sequence := 0
 var _last_applied_animation_sequence := 0
 var _last_requested_animation: StringName = &""
@@ -362,7 +367,7 @@ func _push_collided_items() -> void:
 			apply_force_to_server_object.rpc_id(1, c.get_collider().name, -c.get_normal())
 
 
-func _process(_delta):
+func _process(_delta: float) -> void:
 	if not multiplayer.has_multiplayer_peer():
 		return
 	if not is_multiplayer_authority():
@@ -377,6 +382,7 @@ func _process(_delta):
 	_first_person_hud.visible = (
 		first_person and not camera_input_blocked and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	)
+	_tick_speed_modifier(_delta)
 	_check_out_of_bounds()
 
 
@@ -409,10 +415,32 @@ func _move() -> void:
 
 func _is_running() -> bool:
 	if Input.is_action_pressed("shift"):
-		_current_speed = SPRINT_SPEED
+		_current_speed = SPRINT_SPEED * speed_multiplier
 		return true
-	_current_speed = NORMAL_SPEED
+	_current_speed = NORMAL_SPEED * speed_multiplier
 	return false
+
+
+# Called on the server by AbilityBar; relayed to whoever owns this body.
+func apply_speed_modifier(multiplier: float, seconds: float) -> void:
+	if not multiplayer.is_server():
+		return
+	sync_speed_modifier(multiplier, seconds)
+	sync_speed_modifier.rpc(multiplier, seconds)
+
+
+@rpc("authority", "reliable")
+func sync_speed_modifier(multiplier: float, seconds: float) -> void:
+	speed_multiplier = maxf(0.1, multiplier)
+	_speed_modifier_remaining = seconds
+
+
+func _tick_speed_modifier(delta: float) -> void:
+	if _speed_modifier_remaining <= 0.0:
+		return
+	_speed_modifier_remaining -= delta
+	if _speed_modifier_remaining <= 0.0:
+		speed_multiplier = 1.0
 
 
 func _check_out_of_bounds():

@@ -55,7 +55,9 @@ func _process(_delta: float) -> void:
 	var can_show_player_list := (
 		not main_menu.is_menu_visible() and not pause_menu.is_menu_visible() and multiplayer.has_multiplayer_peer()
 	)
-	if Input.is_key_pressed(KEY_TAB) and can_show_player_list:
+	# Tab cycles targets now, as the design doc's tab-target combat requires.
+	# The player list moved to O.
+	if Input.is_action_pressed("player_list") and can_show_player_list:
 		if not player_list_visible:
 			_show_player_list()
 	elif player_list_visible:

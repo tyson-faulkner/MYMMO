@@ -5,9 +5,9 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M2 — Targeting and abilities (M1, M3, M4, M5, M6 blockouts landed)
+- **Milestone:** M2 done except the action-bar UI. Next: HUD, then class select, then persistence.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 36/36 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 50/50 checks passing
 
 ## Waiting on Tyson (nothing here blocks the loop)
 
@@ -57,6 +57,26 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — M2: tab-target and 28 abilities
+Tab cycles the nearest enemy and clears the target when it dies or walks off.
+Seven abilities per class, all four classes, defined as data: damage, area
+damage, heals, area heals, damage over time, drains, taunts, summons and speed
+changes are generic verbs, so the rune system in M8 can modify them rather than
+needing new code for each.
+
+Enemies gained factions, because summons forced the issue: a Necromancer's
+raised levy and a Tinker's turret are the same Mob standing on the other side of
+the fight. Placed enemies now hunt players and other people's pets; pets hunt
+placed enemies; pets expire and do not respawn.
+
+One real design bug the test caught: the ability bar read the character's class
+off the body while Stats held the actual ClassData. The two could disagree, and
+when they did the bar silently refused every ability of the class you thought
+you were. Stats is now the single source of truth.
+
+Also: Tab belonged to the player list, and tab-target combat obviously needs it
+more. The player list moved to O.
 
 ### 2026-09-11 — M3/M4/M5/M6 blockout: a walkable zone with a dungeon
 Thornhollow Vale exists and is playable end to end. 109 geometry pieces on the

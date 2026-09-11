@@ -13,6 +13,8 @@ extends Node
 const ZONE_SCENE := preload("res://scenes/zones/thornhollow_vale.tscn")
 const PLAYER_STATS := preload("res://scripts/combat/stats.gd")
 const PLAYER_QUEST_LOG := preload("res://scripts/quests/quest_log.gd")
+const PLAYER_TARGETING := preload("res://scripts/combat/targeting.gd")
+const PLAYER_ABILITY_BAR := preload("res://scripts/combat/ability_bar.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -35,6 +37,7 @@ func _ready() -> void:
 	_check_databases()
 	await _check_quest_flow()
 	_check_combat()
+	await _check_abilities(zone)
 
 	print("")
 	if _failures == 0:
@@ -72,6 +75,14 @@ func _spawn_fake_player() -> void:
 	quest_log.set_script(PLAYER_QUEST_LOG)
 	quest_log.name = "QuestLog"
 	_fake_player.add_child(quest_log)
+	var targeting := Node.new()
+	targeting.set_script(PLAYER_TARGETING)
+	targeting.name = "Targeting"
+	_fake_player.add_child(targeting)
+	var ability_bar := Node.new()
+	ability_bar.set_script(PLAYER_ABILITY_BAR)
+	ability_bar.name = "AbilityBar"
+	_fake_player.add_child(ability_bar)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -223,6 +234,110 @@ func _check_combat() -> void:
 	for level in range(1, Stats.MAX_LEVEL):
 		total += Stats.xp_for_next_level(level)
 	_report("XP curve is sane", total > 20000 and total < 120000, "%d total XP for 1-20" % total)
+
+
+func _check_abilities(zone: Node) -> void:
+	var ids: Array = AbilityDatabase.get_all_ids()
+	_report("ability database loaded", ids.size() >= 28, "%d abilities" % ids.size())
+
+	# Every class needs a full bar, one ability per slot, no gaps, no clashes.
+	for class_id in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
+		var abilities: Array = AbilityDatabase.abilities_for_class(class_id)
+		var slots := {}
+		for ability in abilities:
+			slots[ability.slot] = true
+		_report(
+			"%s has a full bar" % class_id,
+			abilities.size() == 7 and slots.size() == 7,
+			"%d abilities in %d slots" % [abilities.size(), slots.size()]
+		)
+
+	# A summon that names an enemy which doesn't exist is a dead button.
+	var bad_summons: Array[String] = []
+	for ability_id in ids:
+		var ability: AbilityData = AbilityDatabase.get_ability(ability_id)
+		if ability.effect == AbilityData.Effect.SUMMON and MobDatabase.get_mob(ability.summon_mob_id) == null:
+			bad_summons.append("%s -> %s" % [ability_id, ability.summon_mob_id])
+	_report("summons reference real enemies", bad_summons.is_empty(), ", ".join(bad_summons))
+
+	# Level gating should actually gate.
+	var low := AbilityDatabase.ability_in_slot(&"valkyr", 7, 1)
+	var high := AbilityDatabase.ability_in_slot(&"valkyr", 7, 20)
+	_report("abilities are level gated", low == null and high != null, "slot 7 locked at 1, open at 20")
+
+	# --- Casting, for real, at a real enemy from the real zone ---
+	var stats := _fake_player.get_node("Stats") as Stats
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var targeting := _fake_player.get_node("Targeting") as Targeting
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+
+	var container := zone.get_node_or_null("MobContainer")
+	var victim: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and not mob.mob_data.is_boss:
+			victim = mob
+			break
+	if victim == null:
+		_report("found an enemy to cast at", false, "")
+		return
+
+	# Stand next to it so range checks are honest.
+	_fake_player.global_position = victim.global_position + Vector3(0, 0, 2.0)
+	targeting.set_target(victim)
+	_report("target acquired", targeting.current_target == victim, victim.mob_data.display_name)
+
+	var health_before: int = victim.get_node("Stats").health
+	var valor_before: int = stats.mana
+	bar.request_cast("valkyr_strike", victim.get_path())
+	_report("damage ability hurt the target", victim.get_node("Stats").health < health_before,
+		"%d -> %d" % [health_before, victim.get_node("Stats").health])
+	_report("Valkyr opener builds Valor", stats.mana > valor_before, "valor %d" % stats.mana)
+
+	# A taunt has to actually hold the enemy.
+	bar.request_cast("valkyr_taunt", victim.get_path())
+	_report("taunt takes the enemy", victim.target == _fake_player, "")
+
+	# Healing.
+	stats.apply_damage(60, 0)
+	var hurt: int = stats.health
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats.level = 20
+	stats.apply_damage(60, 0)
+	hurt = stats.health
+	bar.request_cast("bard_mend", _fake_player.get_path())
+	_report("heal ability restored health", stats.health > hurt, "%d -> %d" % [hurt, stats.health])
+
+	# Damage over time keeps working after the cast.
+	var dot_target_health: int = victim.get_node("Stats").health
+	bar.request_cast("bard_dirge", victim.get_path())
+	var dot := victim.get_children().filter(func(c: Node) -> bool: return c is DamageOverTime)
+	_report("damage over time attached", dot.size() > 0, "%d effects" % dot.size())
+	await get_tree().create_timer(1.2).timeout
+	_report("damage over time ticks", victim.get_node("Stats").health < dot_target_health,
+		"%d -> %d" % [dot_target_health, victim.get_node("Stats").health])
+
+	# Summons change sides.
+	stats.apply_class(load("res://resources/classes/necromancer.tres") as ClassData)
+	stats.level = 20
+	var mobs_before: int = container.get_child_count()
+	bar.request_cast("necro_raise", _fake_player.get_path())
+	await get_tree().process_frame
+	var pets := 0
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and mob.is_friendly:
+			pets += 1
+	_report("summon spawned a pet", container.get_child_count() > mobs_before, "%d -> %d mobs" % [mobs_before, container.get_child_count()])
+	_report("the pet fights for you", pets > 0, "%d friendly" % pets)
+
+	# The server must refuse a cast that is out of range, however politely the
+	# client asks.
+	_fake_player.global_position = victim.global_position + Vector3(0, 0, 60.0)
+	var far_health: int = victim.get_node("Stats").health
+	bar.request_cast("necro_bolt", victim.get_path())
+	_report("out-of-range casts are refused", victim.get_node("Stats").health == far_health, "")
 
 
 func _report(label: String, passed: bool, detail: String) -> void:
