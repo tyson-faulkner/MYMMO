@@ -24,6 +24,8 @@ mono_crash.*.json
 *.blend2
 *.blend[0-9]+
 blender-source/**/*.blend@
+__pycache__/
+*.pyc
 
 # --- Node / JavaScript ---
 node_modules/
