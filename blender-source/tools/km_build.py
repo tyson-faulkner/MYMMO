@@ -25,9 +25,12 @@ def run(module_name):
     importlib.reload(mod)
 
     objs = mod.build()
+    # Pieces may set obj.location; flush it before anything measures bounds.
+    import bpy
+    bpy.context.view_layer.update()
     print("[%s] %s" % (mod.NAME, K.report(objs)))
 
-    K.preview_rig()
+    K.preview_rig(ground=getattr(mod, "GROUND", True))
     preview = os.path.join(K.PREVIEW_DIR, "%s.png" % getattr(mod, "PREVIEW", mod.NAME))
     angles = getattr(mod, "ANGLES", (38, -128))
     elevation = getattr(mod, "ELEVATION", 26)

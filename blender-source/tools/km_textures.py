@@ -26,12 +26,12 @@ SLATE = np.array([0.404, 0.455, 0.545])
 SLATE_DARK = np.array([0.176, 0.208, 0.267])
 TIMBER = np.array([0.478, 0.298, 0.145])
 TIMBER_DARK = np.array([0.184, 0.106, 0.047])
-COBBLE = np.array([0.600, 0.588, 0.565])
-COBBLE_DARK = np.array([0.278, 0.271, 0.259])
+COBBLE = np.array([0.505, 0.495, 0.478])
+COBBLE_DARK = np.array([0.235, 0.229, 0.220])
 PLASTER = np.array([0.910, 0.878, 0.812])
 GOLD = np.array([0.831, 0.667, 0.259])
 GOLD_DARK = np.array([0.400, 0.290, 0.075])
-IRON = np.array([0.145, 0.149, 0.161])
+IRON = np.array([0.165, 0.158, 0.150])   # neutral, faintly warm -- see note in black_iron()
 HERALDRY_BLUE = np.array([0.114, 0.169, 0.365])
 
 
@@ -318,7 +318,9 @@ def cobblestone(size=SIZE, seed=53, cells=5):
         best = np.where(closer, d, best)
 
     border = second - best                 # 0 on a cell boundary
-    gap = _smooth(np.clip(border / (0.15 / cells), 0, 1))
+    # Narrow grout. Wider than this and a street reads as a dark net with
+    # stones caught in it rather than as paving.
+    gap = _smooth(np.clip(border / (0.085 / cells), 0, 1))
 
     tone = _cell_random(owner, seed, 0.78, 1.18)
     warm = _cell_random(owner, seed + 3, -0.035, 0.035)
@@ -327,7 +329,7 @@ def cobblestone(size=SIZE, seed=53, cells=5):
     radius = np.maximum(best + border, 1e-6)
     p_norm = np.clip(best / radius, 0, 1)
     dome = np.sqrt(np.clip(1.0 - p_norm ** 2, 0, 1))
-    shade = 0.62 + dome * 0.58
+    shade = 0.66 + dome * 0.42
     grain = (fbm(size, 20, seed + 41, octaves=4) - 0.5) * 0.12
     speck = (value_noise(size, 96, seed + 67) - 0.5) * 0.06
 
@@ -364,11 +366,18 @@ def gold_leaf(size=SIZE, seed=83):
 
 
 def black_iron(size=SIZE, seed=91):
-    """Wrought iron: near-black with soft painted highlights and pitting."""
+    """Wrought iron: near-black with soft painted highlights and pitting.
+
+    Kept neutral-to-warm on purpose. Anything dark picks up a lot of sky
+    ambient, so a base colour with even a slight blue tilt renders navy
+    rather than black once it's on a door strap out in the sun.
+    """
     mott = (fbm(size, 12, seed, octaves=4) - 0.5) * 0.55
     pit = (value_noise(size, 64, seed + 17) - 0.5) * 0.25
     rgb = _tint(IRON, 1.0 + mott + pit)
-    rgb[:, :, 2] += np.clip(mott, 0, None) * 0.05
+    # Warm the highlights very slightly. A blue push here plus the sky fill
+    # made the strap hinges read navy instead of black.
+    rgb[:, :, 0] += np.clip(mott, 0, None) * 0.05
     return _rgba(rgb)
 
 
