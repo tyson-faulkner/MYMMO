@@ -5,9 +5,9 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1-M7 all have a working pass. Next: gear, the three rune slots, and party/group play.
+- **Milestone:** M1-M7 done, parties in. Next: gear stats and the three rune slots.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 79/79 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 100/100 checks passing
 
 ## Not yet verified against a live backend
 
@@ -66,6 +66,27 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — Parties, because grouping was actively punished
+Only whoever landed the killing blow got XP and quest credit. In a game built
+for five to ten friends, that meant four people hunting the same camp needed
+four times the kills. Nobody would ever have grouped, in a co-op game.
+
+Now everyone in the party within 60m of the kill is credited, and:
+
+- **Quest credit is not split.** Eight bandits means eight bandits for the whole
+  party, not thirty-two between them. Splitting it is the exact maths that makes
+  people refuse to group.
+- **XP is split, gently.** A duo gets 68 each rather than 50, a five-man 48 each
+  rather than 20. Grouping should never be worse than going alone.
+- Ghosts and anyone too far away are excluded, so nobody farms from the inn.
+
+Grouping rides on the chat that already exists — `/invite <name>`, `/leave`,
+`/party` — rather than needing an invite window. Costs no UI, works today, and a
+proper panel can replace it later without changing anything underneath.
+
+Party size caps at ten, matching MAX_PLAYERS and the design doc's "raid is five,
+with a possible ten-player option".
 
 ### 2026-09-11 — M7: characters survive logging out
 Nakama was installed, verified, and connected to nothing — it powered a login

@@ -127,7 +127,7 @@ Work top to bottom. Each milestone ends in a playable state.
 
 ### M8 — Systems polish
 - [x] Death, corpse run, resurrection sickness.
-- [ ] Group/party system + shared quest credit + the dungeon group check.
+- [x] Group/party system + shared quest credit + the dungeon group check.
 - [ ] Duels.
 - [ ] Loot rolls, gear stats, three gear tiers, the three rune-slot choices.
 - [ ] Minimap, XP bar, buff bar, chat channels.

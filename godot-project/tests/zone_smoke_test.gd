@@ -41,6 +41,7 @@ func _ready() -> void:
 	await _check_abilities(zone)
 	_check_death(zone)
 	_check_persistence()
+	_check_parties()
 
 	print("")
 	if _failures == 0:
@@ -465,6 +466,77 @@ func _check_persistence() -> void:
 	# The game has to run with Nakama switched off. This is the check that says
 	# "Docker not running" never becomes "game broken".
 	_report("no login means no crash", not Account.is_logged_in(), Account.status_line())
+
+
+func _check_parties() -> void:
+	# Two more stand-in players to group with.
+	for peer_id in [2, 3]:
+		var body := CharacterBody3D.new()
+		body.name = str(peer_id)
+		var stats := Node.new()
+		stats.set_script(PLAYER_STATS)
+		stats.name = "Stats"
+		body.add_child(stats)
+		var quest_log := Node.new()
+		quest_log.set_script(PLAYER_QUEST_LOG)
+		quest_log.name = "QuestLog"
+		body.add_child(quest_log)
+		_players.add_child(body)
+		body.global_position = Vector3(10, 1, 10)
+
+	_report("solo player is not grouped", not PartyManager.is_grouped(1), "")
+	_report("solo share group is just you", PartyManager.share_group_for(1, Vector3.ZERO, _players) == [1], "")
+
+	_report("invite forms a party", PartyManager.add_to_party(1, 2), "")
+	_report("second invite joins the same party",
+		PartyManager.add_to_party(1, 3) and PartyManager.party_of(2) == PartyManager.party_of(3), "")
+	_report("party has three", PartyManager.members_of(1).size() == 3, str(PartyManager.members_of(1)))
+	_report("leader is the inviter", PartyManager.leader_of(PartyManager.party_of(1)) == 1, "")
+	_report("can't poach someone already grouped", not PartyManager.add_to_party(1, 2), "")
+
+	# Sharing: nearby party members count, distant ones don't, ghosts don't.
+	_fake_player.global_position = Vector3(10, 1, 12)
+	var nearby := PartyManager.share_group_for(1, Vector3(10, 1, 10), _players)
+	_report("nearby party members share", nearby.size() == 3, "%d sharing" % nearby.size())
+
+	_players.get_node("3").global_position = Vector3(900, 1, 900)
+	var closer := PartyManager.share_group_for(1, Vector3(10, 1, 10), _players)
+	_report("distant party members don't share", closer.size() == 2, "%d sharing" % closer.size())
+
+	var ghost_stats := _players.get_node("2").get_node("Stats") as Stats
+	ghost_stats.apply_damage(99999, 0)
+	var living := PartyManager.share_group_for(1, Vector3(10, 1, 10), _players)
+	_report("dead party members don't share", living.size() == 1, "%d sharing" % living.size())
+	ghost_stats.revive()
+
+	# XP splits, but grouping must never be worse than going alone per-kill
+	# once you account for killing faster.
+	var solo_xp := PartyManager.experience_share(100, 1)
+	var duo_xp := PartyManager.experience_share(100, 2)
+	var five_xp := PartyManager.experience_share(100, 5)
+	_report("solo XP is untouched", solo_xp == 100, "%d" % solo_xp)
+	_report("grouped XP is split", duo_xp < 100 and five_xp < duo_xp, "duo %d, five %d" % [duo_xp, five_xp])
+	_report("the split is generous", duo_xp > 100 / 2 and five_xp > 100 / 5,
+		"duo %d (vs 50), five %d (vs 20)" % [duo_xp, five_xp])
+
+	# Quest credit is NOT split — that is the whole point.
+	var log_one := _fake_player.get_node("QuestLog") as QuestLog
+	var log_two := _players.get_node("2").get_node("QuestLog") as QuestLog
+	for quest_log in [log_one, log_two]:
+		quest_log.active.clear()
+		quest_log.turned_in.clear()
+		quest_log.turned_in[&"q_arrival"] = true
+		quest_log.accept_quest(&"q_wolves")
+	for peer_id in PartyManager.share_group_for(1, Vector3(10, 1, 10), _players):
+		pass
+	for _index in range(6):
+		log_one.credit_kill(&"vale_wolf", [&"beast"])
+		log_two.credit_kill(&"vale_wolf", [&"beast"])
+	_report("everyone in the party gets full quest credit",
+		log_one.is_complete(&"q_wolves") and log_two.is_complete(&"q_wolves"), "")
+
+	PartyManager.leave_party(1)
+	_report("leaving works", not PartyManager.is_grouped(1), "")
 
 
 func _report(label: String, passed: bool, detail: String) -> void:

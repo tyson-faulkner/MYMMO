@@ -242,7 +242,82 @@ func submit_chat_message(message_text: String):
 	var trimmed_message = _sanitize_chat_message(message_text)
 	if trimmed_message.is_empty():
 		return
+	if _handle_party_command(sender_id, trimmed_message):
+		return
 	_broadcast_chat_message(sender_id, trimmed_message)
+
+
+# Grouping happens through chat rather than an invite window. It costs no UI,
+# it works on day one, and a proper invite panel can replace it later without
+# changing anything underneath.
+func _handle_party_command(sender_id: int, message_text: String) -> bool:
+	if not multiplayer.is_server() or not message_text.begins_with("/"):
+		return false
+	var parts := message_text.split(" ", false, 1)
+	var command := parts[0].to_lower()
+
+	match command:
+		"/invite":
+			if parts.size() < 2:
+				_tell(sender_id, "Usage: /invite <name>")
+				return true
+			var target_id := _peer_by_nickname(parts[1].strip_edges())
+			if target_id <= 0:
+				_tell(sender_id, "Nobody here by that name.")
+				return true
+			if PartyManager.add_to_party(sender_id, target_id):
+				var names := _party_names(sender_id)
+				for peer_id in PartyManager.members_of(sender_id):
+					_tell(int(peer_id), "Party: %s" % names)
+			else:
+				_tell(sender_id, "They're already in a party, or yours is full.")
+			return true
+		"/leave":
+			if not PartyManager.is_grouped(sender_id):
+				_tell(sender_id, "You're not in a party.")
+				return true
+			var former := PartyManager.members_of(sender_id).duplicate()
+			PartyManager.leave_party(sender_id)
+			_tell(sender_id, "You left the party.")
+			for peer_id in former:
+				if int(peer_id) != sender_id:
+					_tell(int(peer_id), "%s left the party." % _nickname_of(sender_id))
+			return true
+		"/party":
+			if PartyManager.is_grouped(sender_id):
+				_tell(sender_id, "Party: %s" % _party_names(sender_id))
+			else:
+				_tell(sender_id, "You're on your own. /invite <name> to group up.")
+			return true
+	return false
+
+
+func _tell(peer_id: int, message_text: String) -> void:
+	if peer_id == 1:
+		show_chat_message("Party", message_text)
+	else:
+		show_chat_message.rpc_id(peer_id, "Party", message_text)
+
+
+func _peer_by_nickname(wanted: String) -> int:
+	var needle := wanted.strip_edges().to_lower()
+	for peer_id in Network.players:
+		var nick := str(Network.players[peer_id].get("nick", "")).to_lower()
+		if nick == needle:
+			return int(peer_id)
+	return 0
+
+
+func _nickname_of(peer_id: int) -> String:
+	var info: Dictionary = Network.players.get(peer_id, {})
+	return str(info.get("nick", "Player_%d" % peer_id))
+
+
+func _party_names(peer_id: int) -> String:
+	var names: Array[String] = []
+	for member_id in PartyManager.members_of(peer_id):
+		names.append(_nickname_of(int(member_id)))
+	return ", ".join(names)
 
 
 func _broadcast_chat_message(sender_id: int, message_text: String):

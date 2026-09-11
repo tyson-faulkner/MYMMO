@@ -418,24 +418,43 @@ func _on_died(killer_peer_id: int) -> void:
 	_respawn_timer = mob_data.respawn_seconds if mob_data else 25.0
 
 
-# Everything a kill is worth: XP, quest credit, currency, loot.
+# Everything a kill is worth: XP, quest credit, currency, loot — shared with
+# the killer's party.
+#
+# Quest credit and currency are NOT split. Only XP is, and gently. Splitting
+# quest credit would mean four friends hunting the same eight bandits needed
+# thirty-two kills between them, which is precisely the maths that makes people
+# refuse to group in a co-op game.
 func _award_kill(killer_peer_id: int) -> void:
 	if killer_peer_id <= 0 or not mob_data:
 		return
-	var killer := _find_player_by_peer(killer_peer_id)
-	if killer == null:
-		return
-	var killer_stats := killer.get_node_or_null("Stats") as Stats
-	if killer_stats:
-		killer_stats.grant_xp(_experience_for(killer_stats.level))
-	var quest_log := killer.get_node_or_null("QuestLog")
-	if quest_log and quest_log.has_method("credit_kill"):
-		quest_log.credit_kill(mob_data.id, mob_data.tags)
-	# Sovereigns — the currency earned from BOTH questing and dungeons, which is
-	# what keeps either path worth walking.
-	if quest_log and quest_log.has_method("add_currency") and mob_data.currency_reward > 0:
-		quest_log.add_currency(mob_data.currency_reward)
+	var players_root := _find_players_root()
+	var share_group: Array = [killer_peer_id]
+	if players_root:
+		share_group = PartyManager.share_group_for(killer_peer_id, global_position, players_root)
+
+	for peer_id in share_group:
+		var member := _find_player_by_peer(int(peer_id))
+		if member == null:
+			continue
+		var member_stats := member.get_node_or_null("Stats") as Stats
+		if member_stats:
+			var full := _experience_for(member_stats.level)
+			member_stats.grant_xp(PartyManager.experience_share(full, share_group.size()))
+		var quest_log := member.get_node_or_null("QuestLog")
+		if quest_log and quest_log.has_method("credit_kill"):
+			quest_log.credit_kill(mob_data.id, mob_data.tags)
+		if quest_log and quest_log.has_method("add_currency") and mob_data.currency_reward > 0:
+			quest_log.add_currency(mob_data.currency_reward)
+
+	# Loot drops once, on the ground, for whoever reaches it.
 	_drop_loot()
+
+
+func _find_players_root() -> Node:
+	for container in get_tree().get_nodes_in_group("Players"):
+		return container
+	return null
 
 
 # Roll the loot table and leave whatever dropped on the ground. Adding the item
