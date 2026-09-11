@@ -11,22 +11,46 @@ extends Node3D
 const MOB_SCENE := preload("res://scenes/enemies/mob.tscn")
 
 var _next_index: int = 0
+var _spawner: MultiplayerSpawner = null
+
+
+func _ready() -> void:
+	# Godot can't store a Callable in a .tscn, so the container wires itself to
+	# its MultiplayerSpawner here instead.
+	var spawner := get_parent().get_node_or_null("MobMultiplayerSpawner") as MultiplayerSpawner
+	if spawner == null:
+		for sibling in get_parent().get_children():
+			var candidate := sibling as MultiplayerSpawner
+			if candidate:
+				spawner = candidate
+				break
+	_spawner = spawner
+	if _spawner:
+		_spawner.spawn_function = Callable(self, "_spawn_from_data")
+
 
 
 func spawn_mob(mob_id: StringName, spawn_position: Vector3, is_boss_instance: bool = false) -> Node:
 	if not multiplayer.is_server():
 		return null
 	_next_index += 1
-	return _spawn_from_data(
-		{
-			"id": String(mob_id),
-			"x": spawn_position.x,
-			"y": spawn_position.y,
-			"z": spawn_position.z,
-			"n": _next_index,
-			"boss": is_boss_instance
-		}
-	)
+	var data := {
+		"id": String(mob_id),
+		"x": spawn_position.x,
+		"y": spawn_position.y,
+		"z": spawn_position.z,
+		"n": _next_index,
+		"boss": is_boss_instance
+	}
+	# Go through the spawner, not around it: spawn() runs _spawn_from_data here
+	# AND on every client, then parents the result. Calling _spawn_from_data
+	# directly just builds an orphan nobody ever sees.
+	if _spawner:
+		return _spawner.spawn(data)
+	var fallback := _spawn_from_data(data)
+	if fallback:
+		add_child(fallback)
+	return fallback
 
 
 # Runs on every peer. Must be deterministic: same input, same node.

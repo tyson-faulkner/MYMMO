@@ -1,0 +1,288 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_container.gd" id="2_container"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" path="res://scripts/world/area_trigger.gd" id="4_trigger"]
+[ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
+[ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_approach"]
+size = Vector3(34, 8, 16)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_portal"]
+size = Vector3(7, 5, 3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_portal"]
+size = Vector3(7, 5, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_portal"]
+transparency = 1
+albedo_color = Color(0.35, 0.28, 0.5, 0.55)
+emission_enabled = true
+emission = Color(0.45, 0.36, 0.62, 1)
+emission_energy_multiplier = 0.8
+
+[node name="ThornhollowVale" type="Node3D"]
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "thornhollow_vale"
+
+[node name="BarrowInterior" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "barrow_interior"
+
+[node name="MobContainer" type="Node3D" parent="."]
+script = ExtResource("2_container")
+
+[node name="MobMultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../MobContainer")
+
+[node name="Spawners" type="Node3D" parent="."]
+
+[node name="WolvesWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -55, 1, 20)
+script = ExtResource("3_spawner")
+mob_id = &"vale_wolf"
+count = 5
+scatter_radius = 10.0
+
+[node name="WolvesEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 1, 28)
+script = ExtResource("3_spawner")
+mob_id = &"vale_wolf"
+count = 4
+scatter_radius = 9.0
+
+[node name="HedgeCampWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 1, -24)
+script = ExtResource("3_spawner")
+mob_id = &"hedge_bandit"
+count = 4
+scatter_radius = 8.0
+
+[node name="HedgeCampEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 1, -20)
+script = ExtResource("3_spawner")
+mob_id = &"hedge_bandit"
+count = 4
+scatter_radius = 8.0
+
+[node name="CutthroatsWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -58, 1, -48)
+script = ExtResource("3_spawner")
+mob_id = &"bandit_cutthroat"
+count = 4
+scatter_radius = 9.0
+
+[node name="CutthroatsEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56, 1, -44)
+script = ExtResource("3_spawner")
+mob_id = &"bandit_cutthroat"
+count = 3
+scatter_radius = 8.0
+
+[node name="RisenField" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -48)
+script = ExtResource("3_spawner")
+mob_id = &"risen_levy"
+count = 5
+scatter_radius = 12.0
+
+[node name="StagOutriders" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 1, -88)
+script = ExtResource("3_spawner")
+mob_id = &"stag_outrider"
+count = 5
+scatter_radius = 10.0
+
+[node name="SunburstPatrol" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 1, -88)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_serjeant"
+count = 5
+scatter_radius = 10.0
+
+[node name="GraveBindersWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, -128)
+script = ExtResource("3_spawner")
+mob_id = &"grave_binder"
+count = 4
+scatter_radius = 9.0
+
+[node name="GraveBindersEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, -128)
+script = ExtResource("3_spawner")
+mob_id = &"grave_binder"
+count = 3
+scatter_radius = 9.0
+
+[node name="WightsApproach" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -96)
+script = ExtResource("3_spawner")
+mob_id = &"barrow_wight"
+count = 5
+scatter_radius = 12.0
+
+[node name="WightsWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 1, -120)
+script = ExtResource("3_spawner")
+mob_id = &"barrow_wight"
+count = 4
+scatter_radius = 10.0
+
+[node name="BarrowEntryPack" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -610)
+script = ExtResource("3_spawner")
+mob_id = &"barrow_guardian"
+count = 4
+scatter_radius = 7.0
+
+[node name="BarrowCorridorPack" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -640)
+script = ExtResource("3_spawner")
+mob_id = &"barrow_guardian"
+count = 4
+scatter_radius = 4.0
+
+[node name="CaptainReyne" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -676)
+script = ExtResource("3_spawner")
+mob_id = &"captain_reyne"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="BarrowDescentPack" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -710)
+script = ExtResource("3_spawner")
+mob_id = &"barrow_guardian"
+count = 4
+scatter_radius = 4.0
+
+[node name="TheFirstKing" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -752)
+script = ExtResource("3_spawner")
+mob_id = &"the_first_king"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="NPCs" type="Node3D" parent="."]
+
+[node name="Halvard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 17)
+npc_id = &"npc_halvard"
+display_name = "Serjeant Halvard"
+title = "Gate Serjeant"
+greeting = "The valley's gone to pieces since the king died. Make yourself useful and I'll pretend I'm glad you came."
+body_color = Color(0.42, 0.45, 0.55, 1)
+
+[node name="Maren" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0.25, 6)
+npc_id = &"npc_maren"
+display_name = "Maren Holt"
+title = "Quartermaster"
+greeting = "I count what we have left twice a day, and it's never more than it was."
+body_color = Color(0.62, 0.5, 0.36, 1)
+
+[node name="Ilsa" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.25, -8)
+npc_id = &"npc_ilsa"
+display_name = "Ilsa"
+title = "Skald"
+greeting = "Histories decide claims, and claims decide thrones. So yes, what I write down matters rather a lot."
+body_color = Color(0.35, 0.55, 0.78, 1)
+
+[node name="Bryn" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0.25, -8)
+npc_id = &"npc_bryn"
+display_name = "Bryn Aldercott"
+title = "Innkeeper"
+greeting = "Bed's four coppers, and the roof only leaks over the far corner. I'd take it."
+body_color = Color(0.7, 0.58, 0.42, 1)
+
+[node name="Odda" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0.25, 8)
+npc_id = &"npc_odda"
+display_name = "Odda Vane"
+title = "Armourer"
+greeting = "I shod horses before the war. Now I make spear points. Nobody asked me which I preferred."
+body_color = Color(0.48, 0.4, 0.36, 1)
+
+[node name="Selle" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.25, 12)
+npc_id = &"npc_selle"
+display_name = "Selle"
+title = "Provisioner"
+greeting = "Bread, rope, lamp oil. If you want anything finer you want a different valley."
+body_color = Color(0.66, 0.62, 0.48, 1)
+
+[node name="Aurey" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.25, -14)
+npc_id = &"npc_aurey"
+display_name = "Captain Aurey"
+title = "Guard Captain"
+greeting = "Two houses want this road and neither one of them will say so out loud. Keep your head down."
+body_color = Color(0.5, 0.44, 0.5, 1)
+
+[node name="Triggers" type="Node3D" parent="."]
+
+[node name="BarrowApproach" type="Area3D" parent="Triggers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -106)
+script = ExtResource("4_trigger")
+area_id = &"barrow_approach"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Triggers/BarrowApproach"]
+shape = SubResource("BoxShape3D_approach")
+
+[node name="Portals" type="Node3D" parent="."]
+
+[node name="BarrowEntrance" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -116)
+script = ExtResource("5_portal")
+destination = Vector3(0, -498.5, -592)
+destination_fall_limit = -520.0
+label_text = "The Barrow of the First King"
+required_level = 10
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/BarrowEntrance"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/BarrowEntrance"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/BarrowEntrance"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 56
+outline_size = 20
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Barrow of the First King"
+
+[node name="BarrowExit" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -497.5, -580)
+script = ExtResource("5_portal")
+destination = Vector3(0, 1.5, -108)
+label_text = "Leave the Barrow"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/BarrowExit"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/BarrowExit"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/BarrowExit"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "Leave the Barrow"

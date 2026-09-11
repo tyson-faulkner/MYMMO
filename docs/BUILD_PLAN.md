@@ -64,9 +64,9 @@ Godot lives in the **cloud container**, and project files are staged up to it:
 Work top to bottom. Each milestone ends in a playable state.
 
 ### M1 — Character foundation
-- [ ] `ClassData` resource + the four classes as `.tres` (Valkyr, Bard,
+- [x] `ClassData` resource + the four classes as `.tres` (Valkyr, Bard,
       Necromancer, Tinker) with role, resource label, resource behaviour.
-- [ ] `Stats` extended: per-class resource label, resource spend/regen,
+- [x] `Stats` extended: per-class resource label, resource spend/regen,
       level + XP, XP-to-level curve targeting ~8–10h to 20.
 - [ ] Class picker on the main menu, class carried through `Network.player_info`
       and applied on spawn.
@@ -84,26 +84,26 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] Action bar UI with cooldown sweeps + resource bar + health bar.
 
 ### M3 — Enemies
-- [ ] `Mob` base: Stats, aggro radius, leash, chase, melee swing, death,
+- [x] `Mob` base: Stats, aggro radius, leash, chase, melee swing, death,
       respawn timer, XP + loot on death, all server-side.
-- [ ] `MobData` resource: id, name, level, health, damage, speed, aggro range,
+- [x] `MobData` resource: id, name, level, health, damage, speed, aggro range,
       XP, loot table, tint. Mobs are data entries.
-- [ ] Mob spawner node: place one in a scene, give it a MobData and a count,
+- [x] Mob spawner node: place one in a scene, give it a MobData and a count,
       it handles spawning and respawning.
 - [ ] At least 8 mob types for the first zone (bandits, wolves, risen dead,
       house soldiers) — all sharing the humanoid placeholder per the design doc.
 
 ### M4 — NPCs and quests
-- [ ] `NPC` base: name plate, interact prompt, dialogue panel, quest markers.
-- [ ] `QuestData` resource: id, giver, title, text, objectives (kill / collect /
+- [x] `NPC` base: name plate, interact prompt, dialogue panel, quest markers.
+- [x] `QuestData` resource: id, giver, title, text, objectives (kill / collect /
       talk / reach), rewards (XP, currency, items), prerequisite chain.
-- [ ] `QuestDatabase` autoload + `QuestLog` component on the player, server
+- [x] `QuestDatabase` autoload + `QuestLog` component on the player, server
       authoritative, with kill/collect credit hooks.
 - [ ] Quest log UI (accept, track, turn in) + objective tracker on screen.
-- [ ] At least 12 quests forming a chain through the first zone.
+- [x] At least 12 quests forming a chain through the first zone.
 
 ### M5 — The first zone
-- [ ] Zone scene: town square, outer farmland, road, river, hills, dungeon
+- [x] Zone scene: town square, outer farmland, road, river, hills, dungeon
       approach. Built from the modular kit pieces (or primitives standing in).
 - [ ] Populate: 6+ NPCs (quest givers, innkeeper, two vendors, guard captain),
       mob spawns by level band (1–5 near town, 6–12 outward), gathering nodes.
@@ -111,9 +111,9 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] Vendors and the shared quest/dungeon currency.
 
 ### M6 — The first dungeon
-- [ ] Instanced dungeon scene loaded per group, with its own spawn point.
+- [x] Instanced dungeon scene loaded per group, with its own spawn point.
 - [ ] Three trash packs + two bosses with scripted mechanics.
-- [ ] Boss scaling by player count (one system, per the design doc).
+- [x] Boss scaling by player count (one system, per the design doc).
 - [ ] Dungeon loot tables: armour + weapons only (world owns rings, trinkets,
       cloaks — never break slot ownership).
 - [ ] One mount reward from the dungeon.

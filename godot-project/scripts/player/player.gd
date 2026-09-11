@@ -75,6 +75,11 @@ var is_collecting := false
 
 var _current_speed: float
 var _spawn_point = Vector3(0, 5, 0)
+
+## Fall below this and you are put back at _spawn_point. Portals move both of
+## these, because "too low" means something different inside a barrow that sits
+## five hundred metres underground.
+var fall_limit_y: float = -15.0
 var _animation_sequence := 0
 var _last_applied_animation_sequence := 0
 var _last_requested_animation: StringName = &""
@@ -411,7 +416,7 @@ func _is_running() -> bool:
 
 
 func _check_out_of_bounds():
-	if global_transform.origin.y < -15.0:
+	if global_transform.origin.y < fall_limit_y:
 		_reset_position_after_fall()
 
 
@@ -933,3 +938,10 @@ func get_class_data() -> ClassData:
 	if path.is_empty() or not ResourceLoader.exists(path):
 		return null
 	return load(path) as ClassData
+
+
+## Called by portals: move the character and tell it where "home" and "too far
+## down" are now.
+func set_recovery_point(point: Vector3, new_fall_limit: float) -> void:
+	_spawn_point = point
+	fall_limit_y = new_fall_limit
