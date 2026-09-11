@@ -160,6 +160,18 @@ def finish(bm, name, materials, smooth=False, tile=TILE_METERS, rotate_axes=()):
     return obj
 
 
+def sit_on_floor(obj, z=0.0):
+    """Drop the piece so its lowest point rests on z.
+
+    Every piece is authored sitting on the floor, and working the offset out
+    by hand means re-deriving it whenever a detail like a fascia board grows
+    past the bottom. Measure it instead.
+    """
+    lowest = min((obj.matrix_basis @ v.co).z for v in obj.data.vertices)
+    obj.location.z += z - lowest
+    return obj
+
+
 def box_uv(obj, tile=TILE_METERS, rotate_axes=()):
     """World-scale box projection: pick the dominant axis per face, project.
 
@@ -171,6 +183,23 @@ def box_uv(obj, tile=TILE_METERS, rotate_axes=()):
     for poly in mesh.polygons:
         n = poly.normal
         axis = max(range(3), key=lambda i: abs(n[i]))
+
+        # Sloped faces (a roof pitch) have no dominant axis. Projecting them
+        # down an axis squashes the texture by 1/cos(pitch) -- shingles come
+        # out stretched. Map those in the face's own plane instead: u runs
+        # horizontally along the face, v straight up the slope.
+        if abs(n[axis]) < 0.88:
+            up = Vector((0.0, 0.0, 1.0))
+            u_dir = Vector(n).cross(up)
+            if u_dir.length < 1e-6:
+                u_dir = Vector((1.0, 0.0, 0.0))
+            u_dir.normalize()
+            v_dir = u_dir.cross(Vector(n)).normalized()
+            for li in poly.loop_indices:
+                co = mesh.vertices[mesh.loops[li].vertex_index].co
+                uv.data[li].uv = (co.dot(u_dir) / tile, co.dot(v_dir) / tile)
+            continue
+
         # Project onto the two axes that aren't the face's dominant one,
         # flipping one of them so the mapping isn't mirrored on back faces.
         if axis == 0:      # faces pointing along X -> use Y,Z

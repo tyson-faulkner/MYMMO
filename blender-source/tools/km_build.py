@@ -25,6 +25,9 @@ def run(module_name):
     importlib.reload(mod)
 
     objs = mod.build()
+    # Pieces may set obj.location; flush it before anything measures bounds.
+    import bpy
+    bpy.context.view_layer.update()
     print("[%s] %s" % (mod.NAME, K.report(objs)))
 
     K.preview_rig()
