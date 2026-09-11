@@ -5,9 +5,18 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1 complete, M2-M6 have a working first pass, death is in. Next: M7 persistence (Nakama), then gear and the rune slots.
+- **Milestone:** M1-M7 all have a working pass. Next: gear, the three rune slots, and party/group play.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 65/65 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 79/79 checks passing
+
+## Not yet verified against a live backend
+
+The persistence save format, its validation and its offline behaviour are all
+covered by the smoke test. What is NOT verified from the cloud sandbox is the
+round trip against a running Nakama: Docker is on Tyson's machine and the
+sandbox can't reach it. Someone running the loop locally should host a game with
+`docker compose up` running, level up, quit, rejoin, and confirm the character
+comes back.
 
 ## Waiting on Tyson (nothing here blocks the loop)
 
@@ -57,6 +66,34 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — M7: characters survive logging out
+Nakama was installed, verified, and connected to nothing — it powered a login
+test scene and that was all. Now:
+
+- `Account` autoload logs in by device id (no passwords for anyone to forget)
+  and reads/writes the character to Nakama storage.
+- `CharacterState` turns a character into a plain dictionary and back: class,
+  level, XP, health, position, quest log, currency, inventory. Deliberately
+  pure — no networking, no Nakama — so the part most likely to silently corrupt
+  a save is the part easiest to test. It is versioned, with a migration hook.
+- `PersistenceManager` decides when: every 45 seconds, on level-up, on quest
+  hand-in, and on quit. Level-ups and hand-ins because those are the moments
+  losing progress stings most.
+
+**The game must work without it**, and does: if Docker isn't running, login
+fails quietly, a warning is pushed, and everything else carries on exactly as
+before. The smoke test asserts that path.
+
+Trust model, stated plainly in the code: each client saves its own character
+under its own Nakama account. The server decides every value during play, but
+the client writes it down. For 5-10 friends that is the right trade; making it
+server-authoritative means adding a Nakama server module and routing writes
+through it, and nothing else would change.
+
+Third time the same bug shape appeared: the save read the class off the body
+while Stats held the real ClassData, so it recorded the wrong class. Stats is
+the source of truth everywhere now — ability bar, save format, all of it.
 
 ### 2026-09-11 — Loot actually drops, and one quest was impossible
 Enemies roll their loot table on death and leave the results on the ground, and

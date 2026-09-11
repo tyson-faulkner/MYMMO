@@ -40,6 +40,7 @@ func _ready() -> void:
 	_check_combat()
 	await _check_abilities(zone)
 	_check_death(zone)
+	_check_persistence()
 
 	print("")
 	if _failures == 0:
@@ -416,6 +417,54 @@ func _check_death(zone: Node) -> void:
 	# Released at a graveyard, not left lying where the body is.
 	_report("released at a graveyard", _fake_player.global_position.distance_to(fell_at) > 5.0,
 		str(_fake_player.global_position.round()))
+
+
+func _check_persistence() -> void:
+	var stats := _fake_player.get_node("Stats") as Stats
+	var quest_log := _fake_player.get_node("QuestLog") as QuestLog
+
+	# Build a character worth losing.
+	stats.apply_class(load("res://resources/classes/tinker.tres") as ClassData)
+	stats._set_progression(14, 321)
+	_fake_player.global_position = Vector3(41, 2, -87)
+	quest_log.currency = 275
+	if not quest_log.is_turned_in(&"q_wolves"):
+		quest_log.turned_in[&"q_wolves"] = true
+
+	var saved := CharacterState.capture(_fake_player)
+	_report("save captures something", not saved.is_empty(), "%d fields" % saved.size())
+	_report("save passes validation", CharacterState.looks_valid(saved), "")
+	_report("save survives JSON", JSON.parse_string(JSON.stringify(saved)) is Dictionary, "")
+	_report("save is versioned", int(saved.get("version", 0)) >= 1, "v%d" % int(saved.get("version", 0)))
+
+	# Wipe the character, then restore it from the blob.
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats._set_progression(1, 0)
+	_fake_player.global_position = Vector3.ZERO
+	quest_log.currency = 0
+	quest_log.turned_in.clear()
+
+	var restored := CharacterState.apply(_fake_player, saved)
+	_report("save restores", restored, "")
+	_report("class came back", stats.class_data != null and stats.class_data.id == &"tinker",
+		str(stats.class_data.id) if stats.class_data else "none")
+	_report("level and XP came back", stats.level == 14 and stats.experience == 321,
+		"level %d, xp %d" % [stats.level, stats.experience])
+	_report("position came back", _fake_player.global_position.distance_to(Vector3(41, 2, -87)) < 0.1,
+		str(_fake_player.global_position.round()))
+	_report("currency came back", quest_log.currency == 275, "%d sovereigns" % quest_log.currency)
+	_report("finished quests came back", quest_log.is_turned_in(&"q_wolves"), "")
+	_report("health matches the restored class", stats.max_health == stats.class_data.base_health
+		+ stats.class_data.health_per_level * (stats.level - 1), "%d hp" % stats.max_health)
+
+	# Junk must be refused rather than half-applied.
+	_report("empty save refused", not CharacterState.looks_valid({}), "")
+	_report("classless save refused", not CharacterState.looks_valid({"level": 5}), "")
+	_report("impossible level refused", not CharacterState.looks_valid({"class": "bard", "level": 999}), "")
+
+	# The game has to run with Nakama switched off. This is the check that says
+	# "Docker not running" never becomes "game broken".
+	_report("no login means no crash", not Account.is_logged_in(), Account.status_line())
 
 
 func _report(label: String, passed: bool, detail: String) -> void:

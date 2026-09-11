@@ -119,11 +119,11 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] One mount reward from the dungeon.
 
 ### M7 — Persistence (Nakama)
-- [ ] Account login wired to the real client (not just `nakama_test.tscn`).
+- [x] Account login wired to the real client (not just `nakama_test.tscn`).
 - [ ] Character create/select: name, class, appearance.
-- [ ] Save/load: position, level, XP, inventory, equipment, quest state,
+- [x] Save/load: position, level, XP, inventory, equipment, quest state,
       currency, mounts. Server writes, never the client.
-- [ ] Reconnect restores the character where it logged out.
+- [x] Reconnect restores the character where it logged out.
 
 ### M8 — Systems polish
 - [x] Death, corpse run, resurrection sickness.

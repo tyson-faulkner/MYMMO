@@ -30,6 +30,7 @@ MobDatabase="*res://scripts/autoload/mob_database.gd"
 AbilityDatabase="*res://scripts/autoload/ability_database.gd"
 Nakama="*res://addons/com.heroiclabs.nakama/Nakama.gd"
 Satori="*res://addons/com.heroiclabs.nakama/Satori.gd"
+Account="*res://scripts/autoload/account.gd"
 
 [display]
 
