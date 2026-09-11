@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/world/area_trigger.gd" id="4_trigger"]
 [ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
+[ext_resource type="Script" path="res://scripts/world/graveyard.gd" id="7_grave"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_approach"]
 size = Vector3(34, 8, 16)
@@ -226,6 +227,18 @@ display_name = "Captain Aurey"
 title = "Guard Captain"
 greeting = "Two houses want this road and neither one of them will say so out loud. Keep your head down."
 body_color = Color(0.5, 0.44, 0.5, 1)
+
+[node name="Graveyards" type="Node3D" parent="."]
+
+[node name="ValeGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0.3, 22)
+script = ExtResource("7_grave")
+display_name = "Thornhollow Rest"
+
+[node name="BarrowGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -588)
+script = ExtResource("7_grave")
+display_name = "The Barrow Threshold"
 
 [node name="Triggers" type="Node3D" parent="."]
 

@@ -15,6 +15,7 @@ var _stats: Stats = null
 var _quest_log: QuestLog = null
 var _targeting: Targeting = null
 var _ability_bar: AbilityBar = null
+var _death: DeathHandler = null
 
 var _slot_buttons: Array[Button] = []
 var _slot_cooldowns: Array[Label] = []
@@ -37,6 +38,10 @@ var _slot_cooldowns: Array[Label] = []
 @onready var _quest_panel: PanelContainer = $QuestLogPanel
 @onready var _quest_panel_rows: VBoxContainer = $QuestLogPanel/Margin/Scroll/Rows
 @onready var _toast: Label = $Toast
+@onready var _death_panel: PanelContainer = $DeathPanel
+@onready var _corpse_distance: Label = $DeathPanel/Margin/Rows/CorpseDistance
+@onready var _release_button: Button = $DeathPanel/Margin/Rows/ReleaseButton
+@onready var _sickness: Label = $Sickness
 
 
 func _ready() -> void:
@@ -44,6 +49,9 @@ func _ready() -> void:
 	_target_frame.visible = false
 	_quest_panel.visible = false
 	_toast.visible = false
+	_death_panel.visible = false
+	_sickness.visible = false
+	_release_button.pressed.connect(_on_release_pressed)
 	visible = false
 	set_process(true)
 
@@ -57,6 +65,51 @@ func _process(_delta: float) -> void:
 	visible = true
 	_refresh_target_frame()
 	_refresh_cooldowns()
+	_refresh_death_panel()
+
+
+# --- Death --------------------------------------------------------------
+
+
+func _on_died_at(_where: Vector3) -> void:
+	_death_panel.visible = true
+	_show_toast("You have fallen")
+
+
+func _on_resurrected() -> void:
+	_death_panel.visible = false
+
+
+func _on_sickness_changed(seconds_remaining: float) -> void:
+	if seconds_remaining <= 0.0:
+		_sickness.visible = false
+		return
+	_sickness.visible = true
+	_sickness.text = "Grave-Chill — everything you do lands for less (%d:%02d)" % [
+		int(seconds_remaining) / 60, int(seconds_remaining) % 60
+	]
+
+
+func _refresh_death_panel() -> void:
+	if _death == null or not _death.is_ghost:
+		if _death_panel.visible:
+			_death_panel.visible = false
+		return
+	_death_panel.visible = true
+	var distance := _player.global_position.distance_to(_death.corpse_position)
+	if distance <= DeathHandler.CORPSE_RECLAIM_RANGE:
+		_corpse_distance.text = "You are standing over your body."
+	else:
+		_corpse_distance.text = "Your body lies %d metres away. Walk back to it, or release." % int(distance)
+
+
+func _on_release_pressed() -> void:
+	if _death == null:
+		return
+	if multiplayer.is_server():
+		_death.request_release()
+	else:
+		_death.request_release.rpc_id(1)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -80,6 +133,7 @@ func _attach_to_local_player() -> void:
 		_quest_log = candidate.get_node_or_null("QuestLog") as QuestLog
 		_targeting = candidate.get_node_or_null("Targeting") as Targeting
 		_ability_bar = candidate.get_node_or_null("AbilityBar") as AbilityBar
+		_death = candidate.get_node_or_null("DeathHandler") as DeathHandler
 
 		if _stats:
 			_stats.health_changed.connect(_on_health_changed)
@@ -95,6 +149,10 @@ func _attach_to_local_player() -> void:
 			_rebuild_tracker()
 		if _ability_bar:
 			_ability_bar.cast_failed.connect(_on_cast_failed)
+		if _death:
+			_death.died_at.connect(_on_died_at)
+			_death.resurrected.connect(_on_resurrected)
+			_death.sickness_changed.connect(_on_sickness_changed)
 		var nickname := candidate.get_node_or_null("PlayerNick/Nickname") as Label3D
 		if nickname:
 			_player_name.text = nickname.text

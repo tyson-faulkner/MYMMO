@@ -5,9 +5,9 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1 complete. M2-M6 have a working first pass. Next: M7 persistence (Nakama), then gear and the rune slots.
+- **Milestone:** M1 complete, M2-M6 have a working first pass, death is in. Next: M7 persistence (Nakama), then gear and the rune slots.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 50/50 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 63/63 checks passing
 
 ## Waiting on Tyson (nothing here blocks the loop)
 
@@ -57,6 +57,19 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — Death, which was silently missing entirely
+A player who hit zero health simply stayed there: nothing listened for it. Now
+you become a ghost and choose, exactly as the design doc specifies: release to
+the nearest graveyard and carry five minutes of Grave-Chill (everything you do
+lands for 75%), or walk your ghost back to your body and resurrect clean.
+
+The penalty costs time, never progress. Two graveyards exist — one in town, one
+inside the barrow, because releasing in a dungeon should not strand you five
+hundred metres overhead.
+
+Reclaim distance is re-checked on the server, so a client cannot reclaim its
+corpse from across the zone. Ghosts cannot swing.
 
 ### 2026-09-11 — Class selection, which finishes M1
 The menu is Kingsmourn's now, not the template's. Picking a class shows its

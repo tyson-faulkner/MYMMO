@@ -266,6 +266,10 @@ func _start_attack() -> void:
 func request_melee_hit() -> void:
 	if not multiplayer.is_server() or not _is_owner_request():
 		return
+	# Ghosts don't get to swing.
+	var own_stats := get_node_or_null("Stats") as Stats
+	if own_stats and own_stats.is_dead:
+		return
 	var now := Time.get_ticks_msec()
 	if now - _last_melee_hit_msec < MELEE_COOLDOWN_MSEC:
 		return
@@ -973,3 +977,19 @@ func get_class_data() -> ClassData:
 func set_recovery_point(point: Vector3, new_fall_limit: float) -> void:
 	_spawn_point = point
 	fall_limit_y = new_fall_limit
+
+
+## Move this character somewhere, and make that somewhere the place it recovers
+## to. Used by portals and by resurrection.
+func teleport_to(where: Vector3) -> void:
+	if multiplayer.is_server() and not is_multiplayer_authority():
+		sync_teleport.rpc_id(get_multiplayer_authority(), where)
+		return
+	sync_teleport(where)
+
+
+@rpc("authority", "call_local", "reliable")
+func sync_teleport(where: Vector3) -> void:
+	global_position = where
+	velocity = Vector3.ZERO
+	_spawn_point = where

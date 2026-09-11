@@ -107,7 +107,7 @@ Work top to bottom. Each milestone ends in a playable state.
       approach. Built from the modular kit pieces (or primitives standing in).
 - [x] Populate: 6+ NPCs (quest givers, innkeeper, two vendors, guard captain),
       mob spawns by level band (1–5 near town, 6–12 outward), gathering nodes.
-- [ ] Zone transitions + spawn/graveyard points + spirit-healer corpse run.
+- [x] Zone transitions + spawn/graveyard points + spirit-healer corpse run.
 - [ ] Vendors and the shared quest/dungeon currency.
 
 ### M6 — The first dungeon
@@ -126,7 +126,7 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] Reconnect restores the character where it logged out.
 
 ### M8 — Systems polish
-- [ ] Death, corpse run, resurrection sickness.
+- [x] Death, corpse run, resurrection sickness.
 - [ ] Group/party system + shared quest credit + the dungeon group check.
 - [ ] Duels.
 - [ ] Loot rolls, gear stats, three gear tiers, the three rune-slot choices.

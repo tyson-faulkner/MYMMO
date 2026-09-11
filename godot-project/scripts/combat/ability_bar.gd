@@ -202,10 +202,15 @@ func confirm_cast(ability_id_text: String, slot: int) -> void:
 func _execute(ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int) -> void:
 	var caster_peer := caster.get_multiplayer_authority()
 	var power := ability.power
+	# Grave-Chill: everything you do lands for less while it lasts.
+	var death_handler := caster.get_node_or_null("DeathHandler") as DeathHandler
+	var output := death_handler.output_multiplier() if death_handler else 1.0
 	if ability.spends_all_resource:
 		# Scales with what you had banked: the more of the fight you carried,
 		# the harder the finisher lands.
 		power = int(round(float(ability.power) * (0.5 + float(spent_resource) / 50.0)))
+	if output != 1.0:
+		power = maxi(1, int(round(float(power) * output)))
 
 	match ability.effect:
 		AbilityData.Effect.DAMAGE:

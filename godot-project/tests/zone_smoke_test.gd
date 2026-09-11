@@ -15,6 +15,7 @@ const PLAYER_STATS := preload("res://scripts/combat/stats.gd")
 const PLAYER_QUEST_LOG := preload("res://scripts/quests/quest_log.gd")
 const PLAYER_TARGETING := preload("res://scripts/combat/targeting.gd")
 const PLAYER_ABILITY_BAR := preload("res://scripts/combat/ability_bar.gd")
+const PLAYER_DEATH := preload("res://scripts/combat/death_handler.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -38,6 +39,7 @@ func _ready() -> void:
 	await _check_quest_flow()
 	_check_combat()
 	await _check_abilities(zone)
+	_check_death(zone)
 
 	print("")
 	if _failures == 0:
@@ -83,6 +85,10 @@ func _spawn_fake_player() -> void:
 	ability_bar.set_script(PLAYER_ABILITY_BAR)
 	ability_bar.name = "AbilityBar"
 	_fake_player.add_child(ability_bar)
+	var death := Node.new()
+	death.set_script(PLAYER_DEATH)
+	death.name = "DeathHandler"
+	_fake_player.add_child(death)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -338,6 +344,54 @@ func _check_abilities(zone: Node) -> void:
 	var far_health: int = victim.get_node("Stats").health
 	bar.request_cast("necro_bolt", victim.get_path())
 	_report("out-of-range casts are refused", victim.get_node("Stats").health == far_health, "")
+
+
+func _check_death(zone: Node) -> void:
+	var graveyards := zone.get_node_or_null("Graveyards")
+	_report(
+		"graveyards placed",
+		graveyards != null and graveyards.get_child_count() >= 2,
+		"%d" % (graveyards.get_child_count() if graveyards else 0)
+	)
+
+	var stats := _fake_player.get_node("Stats") as Stats
+	var death := _fake_player.get_node("DeathHandler") as DeathHandler
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 10
+	stats.revive()
+
+	# Dying makes a ghost, and remembers where the body fell.
+	var fell_at := Vector3(12, 1, 18)
+	_fake_player.global_position = fell_at
+	stats.apply_damage(99999, 0)
+	_report("death makes a ghost", death.is_ghost, "")
+	_report("the corpse is where you fell", death.corpse_position.distance_to(fell_at) < 0.1,
+		str(death.corpse_position))
+
+	# Reclaiming from across the zone must be refused.
+	_fake_player.global_position = fell_at + Vector3(0, 0, 60)
+	death.request_reclaim_corpse()
+	_report("distant corpse reclaim refused", death.is_ghost, "")
+
+	# Walking back works, and costs nothing.
+	_fake_player.global_position = fell_at + Vector3(0, 0, 2)
+	death.request_reclaim_corpse()
+	_report("corpse run resurrects", not death.is_ghost and not stats.is_dead, "")
+	_report("corpse run has no penalty", death.sickness_remaining == 0.0, "")
+
+	# Releasing works too, and does cost something.
+	stats.apply_damage(99999, 0)
+	_report("died again", death.is_ghost, "")
+	death.request_release()
+	_report("release resurrects", not death.is_ghost and not stats.is_dead, "")
+	_report("release costs Grave-Chill", death.sickness_remaining > 0.0,
+		"%ds" % int(death.sickness_remaining))
+	_report("Grave-Chill weakens output", death.output_multiplier() < 1.0,
+		"x%.2f" % death.output_multiplier())
+
+	# Released at a graveyard, not left lying where the body is.
+	_report("released at a graveyard", _fake_player.global_position.distance_to(fell_at) > 5.0,
+		str(_fake_player.global_position.round()))
 
 
 func _report(label: String, passed: bool, detail: String) -> void:
