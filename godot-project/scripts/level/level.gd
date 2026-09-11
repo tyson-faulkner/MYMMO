@@ -120,8 +120,8 @@ func _on_player_connected(peer_id, player_info):
 	_refresh_player_list()
 
 
-func _on_host_pressed(nickname: String, skin: String):
-	var error = Network.start_host(nickname, skin)
+func _on_host_pressed(nickname: String, skin: String, class_id: String):
+	var error = Network.start_host(nickname, skin, class_id)
 	if error:
 		push_warning("Failed to host game. Error: " + str(error))
 		main_menu.show_menu()
@@ -131,8 +131,8 @@ func _on_host_pressed(nickname: String, skin: String):
 	_update_mouse_mode()
 
 
-func _on_join_pressed(nickname: String, skin: String, address: String):
-	var error = Network.join_game(nickname, skin, address)
+func _on_join_pressed(nickname: String, skin: String, address: String, class_id: String):
+	var error = Network.join_game(nickname, skin, address, class_id)
 	if error:
 		push_warning("Failed to join game. Error: " + str(error))
 		main_menu.show_menu()
@@ -159,6 +159,7 @@ func _add_player(id: int, player_info: Dictionary) -> Character:
 
 	var skin_enum = Network.sanitize_skin_value(player_info.get("skin", Character.SkinColor.BLUE))
 	player.set_player_skin(skin_enum)
+	player.apply_class(StringName(Network.sanitize_class_id(str(player_info.get("class", "valkyr")))))
 	_apply_player_nickname_height(id)
 	return player
 

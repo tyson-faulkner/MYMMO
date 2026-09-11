@@ -5,7 +5,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1-M6 all have a working first pass. Next: class selection on the menu, then M7 persistence.
+- **Milestone:** M1 complete. M2-M6 have a working first pass. Next: M7 persistence (Nakama), then gear and the rune slots.
 - **Loop status:** running
 - **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 50/50 checks passing
 
@@ -57,6 +57,15 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — Class selection, which finishes M1
+The menu is Kingsmourn's now, not the template's. Picking a class shows its
+role, its flavour line and what its resource bar is called, and the choice
+travels through Network.player_info into the spawned character, so a Bard
+actually arrives with 95 health and a Verse bar.
+
+The server sanitises the class id coming off the wire. An unknown one would have
+left the character with no ClassData, and therefore no health at all.
 
 ### 2026-09-11 — The HUD, which is what makes any of it visible
 Health and class resource bars (the resource is named per class, so a

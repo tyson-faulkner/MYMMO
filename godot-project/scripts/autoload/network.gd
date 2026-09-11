@@ -10,7 +10,7 @@ const MAX_NICK_LENGTH := 24
 const MAX_ADDRESS_LENGTH := 253
 
 var players = {}
-var player_info = {"nick": "host", "skin": Character.SkinColor.BLUE}
+var player_info = {"nick": "host", "skin": Character.SkinColor.BLUE, "class": "valkyr"}
 var _session_active := false
 
 
@@ -22,7 +22,7 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_ok)
 
 
-func start_host(nickname: String, skin_color_str: String):
+func start_host(nickname: String, skin_color_str: String, class_id: String = "valkyr"):
 	var peer = ENetMultiplayerPeer.new()
 	var error = peer.create_server(SERVER_PORT, MAX_PLAYERS)
 	if error:
@@ -34,6 +34,7 @@ func start_host(nickname: String, skin_color_str: String):
 
 	player_info["nick"] = sanitize_nickname(nickname, "Host_" + str(multiplayer.get_unique_id()))
 	player_info["skin"] = skin_str_to_e(skin_color_str)
+	player_info["class"] = sanitize_class_id(class_id)
 
 	if DisplayServer.get_name() == "headless":
 		return
@@ -42,7 +43,9 @@ func start_host(nickname: String, skin_color_str: String):
 	player_connected.emit(1, player_info)
 
 
-func join_game(nickname: String, skin_color_str: String, address: String = SERVER_ADDRESS):
+func join_game(
+	nickname: String, skin_color_str: String, address: String = SERVER_ADDRESS, class_id: String = "valkyr"
+):
 	address = sanitize_address(address)
 	if address.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -58,6 +61,7 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 
 	player_info["nick"] = sanitize_nickname(nickname, "Player_" + str(multiplayer.get_unique_id()))
 	player_info["skin"] = skin_str_to_e(skin_color_str)
+	player_info["class"] = sanitize_class_id(class_id)
 
 
 func _on_connected_ok():
@@ -147,7 +151,8 @@ func _sync_registered_player(peer_id: int, registered_player_info: Dictionary):
 func sanitize_player_info(info: Dictionary, fallback_nick: String) -> Dictionary:
 	return {
 		"nick": sanitize_nickname(str(info.get("nick", "")), fallback_nick),
-		"skin": sanitize_skin_value(info.get("skin", Character.SkinColor.BLUE))
+		"skin": sanitize_skin_value(info.get("skin", Character.SkinColor.BLUE)),
+		"class": sanitize_class_id(str(info.get("class", "valkyr")))
 	}
 
 
@@ -200,3 +205,12 @@ func sanitize_skin_value(value) -> Character.SkinColor:
 			_:
 				return Character.SkinColor.BLUE
 	return skin_str_to_e(str(value))
+
+
+## Never trust a class id off the wire: an unknown one would leave the character
+## with no ClassData at all, and therefore no health.
+func sanitize_class_id(class_id: String) -> String:
+	var clean := class_id.strip_edges().to_lower()
+	if clean in ["valkyr", "bard", "necromancer", "tinker"]:
+		return clean
+	return "valkyr"

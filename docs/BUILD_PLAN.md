@@ -68,7 +68,7 @@ Work top to bottom. Each milestone ends in a playable state.
       Necromancer, Tinker) with role, resource label, resource behaviour.
 - [x] `Stats` extended: per-class resource label, resource spend/regen,
       level + XP, XP-to-level curve targeting ~8–10h to 20.
-- [ ] Class picker on the main menu, class carried through `Network.player_info`
+- [x] Class picker on the main menu, class carried through `Network.player_info`
       and applied on spawn.
 - [ ] Class tint on the placeholder body so four players are visually distinct.
 

@@ -72,7 +72,7 @@ layout_mode = 2
 size_flags_horizontal = 6
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 70
-text = "3D Multiplayer Template"
+text = "KINGSMOURN"
 
 [node name="MainMenu" type="VBoxContainer" parent="MainContainer" unique_id=792964549]
 layout_direction = 1
@@ -105,6 +105,33 @@ theme_override_font_sizes/font_size = 35
 placeholder_text = "YourNick"
 max_length = 20
 expand_to_text_length = true
+
+[node name="OptionClass" type="HBoxContainer" parent="MainContainer/MainMenu" unique_id=1404573290]
+layout_mode = 2
+size_flags_vertical = 4
+alignment = 1
+
+[node name="Label" type="Label" parent="MainContainer/MainMenu/OptionClass" unique_id=1101934190]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 35
+text = "Class : "
+
+[node name="ClassInput" type="OptionButton" parent="MainContainer/MainMenu/OptionClass" unique_id=2039868090]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 35
+
+[node name="ClassBlurb" type="Label" parent="MainContainer/MainMenu" unique_id=1404573291]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+horizontal_alignment = 1
+autowrap_mode = 2
+custom_minimum_size = Vector2(760, 0)
+theme_override_colors/font_color = Color(0.8, 0.76, 0.66, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
 
 [node name="Option2" type="HBoxContainer" parent="MainContainer/MainMenu" unique_id=1404573203]
 layout_mode = 2
