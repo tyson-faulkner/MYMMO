@@ -511,6 +511,30 @@ def feather(base=(0.93, 0.93, 0.91), seed=181, rows=11.0, cols=7.0, size=SIZE):
     return _rgba(rgb * g + shadow * (1 - g))
 
 
+def fur(base, seed=191, size=SIZE, clumps=22.0):
+    """Fur: clumped strands with dark roots and lit tips."""
+    base = np.asarray(base, dtype=float)
+    u, v = _uv(size)
+    strand = np.sin(u * clumps * 2.0 * np.pi
+                    + (fbm(size, 5, seed + 3) - 0.5) * 14.0)
+    clump = (fbm(size, 12, seed, octaves=5) - 0.5) * 0.40
+    root = 0.72 + 0.36 * _smooth(np.clip(v, 0, 1))
+    rgb = _tint(base, (1.0 + strand * 0.14 + clump) * root)
+    return _rgba(rgb)
+
+
+def glow(base, seed=197, size=SIZE):
+    """A flat, bright accent colour for runes and arcane light.
+
+    No emission -- the kit has no emissive materials -- so this just sits
+    much brighter than everything around it, which reads as glow against
+    the dark robes it is used on.
+    """
+    base = np.asarray(base, dtype=float)
+    pulse = (fbm(size, 6, seed, octaves=3) - 0.5) * 0.22
+    return _rgba(_tint(base, 1.0 + pulse))
+
+
 def register(name, builder):
     """Add a parameterised texture under its own name.
 

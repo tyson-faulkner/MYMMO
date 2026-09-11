@@ -126,6 +126,138 @@ def wing(bm, uv, side, root, span, mat, n=6, feathers=6, thickness=0.014):
     return made
 
 
+def hood(bm, uv, mat, n=12, peak=1.90, back=-0.06):
+    """A raised hood over the head, open at the face.
+
+    The Necromancer's whole read is "hood up, long ragged hem", so the hood
+    needs to rise to a point above the skull and sit proud of it, not wrap
+    it like a swim cap.
+    """
+    sections = [
+        ((0, back * 0.4, 1.50), 0.140, 0.135),
+        ((0, back * 0.7, 1.60), 0.150, 0.152),
+        ((0, back, 1.70), 0.146, 0.155),
+        ((0, back * 1.5, 1.80), 0.118, 0.130),
+        ((0, back * 2.4, peak - 0.03), 0.062, 0.075),
+        ((0, back * 3.2, peak), 0.018, 0.022),
+    ]
+    return C.tube(bm, uv, sections, C.X, C.Y, n, mat=mat,
+                  cap_start=False, cap_end=True)
+
+
+def ragged_hem(bm, uv, mat, top_z, lengths, radius, n=5, y_scale=1.0,
+               blade_width=0.075):
+    """A skirt hem torn into hanging points.
+
+    Made of separate tapered blades rather than one cone with a zigzag edge:
+    the gaps between them are what read as "ragged" in silhouette, and the
+    silhouette is the point.
+    """
+    import math
+    made = []
+    count = len(lengths)
+    for i, length in enumerate(lengths):
+        angle = 2.0 * math.pi * i / count
+        dx, dy = math.cos(angle), math.sin(angle) * y_scale
+        cx, cy = dx * radius, dy * radius
+        # Splay outwards slightly as it falls, so the hem flares.
+        tip = (cx * 1.22, cy * 1.22, top_z - length)
+        sections = [
+            ((cx, cy, top_z), blade_width, 0.022),
+            ((cx * 1.08, cy * 1.08, top_z - length * 0.55),
+             blade_width * 0.95, 0.020),
+            ((tip[0], tip[1], tip[2] + length * 0.18),
+             blade_width * 0.6, 0.017),
+            (tip, blade_width * 0.10, 0.010),
+        ]
+        # Ring plane is horizontal-ish: wide tangentially, thin radially.
+        across = Vector((-dy, dx, 0.0)).normalized()
+        radial = Vector((dx, dy, 0.0)).normalized()
+        made.append(C.tube(bm, uv, sections, across, radial, n, mat=mat,
+                           cap_start=True, cap_end=True, v_scale=0.5))
+    return made
+
+
+def pack(bm, uv, mat, accent_mat, centre=(0.0, -0.20, 1.30)):
+    """A tool pack across the shoulder blades -- the Tinker's silhouette.
+
+    The spec says the Tinker is bulky at the BACK, not the shoulders, so
+    this is what distinguishes him from the Valkyr at distance.
+    """
+    cx, cy, cz = centre
+    made = []
+    # Main crate.
+    made.append(C.tube(bm, uv, [
+        ((cx, cy + 0.06, cz - 0.20), 0.150, 0.070),
+        ((cx, cy, cz), 0.168, 0.090),
+        ((cx, cy + 0.02, cz + 0.20), 0.140, 0.072),
+    ], C.X, C.Y, 8, mat=mat, cap_start=True, cap_end=True))
+
+    # Canisters either side, and a stack pipe over one shoulder.
+    for side in (-1, 1):
+        made.append(C.tube(bm, uv, [
+            ((cx + side * 0.115, cy - 0.055, cz - 0.17), 0.042, 0.042),
+            ((cx + side * 0.115, cy - 0.055, cz + 0.10), 0.042, 0.042),
+        ], C.X, C.Y, 8, mat=accent_mat, cap_start=True, cap_end=True))
+    # Exhaust stack, set well out to one side. Closer in it stood right
+    # beside the head and read as part of the neck.
+    made.append(C.tube(bm, uv, [
+        ((cx + 0.148, cy - 0.03, cz + 0.14), 0.034, 0.034),
+        ((cx + 0.156, cy - 0.01, cz + 0.36), 0.030, 0.030),
+        ((cx + 0.156, cy - 0.01, cz + 0.42), 0.042, 0.042),
+    ], C.X, C.Y, 8, mat=accent_mat, cap_start=True, cap_end=True))
+    return made
+
+
+def mantle(bm, uv, mat, z=1.45, radius=0.24, n=14, lobes=9):
+    """A thick fur ruff over the shoulders.
+
+    Built as a ring of overlapping lobes so the outline is clumpy rather
+    than a smooth doughnut -- fur has to break its own silhouette or it
+    reads as a life ring.
+    """
+    import math
+    made = []
+    for i in range(lobes):
+        angle = 2.0 * math.pi * i / lobes
+        dx, dy = math.cos(angle), math.sin(angle) * 0.72
+        cx, cy = dx * radius, dy * radius
+        drop = 0.10 + 0.05 * ((i * 7) % 3) / 2.0
+        made.append(C.tube(bm, uv, [
+            ((cx * 0.72, cy * 0.72, z + 0.075), 0.075, 0.060),
+            ((cx, cy, z), 0.092, 0.075),
+            ((cx * 1.05, cy * 1.05, z - drop), 0.062, 0.050),
+        ], Vector((-dy, dx, 0.0)).normalized(),
+            Vector((dx, dy, 0.0)).normalized(), 6, mat=mat,
+            cap_start=True, cap_end=True, v_scale=0.6))
+    return made
+
+
+def beard(bm, uv, mat, n=10, length=1.46, fullness=1.0):
+    """A full beard hanging from the jaw, and the hair to match.
+
+    Both the Bard and the Tinker reference sheets have one, and it is the
+    cheapest way to stop two characters sharing a body from reading as the
+    same bald head in different coats.
+    """
+    made = []
+    made.append(C.tube(bm, uv, [
+        ((0, 0.050, 1.665), 0.098 * fullness, 0.072),
+        ((0, 0.066, 1.600), 0.112 * fullness, 0.090),
+        ((0, 0.066, 1.530), 0.098 * fullness, 0.082),
+        ((0, 0.058, length), 0.050 * fullness, 0.045),
+    ], C.X, C.Y, n, mat=mat, cap_start=False, cap_end=True, v_scale=0.8))
+
+    # Hair: a cap over the crown falling to the nape.
+    made.append(C.tube(bm, uv, [
+        ((0, -0.004, 1.805), 0.060, 0.062),
+        ((0, -0.010, 1.760), 0.108, 0.114),
+        ((0, -0.026, 1.690), 0.112, 0.120),
+        ((0, -0.046, 1.620), 0.098, 0.100),
+    ], C.X, C.Y, n, mat=mat, cap_start=True, cap_end=False, v_scale=0.8))
+    return made
+
+
 def halo(bm, uv, centre, radius, thickness, mat, n=16):
     """A thin ring standing behind the head."""
     cx, cy, cz = centre
