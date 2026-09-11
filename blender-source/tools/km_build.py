@@ -38,10 +38,15 @@ def run(module_name):
                    repeat=getattr(mod, "REPEAT", None))
     print("[%s] preview -> %s" % (mod.NAME, preview))
 
+    if not getattr(mod, "EXPORT", True):
+        print("[%s] test render only, nothing exported" % mod.NAME)
+        return None
+
     blend = K.save_blend(mod.NAME)
     print("[%s] blend   -> %s" % (mod.NAME, blend))
 
-    glb = K.export_glb(objs, mod.NAME)
+    glb = K.export_glb(objs, mod.NAME, subdir=getattr(mod, "OUT", "kit"),
+                       apply_modifiers=getattr(mod, "APPLY_MODIFIERS", True))
     size = os.path.getsize(glb)
     print("[%s] glb     -> %s (%d bytes)" % (mod.NAME, glb, size))
     return glb

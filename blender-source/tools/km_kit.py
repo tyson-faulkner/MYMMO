@@ -451,9 +451,16 @@ def render_views(objs, out_path, angles=(38, -128), elevation=26,
 
 
 # ----------------------------------------------------------------- export ---
-def export_glb(objs, name):
-    """Export the given objects as one self-contained .glb in assets/kit/."""
-    path = os.path.join(KIT_DIR, name + ".glb")
+def export_glb(objs, name, subdir="kit", apply_modifiers=True):
+    """Export the given objects as one self-contained .glb under assets/.
+
+    `apply_modifiers` must be False for rigged characters: applying an
+    armature modifier bakes the rest pose into the mesh and throws the skin
+    binding away.
+    """
+    out_dir = os.path.join(ROOT, "godot-project", "assets", subdir)
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, name + ".glb")
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.select_set(True)
@@ -462,7 +469,7 @@ def export_glb(objs, name):
         filepath=path,
         export_format="GLB",
         use_selection=True,
-        export_apply=True,
+        export_apply=apply_modifiers,
         export_yup=True,
         export_image_format="AUTO",
     )
@@ -476,8 +483,9 @@ def save_blend(name):
 
 
 def report(objs):
-    tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objs)
-    lo, hi = _bounds(objs)
+    meshes = [o for o in objs if o.type == "MESH"]
+    tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in meshes)
+    lo, hi = _bounds(meshes or objs)
     size = hi - lo
     return "tris=%d  size=%.2f x %.2f x %.2f m  base_z=%.3f" % (
         tris, size.x, size.y, size.z, lo.z)

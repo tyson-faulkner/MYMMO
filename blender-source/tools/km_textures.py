@@ -381,7 +381,44 @@ def black_iron(size=SIZE, seed=91):
     return _rgba(rgb)
 
 
+SKIN = np.array([0.741, 0.545, 0.427])
+UNDERSUIT = np.array([0.212, 0.224, 0.259])
+
+
+def skin(size=SIZE, seed=131):
+    """Base-body skin: a warm mid tone with soft mottling.
+
+    Deliberately plain. This is the body the armour goes over, and detail
+    painted here would fight whatever the class texture puts on top.
+    """
+    mott = (fbm(size, 6, seed, octaves=5) - 0.5) * 0.10
+    fine = (fbm(size, 40, seed + 11, octaves=3) - 0.5) * 0.04
+    rgb = _tint(SKIN, 1.0 + mott + fine)
+    warm = (fbm(size, 10, seed + 23) - 0.5) * 0.05
+    rgb[:, :, 0] += warm
+    rgb[:, :, 2] -= warm * 0.6
+    return _rgba(rgb)
+
+
+def undersuit(size=SIZE, seed=137):
+    """Dark quilted cloth -- what a character wears under plate."""
+    weave = (value_noise(size, 96, seed) - 0.5) * 0.10
+    mott = (fbm(size, 8, seed + 7, octaves=4) - 0.5) * 0.22
+    # Quilting: a diagonal lattice of seams pressed into the cloth.
+    u, v = _uv(size)
+    # Sparse and low-contrast. A tighter, harder lattice read as fishnet.
+    quilt = np.minimum(
+        np.abs(((u + v) * 5.0) % 1.0 - 0.5),
+        np.abs(((u - v) * 5.0) % 1.0 - 0.5),
+    )
+    seam = _smooth(np.clip(quilt / 0.07, 0, 1)) * 0.16 + 0.84
+    rgb = _tint(UNDERSUIT, (1.0 + weave + mott) * seam)
+    return _rgba(rgb)
+
+
 BUILDERS = {
+    "skin": skin,
+    "undersuit": undersuit,
     "limestone": limestone,
     "slate": slate_roof,
     "timber": timber,
