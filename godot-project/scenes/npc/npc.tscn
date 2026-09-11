@@ -1,0 +1,77 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/npc/npc.gd" id="1_npc"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_npc"]
+radius = 0.34
+height = 1.5
+
+[sub_resource type="SphereMesh" id="SphereMesh_npc_head"]
+radius = 0.25
+height = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Material_npc_head"]
+albedo_color = Color(0.85, 0.72, 0.58, 1)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_npc"]
+radius = 0.34
+height = 1.8
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_interact"]
+radius = 4.5
+
+[sub_resource type="StandardMaterial3D" id="Material_npc_trim"]
+albedo_color = Color(0.79, 0.64, 0.15, 1)
+
+[node name="NPC" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_npc")
+
+[node name="Body" type="Node3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("CapsuleMesh_npc")
+
+[node name="Head" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.83, 0)
+mesh = SubResource("SphereMesh_npc_head")
+surface_material_override/0 = SubResource("Material_npc_head")
+
+[node name="Sash" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(0.42, 0, 0, 0, 0.06, 0, 0, 0, 0.42, 0, 1.28, 0.3)
+mesh = SubResource("CapsuleMesh_npc")
+surface_material_override/0 = SubResource("Material_npc_trim")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_npc")
+
+[node name="NameLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.35, 0)
+pixel_size = 0.0035
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(1, 0.95, 0.82, 1)
+text = "Villager"
+
+[node name="QuestMarker" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.95, 0)
+pixel_size = 0.006
+billboard = 1
+no_depth_test = true
+font_size = 64
+outline_size = 22
+modulate = Color(1, 0.83, 0.15, 1)
+text = "!"
+
+[node name="InteractArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InteractArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("SphereShape3D_interact")

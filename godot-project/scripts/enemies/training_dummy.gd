@@ -28,7 +28,7 @@ func _on_health_changed(current: int, maximum: int) -> void:
 
 
 # Only the server runs the respawn timer, then tells everyone it's back.
-func _on_died() -> void:
+func _on_died(_killer_peer_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	await get_tree().create_timer(RESPAWN_DELAY_SECONDS).timeout

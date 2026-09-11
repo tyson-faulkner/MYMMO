@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_data.gd" id="1_cls"]
+
+[resource]
+script = ExtResource("1_cls")
+display_name = "Necromancer"
+id = &"necromancer"
+role = "Ranged Damage"
+resource_label = "Soul"
+max_resource = 110
+resource_builds_in_combat = false
+resource_regen_per_second = 5.0
+base_health = 90
+health_per_level = 9
+base_armor = 1
+placeholder_color = Color(0.45, 0.62, 0.48, 1)
+description = "The war left more dead than graves. Put them back to work."

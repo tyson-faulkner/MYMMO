@@ -1,0 +1,54 @@
+# MobData — the definition of one kind of enemy.
+#
+# Kingsmourn's enemies are people, not demons, so nearly every one of them
+# shares a single humanoid body. That is a production decision as much as a
+# creative one: one skeleton, one animation set, and a new enemy costs a data
+# file instead of an art budget. Adding the fortieth mob type should be filling
+# in this form, never writing code.
+class_name MobData
+extends Resource
+
+@export var id: StringName = &""
+@export var display_name: String = "Enemy"
+@export var level: int = 1
+@export var max_health: int = 60
+
+## Damage per swing before the target's armour.
+@export var damage: int = 8
+@export var attack_cooldown: float = 1.8
+
+## How close it has to be to swing.
+@export var attack_range: float = 2.2
+@export var move_speed: float = 3.2
+
+## How far away it notices you.
+@export var aggro_radius: float = 9.0
+
+## How far it will chase from its spawn before giving up and walking home.
+## Without a leash, one player can drag the whole zone into town.
+@export var leash_radius: float = 22.0
+@export var respawn_seconds: float = 25.0
+
+## XP awarded to the killer. Scaled by level difference at award time.
+@export var experience_reward: int = 25
+
+## Quest objectives match on this id, so several mob types can count toward the
+## same "kill 8 bandits" objective by sharing a tag.
+@export var tags: Array[StringName] = []
+
+## Body tint for the placeholder humanoid. Real art swaps into the same scene
+## slot later with no code change.
+@export var placeholder_color: Color = Color(0.5, 0.45, 0.4)
+
+## Roughly how tall, in metres. Gives silhouette variety before real art.
+@export var scale_multiplier: float = 1.0
+
+## Item ids that can drop, each with a 0..1 chance.
+@export var loot_table: Dictionary = {}
+
+## Shared currency (Sovereigns) dropped on death.
+@export var currency_reward: int = 0
+
+## True for dungeon and raid bosses. Bosses scale with how many players are in
+## the instance — one system, written once (see the design doc).
+@export var is_boss: bool = false

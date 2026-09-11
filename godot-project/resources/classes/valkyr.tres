@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_data.gd" id="1_cls"]
+
+[resource]
+script = ExtResource("1_cls")
+display_name = "Valkyr"
+id = &"valkyr"
+role = "Tank"
+resource_label = "Valor"
+max_resource = 100
+resource_builds_in_combat = true
+resource_regen_per_second = 0.0
+base_health = 140
+health_per_level = 16
+base_armor = 8
+placeholder_color = Color(0.42, 0.45, 0.55, 1)
+description = "Winged claimant of the honoured slain. Shield and spear. Valor builds as the fight goes on."

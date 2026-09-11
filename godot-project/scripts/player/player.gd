@@ -39,8 +39,19 @@ const HEAD_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/HeadAttach/"
 const HAND_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/LeftHandAttach/"
 const BACK_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/BackAttach/"
 const FIRST_PERSON_HIDDEN_BONES: Array[StringName] = [&"Head", &"HeadTop"]
+const CLASS_RESOURCE_PATHS := {
+	&"valkyr": "res://resources/classes/valkyr.tres",
+	&"bard": "res://resources/classes/bard.tres",
+	&"necromancer": "res://resources/classes/necromancer.tres",
+	&"tinker": "res://resources/classes/tinker.tres"
+}
 
 @export var skin_color: SkinColor = SkinColor.BLUE
+
+## Which of the four classes this character is. Set when the player spawns, from
+## what they picked on the menu. There are no races in Kingsmourn: class and
+## gear are the whole of your identity.
+@export var class_id: StringName = &"valkyr"
 
 @export_category("Nickname")
 @export_range(0.0, 1.0, 0.01) var nickname_clearance: float = 0.2
@@ -99,6 +110,8 @@ func _ready():
 		call_deferred("_sync_equipment_appearance")
 		if not is_multiplayer_authority():
 			call_deferred("_sync_inventory_to_owner")
+
+	apply_class(class_id)
 
 	set_player_skin(skin_color)
 	var animation_player := get_node_or_null("GodotRobot3D/AnimationPlayer") as AnimationPlayer
@@ -252,7 +265,7 @@ func request_melee_hit() -> void:
 	for body in _pickup_area.get_overlapping_bodies():
 		var target_stats := body.get_node_or_null("Stats") as Stats
 		if target_stats and not target_stats.is_dead:
-			target_stats.apply_damage(MELEE_DAMAGE)
+			target_stats.apply_damage(MELEE_DAMAGE, get_multiplayer_authority())
 
 
 func _on_animation_finished(animation_name: StringName) -> void:
@@ -895,3 +908,28 @@ func _is_grounded_on_server() -> bool:
 	query.exclude = [get_rid()]
 	query.collide_with_areas = false
 	return not get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+# --- Class ------------------------------------------------------------------
+
+
+## Load the chosen class definition and hand it to Stats, which recomputes
+## health, the resource bar and what that bar is called.
+func apply_class(new_class_id: StringName) -> void:
+	class_id = new_class_id
+	var path: String = str(CLASS_RESOURCE_PATHS.get(class_id, ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return
+	var data := load(path) as ClassData
+	if data == null:
+		return
+	var stats := get_node_or_null("Stats") as Stats
+	if stats:
+		stats.apply_class(data)
+
+
+func get_class_data() -> ClassData:
+	var path: String = str(CLASS_RESOURCE_PATHS.get(class_id, ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	return load(path) as ClassData

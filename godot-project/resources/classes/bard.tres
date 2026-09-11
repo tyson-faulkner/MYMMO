@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_data.gd" id="1_cls"]
+
+[resource]
+script = ExtResource("1_cls")
+display_name = "Bard"
+id = &"bard"
+role = "Healer / Support"
+resource_label = "Verse"
+max_resource = 120
+resource_builds_in_combat = false
+resource_regen_per_second = 6.0
+base_health = 95
+health_per_level = 10
+base_armor = 2
+placeholder_color = Color(0.35, 0.55, 0.78, 1)
+description = "Keeper of the histories that decide whose claim is legitimate. Songs that mend and embolden."
