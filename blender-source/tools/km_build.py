@@ -28,10 +28,24 @@ def run(module_name):
     # Pieces may set obj.location; flush it before anything measures bounds.
     import bpy
     bpy.context.view_layer.update()
+
+    if getattr(mod, "ANIMATE", False):
+        import km_anim
+        armatures = [o for o in objs if o.type == "ARMATURE"]
+        clips = km_anim.build_all(armatures[0])
+        print("[%s] animations: %s" % (mod.NAME, ", ".join(c.name for c in clips)))
     print("[%s] %s" % (mod.NAME, K.report(objs)))
 
     K.preview_rig(ground=getattr(mod, "GROUND", True))
     preview = os.path.join(K.PREVIEW_DIR, "%s.png" % getattr(mod, "PREVIEW", mod.NAME))
+
+    # A module may render its own preview (an animation filmstrip, say).
+    if hasattr(mod, "render"):
+        mod.render(objs, preview)
+        print("[%s] preview -> %s" % (mod.NAME, preview))
+        print("[%s] test render only, nothing exported" % mod.NAME)
+        return None
+
     angles = getattr(mod, "ANGLES", (38, -128))
     elevation = getattr(mod, "ELEVATION", 26)
     K.render_views(objs, preview, angles=angles, elevation=elevation,

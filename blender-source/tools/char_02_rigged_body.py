@@ -1,4 +1,4 @@
-"""Character step 2 -- the base body, rigged and skinned.
+﻿"""Character step 2 -- the base body, rigged and skinned.
 
 Same mesh as step 1, bound to the shared skeleton from km_rig.py with
 automatic weights. This is the asset every class and every human enemy is
@@ -18,6 +18,7 @@ OUT = "characters"
 ANGLES = (90, 0)
 ELEVATION = 8
 APPLY_MODIFIERS = False   # applying the armature modifier would strip the skin
+ANIMATE = True            # the shared clip set, from km_anim.py
 
 
 def build():
@@ -34,3 +35,4 @@ def build():
 
 if __name__ == "__main__":
     print(K.report(build()))
+

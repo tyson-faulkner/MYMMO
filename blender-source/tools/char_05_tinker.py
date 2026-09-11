@@ -1,4 +1,4 @@
-"""Character step 5b -- the Tinker, "Forge Engineer", ranged damage.
+﻿"""Character step 5b -- the Tinker, "Forge Engineer", ranged damage.
 
 Reference: docs/reference/01-characters/04-tinker-forge-engineer.png.
 
@@ -29,6 +29,7 @@ OUT = "characters"
 ANGLES = (90, -90)
 ELEVATION = 6
 APPLY_MODIFIERS = False
+ANIMATE = True            # the shared clip set, from km_anim.py
 
 COAT = (0.560, 0.128, 0.105)        # the red coat
 LEATHER = (0.330, 0.210, 0.128)     # apron and boots
@@ -170,3 +171,4 @@ def _boot(bm, uv, side):
 
 if __name__ == "__main__":
     print(K.report(build()))
+

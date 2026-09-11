@@ -1,4 +1,4 @@
-"""Character step 5c -- the Bard, "Storm Skald", healer.
+﻿"""Character step 5c -- the Bard, "Storm Skald", healer.
 
 Reference: docs/reference/01-characters/01-bard-storm-skald.png.
 
@@ -31,6 +31,7 @@ OUT = "characters"
 ANGLES = (90, -90)
 ELEVATION = 6
 APPLY_MODIFIERS = False
+ANIMATE = True            # the shared clip set, from km_anim.py
 
 COAT = (0.455, 0.105, 0.132)        # deep crimson
 PANEL = (0.135, 0.190, 0.400)       # storm blue
@@ -161,3 +162,4 @@ def _boot(bm, uv, side):
 
 if __name__ == "__main__":
     print(K.report(build()))
+

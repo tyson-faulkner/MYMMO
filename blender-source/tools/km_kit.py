@@ -50,8 +50,12 @@ def new_scene():
     """
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
+    # Actions and armatures must go too. Several characters are built in one
+    # Blender process, and a leftover "Idle" makes the next one's action
+    # come out as "Idle.001" -- which is then the clip name in the .glb.
     for block in (bpy.data.meshes, bpy.data.materials, bpy.data.cameras,
-                  bpy.data.lights, bpy.data.worlds):
+                  bpy.data.lights, bpy.data.worlds, bpy.data.actions,
+                  bpy.data.armatures):
         for item in list(block):
             block.remove(item, do_unlink=True)
     scene = bpy.context.scene

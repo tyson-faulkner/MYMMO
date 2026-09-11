@@ -1,4 +1,4 @@
-"""Character step 4 -- the Valkyr, tank.
+﻿"""Character step 4 -- the Valkyr, tank.
 
 Reference: docs/reference/01-characters/02-valkyr-dark-seraph.png.
 
@@ -30,6 +30,7 @@ OUT = "characters"
 ANGLES = (90, -90)
 ELEVATION = 6
 APPLY_MODIFIERS = False
+ANIMATE = True            # the shared clip set, from km_anim.py
 
 # Blackened plate, gold trim, deep violet cloth, pale wings.
 PLATE = (0.105, 0.100, 0.115)
@@ -194,3 +195,4 @@ def _faulds(bm, uv):
 
 if __name__ == "__main__":
     print(K.report(build()))
+

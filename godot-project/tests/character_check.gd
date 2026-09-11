@@ -21,6 +21,11 @@ const REQUIRED_BONES := [
 	"RightUpperLeg", "RightLowerLeg", "RightFoot",
 ]
 
+# The animation states scripts/player/player.gd already drives. A character
+# missing one of these plays nothing when the state machine asks for it.
+const REQUIRED_CLIPS := ["Idle", "Run", "Sprint", "Jump", "Jump2", "Fall",
+	"Attack1", "Emote2"]
+
 const MIN_HEIGHT := 1.6
 const MAX_HEIGHT := 2.0
 const MAX_TRIS := 8000
@@ -71,11 +76,14 @@ func _check(file_name: String) -> Array[String]:
 	var root := packed.instantiate()
 	var skel: Skeleton3D = null
 	var meshes: Array[MeshInstance3D] = []
+	var player: AnimationPlayer = null
 	var stack: Array[Node] = [root]
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
 		if n is Skeleton3D and skel == null:
 			skel = n
+		if n is AnimationPlayer and player == null:
+			player = n
 		if n is MeshInstance3D:
 			meshes.append(n)
 		for c in n.get_children():
@@ -96,6 +104,19 @@ func _check(file_name: String) -> Array[String]:
 	for s in REQUIRED_SOCKETS:
 		if not names.has(s):
 			problems.append("%s: missing equipment socket bone '%s'" % [file_name, s])
+
+	var clips := 0
+	if player == null:
+		problems.append("%s: no AnimationPlayer" % file_name)
+	else:
+		var have := {}
+		for a in player.get_animation_list():
+			# Godot namespaces imported clips as "<library>/<name>".
+			have[a.get_slice("/", a.get_slice_count("/") - 1)] = true
+			clips += 1
+		for c in REQUIRED_CLIPS:
+			if not have.has(c):
+				problems.append("%s: missing animation '%s'" % [file_name, c])
 
 	# The mesh must actually be bound to the skeleton, not just sitting near it.
 	var tris := 0
@@ -129,8 +150,8 @@ func _check(file_name: String) -> Array[String]:
 		if height < MIN_HEIGHT or height > MAX_HEIGHT:
 			problems.append("%s: %.2fm tall, expected roughly 1.8m" % [file_name, height])
 
-	print("%-28s bones=%d tris=%d skinned_meshes=%d height=%.2fm" % [
-		file_name, skel.get_bone_count(), tris, skinned, aabb.size.y])
+	print("%-28s bones=%d tris=%-5d skinned=%d clips=%d height=%.2fm" % [
+		file_name, skel.get_bone_count(), tris, skinned, clips, aabb.size.y])
 
 	root.free()
 	return problems

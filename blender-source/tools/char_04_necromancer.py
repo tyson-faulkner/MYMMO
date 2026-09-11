@@ -1,4 +1,4 @@
-"""Character step 5a -- the Necromancer, "Veil Walker", ranged damage.
+﻿"""Character step 5a -- the Necromancer, "Veil Walker", ranged damage.
 
 Reference: docs/reference/01-characters/03-necromancer-veil-walker.png.
 
@@ -28,6 +28,7 @@ OUT = "characters"
 ANGLES = (90, -90)
 ELEVATION = 6
 APPLY_MODIFIERS = False
+ANIMATE = True            # the shared clip set, from km_anim.py
 
 ROBE = (0.088, 0.092, 0.098)        # near-black, faintly cold
 ROBE_LIT = (0.150, 0.168, 0.170)
@@ -172,3 +173,4 @@ def _ribcage(bm, uv):
 
 if __name__ == "__main__":
     print(K.report(build()))
+
