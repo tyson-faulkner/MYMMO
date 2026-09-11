@@ -65,18 +65,61 @@ The actual multiplayer today is Godot's built-in ENet networking, in `godot-proj
 
 Good news for later: `start_host()` already checks `if DisplayServer.get_name() == "headless"` and skips creating a local player — the template already anticipates running as a headless dedicated server (Godot headless + Nakama on the same box, independent of any one player's PC).
 
-## 5. Current build state (what's actually built vs. not)
+## 5. Current build state
+
+Everything below is verified by `godot-project/tests/zone_smoke_test.gd` —
+**100 checks**, which must print `SMOKE TEST PASSED` before anything is
+committed. Run it every session.
 
 **Built and working:**
-- Full client template: player movement, first/third person camera, inventory, chat, player list, main/pause menus, item pickup/spawning (placeholder items: hats, weapons, backpacks, misc — from the template, not final art).
-- Combat foundation (added 2026-09-09): `scripts/combat/stats.gd` — a reusable `Stats` component (health/mana, server-authoritative — only the server can change health, then broadcasts it so clients can't cheat) — and `scripts/enemies/training_dummy.gd`, a target dummy in `scenes/level/arena.tscn` (loaded into `scenes/level/level.tscn`) that takes damage from the player's melee attack and respawns after 3 seconds. This proved the combat chain end to end: swing -> server -> health subtracted -> everyone sees the same number.
-- Nakama login round-trip (standalone test scene only — see Architecture above).
 
-**Not started yet:**
-- The modular art kit (buildings, streets, props) described in section 5 below — `godot-project/assets/kit/` currently only has a placeholder `.gitkeep` file, no pieces built.
-- Original character art / class models (Valkyr, Bard, Necromancer, Tinker) — currently the template's placeholder Godot robot with hat/weapon attachments.
-- Wiring Nakama into real gameplay (accounts, persistence).
-- Everything under "Still open" in the design doc: realm/city/zone names, quest system, professions/economy, talent system beyond the 3 rune slots, character customization, XP curve tuning.
+- **Classes.** All four (Valkyr, Bard, Necromancer, Tinker), pickable on the
+  main menu, each with its own health, armour and resource bar — Valor, Verse,
+  Soul, Charge. Valor builds by fighting instead of draining, as a tank's
+  should. Level cap 20 on a curve tuned for roughly 8-10 hours.
+- **Combat.** Tab-target. 28 abilities, seven per class, all data-driven:
+  damage, area damage, heals, area heals, damage over time, drains, taunts,
+  summons and snares. Necromancers raise levies, Tinkers bolt down turrets, and
+  both fight for their owner. Every cast is decided by the server against real
+  positions — range, cost, cooldown, class and level.
+- **Enemies.** 11 types plus two bosses, with aggro, chase, leash, attack,
+  death and respawn. Factions, so pets and placed enemies hunt each other.
+  Bosses scale health and damage with how many players are present — one
+  system, so "a 5-man that works with 4" needs no second tuning pass.
+- **The world.** Thornhollow Vale: town square, gate and wall, farmland,
+  hedgerows, river and bridge, a stone circle, and the barrow. The Barrow of the
+  First King sits 500m underground behind a portal, with an entry hall, two boss
+  rooms and a rock shell.
+- **Quests.** A twelve-quest chain from the gates to the First King, handed out
+  by seven NPCs with ! and ? markers. Kill, kill-by-tag, collect, talk and reach
+  objectives all credit properly, on the server.
+- **Parties.** `/invite <name>` in chat. Everyone nearby shares XP (gently
+  split) and gets FULL quest credit, so grouping is never worse than soloing.
+- **Death.** Ghosts, corpse runs, and Grave-Chill for releasing at a graveyard.
+  Costs time, never progress.
+- **Loot and currency.** Enemies roll loot tables and pay Sovereigns — the
+  shared quest-and-dungeon currency.
+- **Persistence.** Class, level, XP, position, quest log, currency and inventory
+  save to Nakama and come back. **The game runs fine without it**: if Docker
+  isn't up, saving quietly switches off and nothing else changes.
+- **UI.** Health, resource, XP, level, Sovereigns, target frame, seven-slot
+  action bar with cooldowns and tooltips, quest tracker, quest log on L, death
+  panel.
+
+**Not done yet:**
+
+- **The art.** Everything visible is placeholder primitives tinted to the locked
+  palette. Every one is a swap-in point: replacing it means loading a `.glb`
+  instead of building a `BoxMesh`, and the layout doesn't move because the
+  blockout is on the same 1m grid the kit uses. See section 6.
+- Gear stats and the three rune slots per class (the eight-builds-per-class
+  variety from the design doc).
+- Vendors actually selling things; professions; mounts.
+- The raid and heroic raid; zones two and three.
+- Duels.
+- **Untested against a live backend:** the Nakama round trip needs someone with
+  Docker running to level up, quit, rejoin, and confirm the character returns.
+  The sandbox can't reach Docker.
 
 ## 6. The art kit spec (building blocks for the world)
 
