@@ -30,6 +30,11 @@ func _get_stats() -> Stats:
 	return body.get_node_or_null("Stats") as Stats if body else null
 
 
+func _get_runes() -> RuneLoadout:
+	var body := _get_body()
+	return body.get_node_or_null("RuneLoadout") as RuneLoadout if body else null
+
+
 func _get_targeting() -> Targeting:
 	var body := _get_body()
 	return body.get_node_or_null("Targeting") as Targeting if body else null
@@ -168,6 +173,18 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 		if body.global_position.distance_to(target.global_position) > ability.cast_range + 1.0:
 			return
 
+	# A rune sitting in an unlocked slot may change this ability.
+	var runes := _get_runes()
+	var rune: RuneData = runes.rune_for_ability(ability.id) if runes else null
+
+	var cost := ability.cost
+	var cooldown := ability.cooldown
+	if rune:
+		if rune.effect == RuneData.Effect.COST:
+			cost = int(round(float(cost) * rune.value))
+		elif rune.effect == RuneData.Effect.COOLDOWN:
+			cooldown = cooldown * rune.value
+
 	# Pay for it.
 	var spent := 0
 	if ability.spends_all_resource:
@@ -175,16 +192,16 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 		if spent <= 0:
 			return
 		stats.spend_resource(spent)
-	elif ability.cost > 0:
-		if not stats.spend_resource(ability.cost):
+	elif cost > 0:
+		if not stats.spend_resource(cost):
 			return
-	elif ability.cost < 0:
-		stats.restore_resource(-ability.cost)
+	elif cost < 0:
+		stats.restore_resource(-cost)
 
-	if ability.cooldown > 0.0:
-		_server_ready_at[slot] = Time.get_ticks_msec() + int(ability.cooldown * 1000.0)
+	if cooldown > 0.0:
+		_server_ready_at[slot] = Time.get_ticks_msec() + int(cooldown * 1000.0)
 
-	_execute(ability, body, target, spent)
+	_execute(ability, body, target, spent, rune)
 	confirm_cast.rpc_id(body.get_multiplayer_authority(), String(ability.id), slot)
 
 
@@ -199,9 +216,48 @@ func confirm_cast(ability_id_text: String, slot: int) -> void:
 
 # The one place an ability turns into something happening. Every effect is a
 # verb here, which is why a new ability is a data entry and not new code.
-func _execute(ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int) -> void:
+func _execute(
+	ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int, rune: RuneData = null
+) -> void:
 	var caster_peer := caster.get_multiplayer_authority()
 	var power := ability.power
+	var effect := ability.effect
+	var radius := ability.aoe_radius
+	var duration := ability.duration_seconds
+	var summon_count := 1
+	var chain_targets := 0
+	var splash_radius := 0.0
+	var falloff := 0.5
+
+	# Runes reshape an existing ability rather than adding a new one, which is
+	# why the whole build system costs no art.
+	if rune:
+		falloff = rune.falloff
+		match rune.effect:
+			RuneData.Effect.POWER:
+				power = int(round(float(power) * rune.value))
+				radius += rune.aoe_bonus
+			RuneData.Effect.DURATION:
+				duration *= rune.value
+			RuneData.Effect.EXTRA_TARGETS:
+				chain_targets = int(rune.value)
+			RuneData.Effect.MAKE_AOE:
+				# Single target becomes a small area, at reduced power and,
+				# where it matters, for less time. Spreading something thin is
+				# the trade for spreading it wide.
+				effect = _as_area(effect)
+				radius = maxf(radius, rune.value)
+				power = int(round(float(power) * rune.falloff))
+				duration *= rune.falloff
+			RuneData.Effect.FOCUS:
+				# An area ability drives into one target instead.
+				effect = _as_single(effect)
+				radius = 0.0
+				power = int(round(float(power) * rune.value))
+			RuneData.Effect.EXTRA_SUMMON:
+				summon_count = 1 + int(rune.value)
+			RuneData.Effect.SPLASH_HEAL:
+				splash_radius = rune.value
 	# Grave-Chill: everything you do lands for less while it lasts.
 	var death_handler := caster.get_node_or_null("DeathHandler") as DeathHandler
 	var output := death_handler.output_multiplier() if death_handler else 1.0
@@ -212,34 +268,63 @@ func _execute(ability: AbilityData, caster: Node3D, target: Node3D, spent_resour
 	if output != 1.0:
 		power = maxi(1, int(round(float(power) * output)))
 
-	match ability.effect:
+	match effect:
 		AbilityData.Effect.DAMAGE:
 			_damage(target, power, caster_peer)
+			# A forking rune carries a share to the nearest other enemies.
+			if chain_targets > 0 and target:
+				var chained := 0
+				for victim in _hostiles_near(target.global_position, 12.0):
+					if victim == target or chained >= chain_targets:
+						continue
+					_damage(victim, int(round(float(power) * falloff)), caster_peer)
+					chained += 1
 		AbilityData.Effect.AOE_DAMAGE:
 			var centre: Node3D = target if target else caster
-			for victim in _hostiles_near(centre.global_position, ability.aoe_radius):
+			for victim in _hostiles_near(centre.global_position, radius):
 				_damage(victim, power, caster_peer)
 		AbilityData.Effect.HEAL:
-			_heal(target if target else caster, power)
+			var healed: Node3D = target if target else caster
+			_heal(healed, power)
+			if splash_radius > 0.0:
+				for friend in _friendlies_near(healed.global_position, splash_radius):
+					if friend != healed:
+						_heal(friend, int(round(float(power) * falloff)))
 		AbilityData.Effect.AOE_HEAL:
-			for friend in _friendlies_near(caster.global_position, ability.aoe_radius):
+			for friend in _friendlies_near(caster.global_position, radius):
 				_heal(friend, power)
 		AbilityData.Effect.DOT:
-			DamageOverTime.apply(target, power, ability.duration_seconds, ability.tick_seconds, caster_peer)
+			DamageOverTime.apply(target, power, duration, ability.tick_seconds, caster_peer)
+			if radius > 0.0 and target:
+				# A spreading rune takes hold of everything around the target.
+				for victim in _hostiles_near(target.global_position, radius):
+					if victim != target:
+						DamageOverTime.apply(
+							victim, int(round(float(power) * falloff)), duration, ability.tick_seconds, caster_peer
+						)
 		AbilityData.Effect.DRAIN:
 			_damage(target, power, caster_peer)
 			_heal(caster, int(round(float(power) * ability.drain_ratio)))
 		AbilityData.Effect.TAUNT:
-			var mob := target as Mob
-			if mob:
-				mob.force_target(caster, ability.duration_seconds)
-			_damage(target, power, caster_peer)
+			if radius > 0.0:
+				# Claiming everything nearby, rather than one thing for longer.
+				for victim in _hostiles_near(caster.global_position, radius):
+					var each := victim as Mob
+					if each:
+						each.force_target(caster, duration)
+					_damage(victim, power, caster_peer)
+			else:
+				var mob := target as Mob
+				if mob:
+					mob.force_target(caster, duration)
+				_damage(target, power, caster_peer)
 		AbilityData.Effect.SUMMON:
-			_summon(ability, caster)
+			for index in range(summon_count):
+				_summon(ability, caster, index, duration, falloff if summon_count > 1 else 1.0)
 		AbilityData.Effect.SPEED:
 			if ability.speed_multiplier < 1.0:
 				_damage(target, power, caster_peer)
-			_apply_speed(target if target else caster, ability.speed_multiplier, ability.duration_seconds)
+			_apply_speed(target if target else caster, ability.speed_multiplier, duration)
 
 
 func _damage(target: Node3D, amount: int, caster_peer: int) -> void:
@@ -286,17 +371,59 @@ func _friendlies_near(centre: Vector3, radius: float) -> Array[Node3D]:
 	return found
 
 
-func _summon(ability: AbilityData, caster: Node3D) -> void:
+func _summon(
+	ability: AbilityData, caster: Node3D, index: int = 0, duration_override: float = 0.0, strength: float = 1.0
+) -> void:
 	if ability.summon_mob_id == &"":
 		return
 	var container := _find_mob_container()
 	if container == null:
 		return
-	var spot := caster.global_position + caster.global_transform.basis.z * -2.5
+	# Spread multiples out so a Grave Tide doesn't stack inside itself.
+	var angle := TAU * float(index) / 3.0
+	var offset := Vector3(cos(angle) * 1.6, 0.0, sin(angle) * 1.6) if index > 0 else Vector3.ZERO
+	var spot := caster.global_position + caster.global_transform.basis.z * -2.5 + offset
 	var pet := container.spawn_mob(ability.summon_mob_id, spot, false) as Mob
 	if pet == null:
 		return
-	pet.become_pet(caster.get_multiplayer_authority(), ability.summon_seconds)
+	var seconds := ability.summon_seconds
+	if duration_override > 0.0 and ability.duration_seconds > 0.0:
+		seconds = ability.summon_seconds * (duration_override / ability.duration_seconds)
+	elif duration_override > 0.0:
+		seconds = duration_override
+	pet.become_pet(caster.get_multiplayer_authority(), seconds)
+	# More of them means weaker ones.
+	if strength < 1.0 and pet.mob_data:
+		var weakened: MobData = pet.mob_data.duplicate()
+		weakened.max_health = maxi(1, int(round(float(weakened.max_health) * strength)))
+		weakened.damage = maxi(1, int(round(float(weakened.damage) * strength)))
+		pet.mob_data = weakened
+		var pet_stats := pet.get_node_or_null("Stats") as Stats
+		if pet_stats:
+			pet_stats.max_health = weakened.max_health
+			pet_stats.health = weakened.max_health
+
+
+## Turn a single-target effect into its area equivalent, for MAKE_AOE runes.
+func _as_area(effect: AbilityData.Effect) -> AbilityData.Effect:
+	match effect:
+		AbilityData.Effect.DAMAGE:
+			return AbilityData.Effect.AOE_DAMAGE
+		AbilityData.Effect.HEAL:
+			return AbilityData.Effect.AOE_HEAL
+		_:
+			return effect
+
+
+## And back again, for FOCUS runes.
+func _as_single(effect: AbilityData.Effect) -> AbilityData.Effect:
+	match effect:
+		AbilityData.Effect.AOE_DAMAGE:
+			return AbilityData.Effect.DAMAGE
+		AbilityData.Effect.AOE_HEAL:
+			return AbilityData.Effect.HEAL
+		_:
+			return effect
 
 
 func _find_mob_container() -> MobContainer:

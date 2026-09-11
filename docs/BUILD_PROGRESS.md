@@ -5,9 +5,9 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1-M7 done, parties in. Next: gear stats and the three rune slots.
+- **Milestone:** M1-M7 done, parties and runes in. Next: gear slots and stats, then vendors, then content volume.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 100/100 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 121/121 checks passing
 
 ## Not yet verified against a live backend
 
@@ -66,6 +66,24 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — The rune slots: eight builds per class, no new art
+Three armour slots, two runes each, four classes — 24 entries. Every one
+modifies an ability that already exists rather than adding one, which is the
+whole reason the build system costs nothing to make: "your Soulbolt forks to two
+more enemies" is a number, a new ability is animation, art, an icon and effects.
+
+The design doc's rule is enforced by a test, not just by intent: the two options
+in a slot must differ by SITUATION, not by size. A check walks every slot and
+fails if both options share an effect type with similar values, which is exactly
+the fake choice the doc warns about — the one where everyone picks the bigger
+number and the slot may as well not exist.
+
+Slots unlock at 5, 11 and 17. Swapping is free: a respec cost only punishes the
+people who experiment, which is the point of having eight builds.
+
+Choices are server-validated (right class, right slot, high enough level) and
+saved with the character, because a build you lose on logout is not a build.
 
 ### 2026-09-11 — Parties, because grouping was actively punished
 Only whoever landed the killing blow got XP and quest credit. In a game built

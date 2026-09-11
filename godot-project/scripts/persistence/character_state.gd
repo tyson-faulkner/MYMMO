@@ -43,6 +43,10 @@ static func capture(character: Node) -> Dictionary:
 	if quest_log:
 		data["quests"] = quest_log.to_dict()
 
+	var runes := character.get_node_or_null("RuneLoadout") as RuneLoadout
+	if runes:
+		data["runes"] = runes.to_dict()
+
 	var inventory = character.get_inventory() if character.has_method("get_inventory") else null
 	if inventory:
 		data["inventory"] = inventory.to_dict()
@@ -99,6 +103,10 @@ static func apply(character: Node, data: Dictionary) -> bool:
 		# The owning client needs the restored log too, not just the server.
 		if quest_log.multiplayer.has_multiplayer_peer() and quest_log.multiplayer.is_server():
 			quest_log._push_to_owner()
+
+	var runes := character.get_node_or_null("RuneLoadout") as RuneLoadout
+	if runes and migrated.has("runes"):
+		runes.from_dict(migrated["runes"])
 
 	if migrated.has("inventory") and character.has_method("get_inventory"):
 		var inventory = character.get_inventory()

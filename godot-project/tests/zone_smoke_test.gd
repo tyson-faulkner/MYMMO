@@ -16,6 +16,7 @@ const PLAYER_QUEST_LOG := preload("res://scripts/quests/quest_log.gd")
 const PLAYER_TARGETING := preload("res://scripts/combat/targeting.gd")
 const PLAYER_ABILITY_BAR := preload("res://scripts/combat/ability_bar.gd")
 const PLAYER_DEATH := preload("res://scripts/combat/death_handler.gd")
+const PLAYER_RUNES := preload("res://scripts/combat/rune_loadout.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_check_death(zone)
 	_check_persistence()
 	_check_parties()
+	_check_runes(zone)
 
 	print("")
 	if _failures == 0:
@@ -91,6 +93,10 @@ func _spawn_fake_player() -> void:
 	death.set_script(PLAYER_DEATH)
 	death.name = "DeathHandler"
 	_fake_player.add_child(death)
+	var runes := Node.new()
+	runes.set_script(PLAYER_RUNES)
+	runes.name = "RuneLoadout"
+	_fake_player.add_child(runes)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -537,6 +543,108 @@ func _check_parties() -> void:
 
 	PartyManager.leave_party(1)
 	_report("leaving works", not PartyManager.is_grouped(1), "")
+
+
+func _check_runes(zone: Node) -> void:
+	var ids: Array = RuneDatabase.get_all_ids()
+	_report("rune database loaded", ids.size() >= 24, "%d runes" % ids.size())
+
+	# Three slots per class, exactly two choices in each. A slot with one option
+	# is not a choice; a slot with three is a different design.
+	for class_id in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
+		var ok := true
+		var detail := ""
+		for slot in range(1, 4):
+			var options: Array = RuneDatabase.options_for(class_id, slot)
+			if options.size() != 2:
+				ok = false
+				detail += "slot %d has %d; " % [slot, options.size()]
+		_report("%s has 3 slots of 2" % class_id, ok, detail)
+
+	# Every rune must point at an ability that exists and belongs to its class.
+	var broken: Array[String] = []
+	for rune_id in ids:
+		var rune: RuneData = RuneDatabase.get_rune(rune_id)
+		var ability: AbilityData = AbilityDatabase.get_ability(rune.ability_id)
+		if ability == null:
+			broken.append("%s -> missing %s" % [rune_id, rune.ability_id])
+		elif ability.class_id != rune.class_id:
+			broken.append("%s is %s but changes a %s ability" % [rune_id, rune.class_id, ability.class_id])
+	_report("runes modify real abilities of their own class", broken.is_empty(), ", ".join(broken))
+
+	# The design doc's rule: the two options in a slot must differ by SITUATION,
+	# not by size. Two runes with the same effect type AND similar values is the
+	# fake choice it warns about.
+	var fake_choices: Array[String] = []
+	for class_id in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
+		for slot in range(1, 4):
+			var options: Array = RuneDatabase.options_for(class_id, slot)
+			if options.size() != 2:
+				continue
+			var first: RuneData = options[0]
+			var second: RuneData = options[1]
+			if first.effect == second.effect and absf(first.value - second.value) < 0.35:
+				fake_choices.append("%s slot %d" % [class_id, slot])
+	_report("no slot offers a fake choice", fake_choices.is_empty(), ", ".join(fake_choices))
+
+	# Choosing: validated against class, slot and level.
+	var loadout := _fake_player.get_node("RuneLoadout") as RuneLoadout
+	var stats := _fake_player.get_node("Stats") as Stats
+	stats.apply_class(load("res://resources/classes/necromancer.tres") as ClassData)
+	stats.level = 1
+	loadout.chosen.clear()
+
+	_report("slot is locked at level 1", not loadout.slot_unlocked(1), "")
+	_report("locked slot refuses a rune", not loadout.choose(1, &"necro_1b"), "")
+
+	stats.level = 20
+	_report("slot unlocks with level", loadout.slot_unlocked(1), "")
+	_report("valid rune accepted", loadout.choose(1, &"necro_1b"), "")
+	_report("another class's rune refused", not loadout.choose(1, &"bard_1a"), "")
+	_report("wrong slot refused", not loadout.choose(1, &"necro_3a"), "")
+	_report("rune found by ability", loadout.rune_for_ability(&"necro_bolt") != null, "")
+
+	# And it has to actually change the cast. Forked Bolt should hit a second
+	# enemy that a plain Soulbolt never touches.
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var container := zone.get_node("MobContainer")
+	var pair: Array = []
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and not mob.is_friendly and not mob.mob_data.is_boss and not mob.get_node("Stats").is_dead:
+			pair.append(mob)
+		if pair.size() == 2:
+			break
+	if pair.size() < 2:
+		_report("found two enemies to test forking", false, "")
+		return
+	# Stand them next to each other, and the caster next to them.
+	pair[1].global_position = pair[0].global_position + Vector3(3, 0, 0)
+	_fake_player.global_position = pair[0].global_position + Vector3(0, 0, 4)
+	for mob in pair:
+		mob.get_node("Stats").revive()
+	var bystander_before: int = pair[1].get_node("Stats").health
+
+	loadout.chosen.clear()
+	bar._server_ready_at.clear()
+	bar.request_cast("necro_bolt", pair[0].get_path())
+	_report("without the rune, only the target is hit",
+		pair[1].get_node("Stats").health == bystander_before, "")
+
+	loadout.choose(1, &"necro_1b")
+	bar._server_ready_at.clear()
+	stats.restore_resource(999)
+	bar.request_cast("necro_bolt", pair[0].get_path())
+	_report("Forked Bolt reaches a second enemy",
+		pair[1].get_node("Stats").health < bystander_before,
+		"%d -> %d" % [bystander_before, pair[1].get_node("Stats").health])
+
+	# Runes are a build, and a build has to survive logging out.
+	var saved := CharacterState.capture(_fake_player)
+	loadout.chosen.clear()
+	CharacterState.apply(_fake_player, saved)
+	_report("rune choices survive a save", loadout.rune_for_ability(&"necro_bolt") != null,
+		str(loadout.chosen))
 
 
 func _report(label: String, passed: bool, detail: String) -> void:

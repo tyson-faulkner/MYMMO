@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/combat/ability_bar.gd" id="93_bar"]
 [ext_resource type="Script" path="res://scripts/combat/death_handler.gd" id="94_death"]
 [ext_resource type="Script" path="res://scripts/persistence/persistence_manager.gd" id="95_persist"]
+[ext_resource type="Script" path="res://scripts/combat/rune_loadout.gd" id="96_runes"]
 [ext_resource type="Script" uid="uid://v8j54rbc0ik" path="res://scripts/player/3d_godot_robot.gd" id="2_mexc5"]
 [ext_resource type="ArrayMesh" uid="uid://dm4j7r8tq2x5c" path="res://assets/characters/player/meshes/godot_robot_chest.tres" id="3_chest"]
 [ext_resource type="ArrayMesh" uid="uid://c6oak2v5p8s1a" path="res://assets/characters/player/meshes/godot_robot_face.tres" id="3_face"]
@@ -4919,3 +4920,6 @@ script = ExtResource("94_death")
 
 [node name="PersistenceManager" type="Node" parent="."]
 script = ExtResource("95_persist")
+
+[node name="RuneLoadout" type="Node" parent="."]
+script = ExtResource("96_runes")

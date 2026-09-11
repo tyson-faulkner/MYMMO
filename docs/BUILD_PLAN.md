@@ -129,7 +129,7 @@ Work top to bottom. Each milestone ends in a playable state.
 - [x] Death, corpse run, resurrection sickness.
 - [x] Group/party system + shared quest credit + the dungeon group check.
 - [ ] Duels.
-- [ ] Loot rolls, gear stats, three gear tiers, the three rune-slot choices.
+- [x] The three rune-slot choices. (Gear stats and tiers still open.)
 - [ ] Minimap, XP bar, buff bar, chat channels.
 
 ### M9 — Content expansion (the loop keeps running here)
