@@ -112,8 +112,92 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   each `.glb`, so `godot-project/assets/kit/` holds only game-ready `.glb`
   files. Godot unpacks its own copies on import; those follow the repo's
   existing convention of committing extracted textures and `.import` files.
+- 2026-09-11 — Bodies are **generated from swept rings**, not sculpted and not
+  a downloaded CC0 base. A premade base was allowed, but generating it keeps
+  the proportions as named constants ("7 heads" is a number, not something
+  eyeballed), puts the edge loops exactly where the spec wants them, and gives
+  cylindrical UVs for free. It is also original art, which the kit spec
+  requires of everything else.
+- 2026-09-11 — Limbs are **separate tubes buried in the torso**, not stitched
+  into one continuous surface. Each limb weights cleanly to its own bone and
+  the intersection hides inside the silhouette; a truly stitched shoulder needs
+  pole-heavy topology that is not worth it at 800 triangles. This is the one
+  place the body is not a single surface, and it is deliberate.
+- 2026-09-11 — Skin weights are **explicit inverse-distance to the bone
+  segments**, not Blender's automatic heat weights. Heat weighting solves over
+  a connected surface, and this body deliberately is not one, so islands it
+  could not reach were weighted to whatever bone won. Crude, but local and
+  deterministic.
+- 2026-09-11 — Classes are **armour merged into the body's own mesh**, one
+  skinned mesh per character, rather than separate garment objects. Simpler to
+  weight, simpler to export, and one draw call per character.
+- 2026-09-11 — The four equipment sockets are **real bones** (`HeadAttach`,
+  `LeftHandAttach`, `RightHandAttach`, `BackAttach`), so a `BoneAttachment3D`
+  binds by name and the existing equipment code keeps working. The template
+  robot binds to `hand.L` / `spine.002` / `Head`; a class scene will bind to
+  these instead.
+- 2026-09-11 — Where the spec text and the reference sheet disagree, the
+  **reference wins**. The spec gives the Bard "storm blues and silver"; the
+  approved sheet is crimson and gold with blue panels. `docs/reference/` is
+  named as the approved visual direction, so the build follows it and carries
+  the storm-blue on the coat panel, drum rune and collar.
 
 ## Log
+
+### 2026-09-11 — Characters: one body, one skeleton, four classes, eight clips
+
+The priority banner asked for classes that look like the reference art rather
+than grey blobs. They exist, they are rigged, and they animate.
+
+**Assets** (`godot-project/assets/characters/`), all on the same 26-bone
+skeleton with the same 8 animation clips:
+
+| Asset | Tris | What reads at distance |
+|---|---|---|
+| `char_base_rigged` | 844 | the shared body — the source for everything below |
+| `char_valkyr` | 2,566 | wings, heavy pauldrons, halo; blackened plate and gold |
+| `char_necromancer` | 2,190 | hood with teal eyes, bone ribcage, torn hem |
+| `char_tinker` | 1,712 | the tool pack on his back, one oversized gauntlet |
+| `char_bard` | 1,848 | fur mantle, wide coat hem, drum on his back |
+
+`char_base_body` is also exported, unrigged, as the source mesh.
+
+**How it works.** `km_char.py` builds bodies out of swept rings rather than
+boxes: a ring *is* an edge loop, so loops land exactly at shoulder, elbow, hip
+and knee, and each ring carries its own parametric coordinate, which gives
+correct cylindrical UVs without unwrapping an organic shape. `km_rig.py` holds
+the one shared skeleton. `km_armour.py` holds the pieces classes reuse —
+pauldron, skirt, collar, hood, ragged hem, wing, mantle, pack, beard, halo.
+`km_anim.py` holds the clip set. A class is armour added into the same mesh as
+the body, skinned by the same weighting, so a pauldron follows the shoulder
+with no extra rigging.
+
+**Proportions:** 1.80m, 7 heads, shoulders 0.45m across, arm span 1.82m.
+
+**What the test renders caught** — each fixed before the piece was committed:
+`Matrix.Rotation` pivots on the world origin, not a bone's head, so the first
+pose test flung the arms across the scene; automatic heat weights cannot solve
+a body whose limbs are separate tubes, and a hand flew off to the hip;
+`export_apply=True` bakes the rest pose in and throws the skin binding away;
+the Necromancer's ribs sat inside his robe where nothing could see them; the
+Bard and Tinker were bald and beardless and read as the same head twice; and
+`new_scene()` did not purge actions, so four of five characters shipped with
+clips named `Idle.001` that the game could never find.
+
+**Verification:** `godot-project/tests/character_check.gd` loads every rigged
+`.glb` in Godot and checks the skeleton, every humanoid bone, all four
+equipment socket bones, that the mesh is actually bound with weights, the
+triangle budget, the height, and that all eight clips are present by name.
+
+```
+godot --headless --path godot-project --script res://tests/character_check.gd
+```
+
+**Not done:** enemy texture variants (step 7 of the character spec) and the
+`vale_wolf` quadruped. Weapons are not modelled yet — the sockets exist and
+are named, but there is no spear, staff, blade or bolt thrower to hang on
+them. `player.tscn` still instances the template robot; swapping it to a class
+scene is a gameplay change, not an art one, and was left alone.
 
 ### 2026-09-11 — The modular kit, Phases 1 and 2: ten pieces you can build a street from
 
