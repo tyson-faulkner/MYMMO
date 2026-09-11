@@ -98,18 +98,6 @@ def prism(bm, profile, extrude_axis, lo, hi, mat=0):
     order = {"x": (1, 2), "y": (0, 2), "z": (0, 1)}[extrude_axis]
     ai = "xyz".index(extrude_axis)
 
-    # Make the far cap face along +axis regardless of how the caller wound
-    # the profile. Note the parity: X cross Z is -Y, not +Y, so a profile
-    # wound the same way gives an inward normal on the Y axis.
-    parity = -1.0 if extrude_axis == "y" else 1.0
-    area = 0.0
-    for i in range(len(profile)):
-        a0, b0 = profile[i]
-        a1, b1 = profile[(i + 1) % len(profile)]
-        area += a0 * b1 - a1 * b0
-    if area * parity < 0:
-        profile = list(reversed(profile))
-
     def pt(p, depth):
         v = [0.0, 0.0, 0.0]
         v[order[0]], v[order[1]] = p
@@ -126,19 +114,6 @@ def prism(bm, profile, extrude_axis, lo, hi, mat=0):
     for f in faces:
         f.material_index = mat
     return faces
-
-
-def strut(bm, p0, p1, width, y0, y1, mat=0):
-    """A beam running from p0 to p1 in the XZ plane, `width` across its face
-    and spanning y0..y1 in depth. This is what makes diagonal braces cheap."""
-    (x0, z0), (x1, z1) = p0, p1
-    dx, dz = x1 - x0, z1 - z0
-    length = math.hypot(dx, dz)
-    ux, uz = dx / length, dz / length
-    px, pz = -uz * width / 2.0, ux * width / 2.0
-    corners = [(x0 - px, z0 - pz), (x1 - px, z1 - pz),
-               (x1 + px, z1 + pz), (x0 + px, z0 + pz)]
-    return prism(bm, corners, "y", y0, y1, mat)
 
 
 def frame(bm, lo, hi, hole_lo, hole_hi, axis, mat=0):
@@ -160,12 +135,8 @@ def frame(bm, lo, hi, hole_lo, hole_hi, axis, mat=0):
     return faces
 
 
-def finish(bm, name, materials, smooth=False, tile=TILE_METERS, rotate_axes=()):
-    """Turn a bmesh into a real object: weld, box-UV, assign materials.
-
-    `tile` overrides the world size one texture tile covers, for pieces that
-    want a finer grain than the 2m default (a plank door, say).
-    """
+def finish(bm, name, materials, smooth=False):
+    """Turn a bmesh into a real object: weld, box-UV, assign materials."""
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
     bm.normal_update()
 
@@ -177,23 +148,11 @@ def finish(bm, name, materials, smooth=False, tile=TILE_METERS, rotate_axes=()):
     for m in materials:
         obj.data.materials.append(m)
 
-    box_uv(obj, tile=tile, rotate_axes=rotate_axes)
+    box_uv(obj)
     if not smooth:
         for p in mesh.polygons:
             p.use_smooth = False
     mesh.validate()
-    return obj
-
-
-def sit_on_floor(obj, z=0.0):
-    """Drop the piece so its lowest point rests on z.
-
-    Every piece is authored sitting on the floor, and working the offset out
-    by hand means re-deriving it whenever a detail like a fascia board grows
-    past the bottom. Measure it instead.
-    """
-    lowest = min((obj.matrix_basis @ v.co).z for v in obj.data.vertices)
-    obj.location.z += z - lowest
     return obj
 
 
@@ -208,23 +167,6 @@ def box_uv(obj, tile=TILE_METERS, rotate_axes=()):
     for poly in mesh.polygons:
         n = poly.normal
         axis = max(range(3), key=lambda i: abs(n[i]))
-
-        # Sloped faces (a roof pitch) have no dominant axis. Projecting them
-        # down an axis squashes the texture by 1/cos(pitch) -- shingles come
-        # out stretched. Map those in the face's own plane instead: u runs
-        # horizontally along the face, v straight up the slope.
-        if abs(n[axis]) < 0.88:
-            up = Vector((0.0, 0.0, 1.0))
-            u_dir = Vector(n).cross(up)
-            if u_dir.length < 1e-6:
-                u_dir = Vector((1.0, 0.0, 0.0))
-            u_dir.normalize()
-            v_dir = u_dir.cross(Vector(n)).normalized()
-            for li in poly.loop_indices:
-                co = mesh.vertices[mesh.loops[li].vertex_index].co
-                uv.data[li].uv = (co.dot(u_dir) / tile, co.dot(v_dir) / tile)
-            continue
-
         # Project onto the two axes that aren't the face's dominant one,
         # flipping one of them so the mapping isn't mirrored on back faces.
         if axis == 0:      # faces pointing along X -> use Y,Z
@@ -299,7 +241,7 @@ def preview_rig(target_size=3.0):
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.50, 0.58, 0.72, 1.0)   # sky bounce
+    bg.inputs["Color"].default_value = (0.42, 0.55, 0.78, 1.0)   # sky bounce
     bg.inputs["Strength"].default_value = 0.55
 
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -312,7 +254,7 @@ def preview_rig(target_size=3.0):
     fill = bpy.data.objects.new("Fill", bpy.data.lights.new("Fill", "AREA"))
     fill.data.energy = 140.0
     fill.data.size = 8.0
-    fill.data.color = (0.82, 0.87, 1.0)
+    fill.data.color = (0.72, 0.80, 1.0)
     fill.location = (-6.0, 5.0, 3.5)
     fill.rotation_euler = (math.radians(65), 0, math.radians(-140))
     bpy.context.collection.objects.link(fill)

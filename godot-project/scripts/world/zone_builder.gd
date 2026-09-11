@@ -28,7 +28,79 @@ const WATER := Color(0.28, 0.45, 0.58)
 ## of shape dictionaries.
 @export_enum("thornhollow_vale", "barrow_interior") var layout: String = "thornhollow_vale"
 
+## Logical piece name -> the file the Blender kit exports for it. A piece that
+## doesn't exist yet simply falls back to its tinted box, so the town upgrades
+## itself one piece at a time as the kit is built. Nothing here has to change
+## when a new piece lands — only this table.
+const KIT := {
+	"wall": "res://assets/kit/wall_stone_2x3.glb",
+	"wall_window": "res://assets/kit/wall_stone_window_2x3.glb",
+	"wall_door": "res://assets/kit/wall_stone_door_2x3.glb",
+	"wall_timber": "res://assets/kit/wall_timber_2x3.glb",
+	"roof_slope": "res://assets/kit/roof_slate_slope_2m.glb",
+	"roof_ridge": "res://assets/kit/roof_slate_ridge_2m.glb",
+	"roof_corner": "res://assets/kit/roof_slate_corner.glb",
+	"street": "res://assets/kit/street_cobble_2x2.glb",
+	"stair": "res://assets/kit/stair_stone.glb",
+	"low_wall": "res://assets/kit/wall_low_2x1.glb",
+	"lamp": "res://assets/kit/lamp_iron.glb",
+	"stall": "res://assets/kit/market_stall.glb",
+	"tree": "res://assets/kit/tree_round.glb",
+	"fountain": "res://assets/kit/fountain.glb"
+}
+
+## Kit pieces are modelled 2m wide and 3m tall, origin at the base centre, with
+## the dressed exterior face pointing -Z. Everything below is laid out on that.
+const SECTION_WIDTH := 2.0
+const SECTION_HEIGHT := 3.0
+
 var _materials: Dictionary = {}
+var _kit_cache: Dictionary = {}
+
+
+## Answered once per run and remembered, because the layout asks it constantly.
+static var _kit_ready: Dictionary = {}
+
+
+## True once Blender has exported this piece AND the export is actually usable.
+##
+## Checking the path alone is not enough. A half-written or failed export still
+## leaves a file behind, ResourceLoader.exists() says yes, and the town then
+## assembles itself out of nothing — invisible walls you can still collide with,
+## which is a miserable thing to debug. So the piece has to load and contain
+## real geometry before the layout is allowed to depend on it.
+static func kit_has(piece: String) -> bool:
+	if _kit_ready.has(piece):
+		return _kit_ready[piece]
+	var path: String = str(KIT.get(piece, ""))
+	var ready := false
+	if not path.is_empty() and ResourceLoader.exists(path):
+		var scene := load(path) as PackedScene
+		if scene:
+			var probe := scene.instantiate()
+			if probe:
+				ready = _has_geometry(probe)
+				probe.queue_free()
+	_kit_ready[piece] = ready
+	return ready
+
+
+static func _has_geometry(node: Node) -> bool:
+	for child in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := child as MeshInstance3D
+		if mesh_instance and mesh_instance.mesh and mesh_instance.mesh.get_surface_count() > 0:
+			return true
+	return false
+
+
+func _kit_scene(piece: String) -> PackedScene:
+	if _kit_cache.has(piece):
+		return _kit_cache[piece]
+	var scene: PackedScene = null
+	if kit_has(piece):
+		scene = load(str(KIT[piece])) as PackedScene
+	_kit_cache[piece] = scene
+	return scene
 
 
 func _ready() -> void:
@@ -43,8 +115,18 @@ func _ready() -> void:
 
 
 # A piece is {pos, size, color, solid, rot} — solid defaults to true, meaning it
-# gets collision and you can stand on it.
+# gets collision and you can stand on it. A piece may also carry {kit: "wall"},
+# in which case the real model is used when it exists and the box when it
+# doesn't.
 func _build_piece(piece: Dictionary) -> void:
+	var kit_name := str(piece.get("kit", ""))
+	if not kit_name.is_empty():
+		var scene := _kit_scene(kit_name)
+		if scene:
+			_build_kit_piece(scene, piece)
+			return
+		# No model yet: fall through and draw the placeholder box.
+
 	var size: Vector3 = piece.get("size", Vector3.ONE)
 	var position: Vector3 = piece.get("pos", Vector3.ZERO)
 	var color: Color = piece.get("color", STONE)
@@ -77,6 +159,46 @@ func _build_piece(piece: Dictionary) -> void:
 	add_child(body)
 
 
+# Instance a real kit model, and give it collision from its own bounds so you
+# can walk into a wall that was exported an hour ago.
+func _build_kit_piece(scene: PackedScene, piece: Dictionary) -> void:
+	var model := scene.instantiate() as Node3D
+	if model == null:
+		return
+	var body := StaticBody3D.new()
+	body.collision_layer = 2
+	body.collision_mask = 0
+	body.position = piece.get("pos", Vector3.ZERO)
+	body.rotation.y = float(piece.get("rot", 0.0))
+	body.add_child(model)
+
+	var bounds: AABB = _model_bounds(model)
+	if bounds.size.length() > 0.01:
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = bounds.size
+		shape.shape = box
+		shape.position = bounds.position + bounds.size * 0.5
+		body.add_child(shape)
+	add_child(body)
+
+
+func _model_bounds(model: Node3D) -> AABB:
+	var bounds := AABB()
+	var first := true
+	for child in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := child as MeshInstance3D
+		if mesh_instance == null or mesh_instance.mesh == null:
+			continue
+		var piece_bounds := mesh_instance.transform * mesh_instance.mesh.get_aabb()
+		if first:
+			bounds = piece_bounds
+			first = false
+		else:
+			bounds = bounds.merge(piece_bounds)
+	return bounds
+
+
 func _material_for(color: Color) -> StandardMaterial3D:
 	var key := str(color)
 	if _materials.has(key):
@@ -91,15 +213,134 @@ func _material_for(color: Color) -> StandardMaterial3D:
 # --- Helpers used by the layouts -------------------------------------------
 
 
-## A building: stone ground floor, plaster-and-timber upper storey, slate roof.
-## The whole silhouette is what the kit will replace first.
+## A building.
+##
+## Once the kit exists this is a real modular structure: 2m wall sections tiled
+## around the footprint, with a door on the face that looks at the street and
+## windows everywhere else. Until then it's the same building drawn as tinted
+## boxes, at the same size in the same place — so the town's layout was designed
+## once and doesn't move when the art arrives.
 static func house(at: Vector3, width: float, depth: float, storeys: int = 2) -> Array:
+	if kit_has("wall"):
+		return _house_from_kit(at, width, depth, storeys)
+	return _house_from_boxes(at, width, depth, storeys)
+
+
+## Snap a dimension to whole 2m sections, because that is what the pieces are.
+static func _sections(length: float) -> int:
+	return maxi(1, int(round(length / SECTION_WIDTH)))
+
+
+static func _house_from_kit(at: Vector3, width: float, depth: float, storeys: int) -> Array:
+	var pieces: Array = []
+	var wide := _sections(width)
+	var deep := _sections(depth)
+	var half_w := float(wide) * SECTION_WIDTH * 0.5
+	var half_d := float(deep) * SECTION_WIDTH * 0.5
+
+	for storey in range(maxi(1, storeys)):
+		var y := float(storey) * SECTION_HEIGHT
+		var ground := storey == 0
+		# Upper storeys switch to timber-framed plaster once that piece exists,
+		# which is what gives the town its overhanging medieval silhouette.
+		var upper_piece := "wall_timber" if (not ground and kit_has("wall_timber")) else "wall"
+
+		# The face looking at the street gets the door; everything else gets
+		# windows, with blank wall at the corners so openings never meet.
+		var door_index := wide / 2
+
+		for i in range(wide):
+			var x := -half_w + SECTION_WIDTH * 0.5 + float(i) * SECTION_WIDTH
+			# South face — towards the square.
+			var south := upper_piece
+			if ground and i == door_index and kit_has("wall_door"):
+				south = "wall_door"
+			elif _wants_window(i, wide, ground):
+				south = _window_or(upper_piece)
+			pieces.append({"kit": south, "pos": at + Vector3(x, y, half_d), "rot": PI})
+			# North face.
+			var north := _window_or(upper_piece) if _wants_window(i, wide, false) else upper_piece
+			pieces.append({"kit": north, "pos": at + Vector3(x, y, -half_d), "rot": 0.0})
+
+		for i in range(deep):
+			var z := -half_d + SECTION_WIDTH * 0.5 + float(i) * SECTION_WIDTH
+			var side := _window_or(upper_piece) if _wants_window(i, deep, false) else upper_piece
+			pieces.append({"kit": side, "pos": at + Vector3(-half_w, y, z), "rot": PI * 0.5})
+			var side_east := _window_or(upper_piece) if _wants_window(i, deep, false) else upper_piece
+			pieces.append({"kit": side_east, "pos": at + Vector3(half_w, y, z), "rot": -PI * 0.5})
+
+	pieces.append_array(_roof(at, wide, deep, half_w, half_d, float(maxi(1, storeys)) * SECTION_HEIGHT))
+	return pieces
+
+
+## Windows go in the middle of a run, never at the corners — a window that meets
+## a corner looks like a mistake, and at the ends the sections butt into the
+## neighbouring wall.
+static func _wants_window(index: int, count: int, is_ground: bool) -> bool:
+	if count <= 2:
+		return not is_ground
+	if index == 0 or index == count - 1:
+		return false
+	return true
+
+
+static func _window_or(fallback: String) -> String:
+	return "wall_window" if kit_has("wall_window") else fallback
+
+
+## Measured from the exported pieces: a slope runs 2m horizontally and rises
+## 2.67m, low edge at its origin and climbing towards -Z. So a roof is a row of
+## slopes along each long eave, climbing inwards, with ridge caps tiling the
+## join between them.
+const ROOF_RUN := 2.0
+const ROOF_RISE := 2.67
+
+
+static func _roof(at: Vector3, wide: int, deep: int, half_w: float, half_d: float, eave_y: float) -> Array:
+	var pieces: Array = []
+	if kit_has("roof_slope"):
+		for i in range(wide):
+			var x := -half_w + SECTION_WIDTH * 0.5 + float(i) * SECTION_WIDTH
+			# South eave, climbing north.
+			pieces.append({"kit": "roof_slope", "pos": at + Vector3(x, eave_y, half_d), "rot": 0.0})
+			# North eave, climbing south.
+			pieces.append({"kit": "roof_slope", "pos": at + Vector3(x, eave_y, -half_d), "rot": PI})
+
+			# Between the two slopes, cap the join. On a building only 4m deep
+			# the slopes meet exactly and this is a single ridge line; on a
+			# deeper one it becomes a flat top between the pitches, which is a
+			# perfectly ordinary way for a townhouse to be roofed.
+			if not kit_has("roof_ridge"):
+				continue
+			var inner := half_d - ROOF_RUN
+			if inner <= 0.05:
+				pieces.append({"kit": "roof_ridge", "pos": at + Vector3(x, eave_y + ROOF_RISE, 0.0), "rot": 0.0})
+			else:
+				var caps := maxi(1, int(round(inner * 2.0 / SECTION_WIDTH)))
+				for j in range(caps):
+					var z := -inner + SECTION_WIDTH * 0.5 + float(j) * SECTION_WIDTH
+					pieces.append(
+						{"kit": "roof_ridge", "pos": at + Vector3(x, eave_y + ROOF_RISE, z), "rot": 0.0}
+					)
+		return pieces
+	# Placeholder: a slate slab with a cap, sized to the real footprint so the
+	# silhouette is honest about how big the building is.
+	pieces.append(
+		{"pos": at + Vector3(0, eave_y + 0.45, 0), "size": Vector3(half_w * 2.0 + 1.1, 0.9, half_d * 2.0 + 1.1), "color": SLATE}
+	)
+	pieces.append(
+		{"pos": at + Vector3(0, eave_y + 1.2, 0), "size": Vector3(half_w * 1.1, 0.7, half_d * 1.1), "color": SLATE}
+	)
+	return pieces
+
+
+## The original box version, kept as the fallback for anything the kit hasn't
+## reached yet.
+static func _house_from_boxes(at: Vector3, width: float, depth: float, storeys: int = 2) -> Array:
 	var pieces: Array = []
 	var ground_height := 3.0
 	pieces.append({"pos": at + Vector3(0, ground_height * 0.5, 0), "size": Vector3(width, ground_height, depth), "color": STONE})
 	if storeys > 1:
-		# The upper storey overhangs, which is most of why the silhouette reads
-		# as a medieval town rather than a row of boxes.
 		var upper_y := ground_height + 1.4
 		pieces.append(
 			{"pos": at + Vector3(0, upper_y, 0), "size": Vector3(width + 0.7, 2.8, depth + 0.7), "color": PLASTER}

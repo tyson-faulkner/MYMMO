@@ -31,7 +31,7 @@ COBBLE_DARK = np.array([0.278, 0.271, 0.259])
 PLASTER = np.array([0.910, 0.878, 0.812])
 GOLD = np.array([0.831, 0.667, 0.259])
 GOLD_DARK = np.array([0.400, 0.290, 0.075])
-IRON = np.array([0.165, 0.158, 0.150])   # neutral, faintly warm -- see note in black_iron()
+IRON = np.array([0.145, 0.149, 0.161])
 HERALDRY_BLUE = np.array([0.114, 0.169, 0.365])
 
 
@@ -364,18 +364,11 @@ def gold_leaf(size=SIZE, seed=83):
 
 
 def black_iron(size=SIZE, seed=91):
-    """Wrought iron: near-black with soft painted highlights and pitting.
-
-    Kept neutral-to-warm on purpose. Anything dark picks up a lot of sky
-    ambient, so a base colour with even a slight blue tilt renders navy
-    rather than black once it's on a door strap out in the sun.
-    """
+    """Wrought iron: near-black with soft painted highlights and pitting."""
     mott = (fbm(size, 12, seed, octaves=4) - 0.5) * 0.55
     pit = (value_noise(size, 64, seed + 17) - 0.5) * 0.25
     rgb = _tint(IRON, 1.0 + mott + pit)
-    # Warm the highlights very slightly. A blue push here plus the sky fill
-    # made the strap hinges read navy instead of black.
-    rgb[:, :, 0] += np.clip(mott, 0, None) * 0.05
+    rgb[:, :, 2] += np.clip(mott, 0, None) * 0.05
     return _rgba(rgb)
 
 

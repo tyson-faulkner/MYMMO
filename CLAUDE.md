@@ -1,5 +1,10 @@
 # Kingsmourn (MyMMO)
 
+> **Current priority (2026-09-11): characters before props.** See the banner at
+> the top of `docs/BUILD_PROGRESS.md`. Classes and enemies need to be modelled
+> and skinned to the reference art rather than left as capsules. Premade CC0
+> low-poly rigged bases are explicitly allowed if they match the style guide.
+
 Read `docs/HANDOFF.md` first. Then `docs/BUILD_PLAN.md` (the build order and the
 standing orders) and `docs/BUILD_PROGRESS.md` (where the last pass stopped).
 

@@ -1,5 +1,26 @@
 # Kingsmourn — Build Progress
 
+> ## PRIORITY, set by Tyson 2026-09-11 before sleeping
+>
+> **Characters come before Phase 2 props.** He wants to wake up to classes and
+> enemies that are modelled and skinned to look like the reference art in
+> `docs/reference/01-characters/` — explicitly NOT grey blobs. A cobblestone
+> tile matters less to him than a Valkyr that looks like a Valkyr.
+>
+> Build order for that: base humanoid body (WoW proportions, big shoulders,
+> ~7 heads tall) → shared skeleton and skinning → the four class silhouettes as
+> armour and texture on that body → enemy variants. Full spec in
+> `docs/kingsmourn-character-spec.md`.
+>
+> **Premade assets are allowed.** He has said so explicitly: a CC0 low-poly
+> rigged humanoid as a starting base is fine, as long as it matches the guide —
+> low-poly, exaggerated proportions, detail painted into the texture, saturated
+> colours, and the palettes in the reference pack. Re-texture it to the classes
+> rather than shipping it as-is.
+>
+> **If animation proves too slow, ship static posed models rather than nothing.**
+> A silhouette-correct Valkyr standing still beats a capsule.
+
 Updated by the autonomous build loop. Newest entry at the top of the log.
 Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they land.
 
