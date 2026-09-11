@@ -256,9 +256,11 @@ def material(kind, name=None):
     if existing:
         return existing
 
+    # Always regenerate rather than reusing whatever PNG is on disk.
+    # Generation is ~0.15s, and caching by filename meant a palette change
+    # silently did nothing until the old file was deleted by hand.
     path = os.path.join(TEX_DIR, "km_%s.png" % kind)
-    if not os.path.exists(path):
-        km_textures.save_png(km_textures.BUILDERS[kind](), path)
+    km_textures.save_png(km_textures.BUILDERS[kind](), path)
 
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True

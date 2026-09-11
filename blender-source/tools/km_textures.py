@@ -1,4 +1,4 @@
-"""Kingsmourn hand-painted texture library.
+﻿"""Kingsmourn hand-painted texture library.
 
 Generates the tileable, hand-painted-look textures every kit piece shares:
 cream limestone, blue slate, warm timber, gray cobblestone, white plaster,
@@ -416,6 +416,113 @@ def undersuit(size=SIZE, seed=137):
     return _rgba(rgb)
 
 
+def plate(base, seed=151, trim=None, panel=7.0, size=SIZE):
+    """Painted armour plate.
+
+    The hand-painted look for metal is a broad sheen across the form plus
+    hard panel grooves and chipped, lit edges -- NOT a shiny material. All
+    of that is baked here so the shader stays fully rough like the kit's.
+    """
+    base = np.asarray(base, dtype=float)
+    sheen = (fbm(size, 3, seed, octaves=2, gain=0.4) - 0.5) * 0.55
+    grain = (fbm(size, 14, seed + 7, octaves=4) - 0.5) * 0.16
+    u, v = _uv(size)
+
+    # Panel lines: a grid of grooves with a lit lip on the upper side.
+    gx = np.abs((u * panel) % 1.0 - 0.5)
+    gy = np.abs((v * panel * 0.7) % 1.0 - 0.5)
+    groove = np.minimum(gx, gy)
+    dark = 1.0 - 0.42 * (1.0 - _smooth(np.clip(groove / 0.045, 0, 1)))
+    lip = 0.26 * _smooth(np.clip((groove - 0.05) / 0.035, 0, 1)) \
+        * (1.0 - _smooth(np.clip((groove - 0.10) / 0.05, 0, 1)))
+
+    # Scuffs where a plate would actually catch: sparse bright nicks.
+    nick = value_noise(size, 80, seed + 23)
+    chips = np.clip((nick - 0.86) / 0.14, 0, 1) * 0.35
+
+    rgb = _tint(base, 1.0 + sheen + grain) * dark[:, :, None]
+    rgb += (lip + chips)[:, :, None] * 0.55
+
+    if trim is not None:
+        # A band of trim across the top of the sheet, for straps and edging.
+        trim = np.asarray(trim, dtype=float)
+        band = _smooth(np.clip((0.14 - v) / 0.05, 0, 1))
+        trim_rgb = _tint(trim, 1.0 + sheen * 0.6 + grain)
+        rgb = rgb * (1 - band[:, :, None]) + trim_rgb * band[:, :, None]
+
+    return _rgba(rgb)
+
+
+def cloth(base, seed=163, folds=9.0, size=SIZE):
+    """Woven cloth with soft vertical folds -- tabards, robes, cloaks."""
+    base = np.asarray(base, dtype=float)
+    u, v = _uv(size)
+    drape = np.sin(u * folds * 2.0 * np.pi
+                   + (fbm(size, 3, seed + 5) - 0.5) * 6.0)
+    shade = drape * 0.13
+    weave = (value_noise(size, 120, seed) - 0.5) * 0.09
+    mott = (fbm(size, 7, seed + 11, octaves=4) - 0.5) * 0.16
+    # Wear along the hem.
+    hem = 1.0 - 0.18 * _smooth(np.clip((v - 0.82) / 0.18, 0, 1))
+    return _rgba(_tint(base, (1.0 + shade + weave + mott) * hem))
+
+
+def leather(base, seed=173, size=SIZE):
+    """Weathered leather: soft pebbling, darker in the creases."""
+    base = np.asarray(base, dtype=float)
+    pebble = (fbm(size, 26, seed, octaves=4) - 0.5) * 0.30
+    crease = (fbm(size, 6, seed + 9, octaves=3) - 0.5) * 0.24
+    rgb = _tint(base, 1.0 + pebble + crease)
+    rgb[:, :, 0] += np.clip(pebble, 0, None) * 0.05
+    return _rgba(rgb)
+
+
+def feather(base=(0.93, 0.93, 0.91), seed=181, rows=11.0, cols=7.0, size=SIZE):
+    """Layered feathers, for the Valkyr's wings.
+
+    Same trick as the roof shingles -- overlapping rows with a shadow under
+    each course and a lit lower edge -- but softer, and shaped to a point.
+    """
+    base = np.asarray(base, dtype=float)
+    u, v = _uv(size)
+    u = u + (fbm(size, 5, seed + 3, octaves=3) - 0.5) * 0.04
+
+    ry = v * rows
+    row = np.floor(ry).astype(int)
+    by = ry - row
+    rx = (u + (row % 2) * 0.5 / cols) * cols
+    col = np.floor(rx).astype(int)
+    bx = rx - col
+    cell = (row % int(rows)) * 8191 + (col % int(cols)) * 131
+
+    # Feather silhouette: rounded at the tip, tapering to the quill.
+    taper = np.clip(1.0 - ((np.abs(bx - 0.5) * 2.0) ** 2) * (0.35 + by * 0.9), 0, 1)
+    gap = _smooth(np.clip(taper / 0.18, 0, 1))
+
+    overlap = 1.0 - 0.26 * (1.0 - _smooth(np.clip(by / 0.34, 0, 1)))
+    lip = 0.22 * _smooth(np.clip((by - 0.74) / 0.24, 0, 1))
+    quill = 1.0 - 0.14 * (1.0 - _smooth(np.clip(np.abs(bx - 0.5) / 0.05, 0, 1)))
+    tone = _cell_random(cell, seed, 0.90, 1.06)
+    barb = np.sin((bx - 0.5) * 40.0 + by * 6.0) * 0.025
+
+    rgb = _tint(base, tone * overlap * quill + lip + barb)
+    shadow = base[None, None, :] * 0.52
+    g = gap[:, :, None]
+    return _rgba(rgb * g + shadow * (1 - g))
+
+
+def register(name, builder):
+    """Add a parameterised texture under its own name.
+
+    The class textures are all the same few generators with different
+    palettes -- plate() in blackened steel for the Valkyr, in brass for the
+    Tinker -- so they are registered at build time rather than written out
+    as separate functions.
+    """
+    BUILDERS[name] = builder
+    return name
+
+
 BUILDERS = {
     "skin": skin,
     "undersuit": undersuit,
@@ -460,3 +567,4 @@ def build_all(tex_dir, only=None, force=False):
             save_png(fn(), path)
         out[name] = path
     return out
+

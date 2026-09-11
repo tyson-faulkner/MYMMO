@@ -33,9 +33,11 @@ func _init() -> void:
 		quit(1)
 		return
 
+	# Every character asset except the bare unrigged body, which exists only
+	# as the source the rigged ones are built from.
 	var files: Array[String] = []
 	for f in dir.get_files():
-		if f.ends_with(".glb") and f.contains("rigged"):
+		if f.ends_with(".glb") and f != "char_base_body.glb":
 			files.append(f)
 	files.sort()
 

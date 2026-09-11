@@ -1,4 +1,4 @@
-"""Character step 1 -- the base humanoid body.
+﻿"""Character step 1 -- the base humanoid body.
 
 Everything else in the game that is a person is this mesh with different
 armour and textures on it: four classes, every human enemy, both bosses.
@@ -52,7 +52,7 @@ def build():
     return [obj]
 
 
-def _torso(bm, uv):
+def _torso(bm, uv, skin_mat=SKIN, cloth_mat=CLOTH):
     """Hips to neck. The waist pinch and the flare into the shoulders are
     what stop a torso reading as a barrel."""
     sections = [
@@ -71,11 +71,11 @@ def _torso(bm, uv):
         ((0, 0, 1.540), 0.108, 0.092),
         ((0, 0, 1.575), 0.072, 0.070),  # neck
     ]
-    C.tube(bm, uv, sections, C.X, C.Y, SEG_BODY, mat=CLOTH,
+    C.tube(bm, uv, sections, C.X, C.Y, SEG_BODY, mat=cloth_mat,
            cap_start=True, cap_end=False)
 
 
-def _head(bm, uv):
+def _head(bm, uv, skin_mat=SKIN, cloth_mat=CLOTH):
     sections = [
         ((0, 0, 1.555), 0.072, 0.070),
         ((0, 0.004, 1.62), 0.096, 0.102),
@@ -84,11 +84,11 @@ def _head(bm, uv):
         ((0, 0, 1.785), 0.084, 0.088),
         ((0, 0, 1.80), 0.030, 0.032),
     ]
-    C.tube(bm, uv, sections, C.X, C.Y, SEG_BODY, mat=SKIN,
+    C.tube(bm, uv, sections, C.X, C.Y, SEG_BODY, mat=skin_mat,
            cap_start=False, cap_end=True)
 
 
-def _arm(bm, uv, side):
+def _arm(bm, uv, side, skin_mat=SKIN, cloth_mat=CLOTH):
     """T-pose arm along X. Root ring sits inside the chest."""
     u = C.Y                      # ring plane is perpendicular to the arm
     v = C.Z
@@ -116,11 +116,11 @@ def _arm(bm, uv, side):
     # are the hand: a flattened mitten, which reads better than fingers at
     # this poly count and is covered by a gauntlet on every class anyway.
     C.tube(bm, uv, sections, u, v, SEG_LIMB,
-           mat=[CLOTH, CLOTH, CLOTH, SKIN, SKIN, SKIN, SKIN, SKIN],
+           mat=[cloth_mat, cloth_mat, cloth_mat, skin_mat, skin_mat, skin_mat, skin_mat, skin_mat],
            cap_start=True, cap_end=True)
 
 
-def _leg(bm, uv, side):
+def _leg(bm, uv, side, skin_mat=SKIN, cloth_mat=CLOTH):
     x = side * 0.098
     sections = [
         # Thighs were far too wide here and the figure read as if it were
@@ -136,13 +136,15 @@ def _leg(bm, uv, side):
         ((x, 0, 0.30), 0.066, 0.070),   # calf
         ((x, 0, 0.12), 0.052, 0.054),   # ankle
     ]
-    C.tube(bm, uv, sections, C.X, C.Y, SEG_LIMB, mat=CLOTH,
+    C.tube(bm, uv, sections, C.X, C.Y, SEG_LIMB, mat=cloth_mat,
            cap_start=True, cap_end=True)
 
     # Foot: a wedge running forward from the ankle.
     C.taper_box(bm, uv, (x, -0.045, 0.055), C.X, C.Z, C.Y,
-                (0.062, 0.055), (0.055, 0.030), 0.26, mat=CLOTH)
+                (0.062, 0.055), (0.055, 0.030), 0.26, mat=cloth_mat)
 
 
 if __name__ == "__main__":
     print(K.report(build()))
+
+
