@@ -24,7 +24,7 @@ This folder contains the final approved visual direction.
 
 ### Valkyr armor set
 
-![Dark Knight armor](02-gear/05-dark-knight-armor-set.png)
+![Valkyr armor set](02-gear/05-valkyr-armor-set.png)
 
 ### Weapon sheet
 
