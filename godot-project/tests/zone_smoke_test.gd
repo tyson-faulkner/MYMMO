@@ -161,6 +161,23 @@ func _check_databases() -> void:
 				unreachable.append("%s -> tag %s" % [quest_id, target])
 	_report("kill objectives are completable", unreachable.is_empty(), ", ".join(unreachable))
 
+	# A "collect 4 provisions" objective is a wall unless something actually
+	# drops the thing. This check exists because q_supplies was exactly that.
+	var undroppable: Array[String] = []
+	for quest_id in QuestDatabase.get_all_ids():
+		for objective in QuestDatabase.get_quest(quest_id).objectives:
+			if str(objective.get("type", "")) != "collect":
+				continue
+			var wanted := str(objective.get("target", ""))
+			var droppable := false
+			for mob_id in MobDatabase.get_all_ids():
+				if MobDatabase.get_mob(mob_id).loot_table.has(wanted):
+					droppable = true
+					break
+			if not droppable:
+				undroppable.append("%s wants %s, nothing drops it" % [quest_id, wanted])
+	_report("collect objectives are obtainable", undroppable.is_empty(), ", ".join(undroppable))
+
 
 func _check_quest_flow() -> void:
 	var quest_log := _fake_player.get_node("QuestLog") as QuestLog
@@ -193,6 +210,13 @@ func _check_quest_flow() -> void:
 	for _index in range(8):
 		quest_log.credit_kill(&"hedge_bandit", [&"bandit", &"human"])
 	_report("tag kill objective credited", quest_log.is_complete(&"q_bandits"), "")
+
+	# Collect credit, the path that was missing entirely.
+	quest_log.turn_in(&"q_bandits")
+	quest_log.accept_quest(&"q_supplies")
+	for _index in range(4):
+		quest_log.credit_collect(&"chicken_leg", 1)
+	_report("collect objective credited", quest_log.is_complete(&"q_supplies"), "")
 	await get_tree().process_frame
 
 

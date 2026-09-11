@@ -431,6 +431,50 @@ func _award_kill(killer_peer_id: int) -> void:
 	var quest_log := killer.get_node_or_null("QuestLog")
 	if quest_log and quest_log.has_method("credit_kill"):
 		quest_log.credit_kill(mob_data.id, mob_data.tags)
+	# Sovereigns — the currency earned from BOTH questing and dungeons, which is
+	# what keeps either path worth walking.
+	if quest_log and quest_log.has_method("add_currency") and mob_data.currency_reward > 0:
+		quest_log.add_currency(mob_data.currency_reward)
+	_drop_loot()
+
+
+# Roll the loot table and leave whatever dropped on the ground. Adding the item
+# to the level's ItemContainer is enough: the MultiplayerSpawner watching that
+# node replicates it to everyone, including anyone who joins later.
+func _drop_loot() -> void:
+	if not multiplayer.is_server() or mob_data == null or mob_data.loot_table.is_empty():
+		return
+	var container := _find_item_container()
+	if container == null:
+		return
+	var dropped := 0
+	for item_id in mob_data.loot_table:
+		if randf() > float(mob_data.loot_table[item_id]):
+			continue
+		var item: Item = ItemDatabase.get_item(str(item_id))
+		if item == null or item.scene_path.is_empty() or not ResourceLoader.exists(item.scene_path):
+			continue
+		var packed := load(item.scene_path) as PackedScene
+		if packed == null:
+			continue
+		var instance := packed.instantiate() as Node3D
+		if instance == null:
+			continue
+		container.add_child(instance, true)
+		# Scatter slightly so a multi-drop isn't one pile inside itself.
+		var angle := TAU * float(dropped) / 4.0
+		instance.global_position = global_position + Vector3(cos(angle) * 0.6, 0.8, sin(angle) * 0.6)
+		dropped += 1
+
+
+func _find_item_container() -> Node3D:
+	var scene := get_tree().get_current_scene()
+	if scene == null:
+		return null
+	var direct := scene.get_node_or_null("Environment/ItemContainer") as Node3D
+	if direct:
+		return direct
+	return scene.find_child("ItemContainer", true, false) as Node3D
 
 
 # Grey mobs give almost nothing, so nobody farms level 2 rats at level 18.

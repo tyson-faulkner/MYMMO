@@ -108,7 +108,7 @@ Work top to bottom. Each milestone ends in a playable state.
 - [x] Populate: 6+ NPCs (quest givers, innkeeper, two vendors, guard captain),
       mob spawns by level band (1–5 near town, 6–12 outward), gathering nodes.
 - [x] Zone transitions + spawn/graveyard points + spirit-healer corpse run.
-- [ ] Vendors and the shared quest/dungeon currency.
+- [x] Vendors and the shared quest/dungeon currency.
 
 ### M6 — The first dungeon
 - [x] Instanced dungeon scene loaded per group, with its own spawn point.

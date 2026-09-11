@@ -903,10 +903,16 @@ func request_pickup() -> void:
 
 
 func _server_pickup() -> void:
+	var quest_log := get_node_or_null("QuestLog") as QuestLog
 	for item in _get_collectible_items_in_front():
-		var result := request_add_single_item(item.item_id)
+		var picked_up_id := item.item_id
+		var result := request_add_single_item(picked_up_id)
 		if result and item.is_inside_tree():
 			item.queue_free()
+			# "Collect N of something" objectives are credited HERE, on the
+			# server, when the item genuinely enters the bag.
+			if quest_log:
+				quest_log.credit_collect(StringName(picked_up_id), 1)
 
 
 func _has_collectible_item_in_front() -> bool:

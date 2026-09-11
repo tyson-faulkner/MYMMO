@@ -7,7 +7,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 - **Milestone:** M1 complete, M2-M6 have a working first pass, death is in. Next: M7 persistence (Nakama), then gear and the rune slots.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 63/63 checks passing
+- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 65/65 checks passing
 
 ## Waiting on Tyson (nothing here blocks the loop)
 
@@ -57,6 +57,21 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — Loot actually drops, and one quest was impossible
+Enemies roll their loot table on death and leave the results on the ground, and
+they pay out Sovereigns to whoever killed them. Both were defined as data and
+neither was wired to anything.
+
+Worse: `credit_collect` existed and NOTHING ever called it, so q_supplies
+("recover 4 provisions") could never be completed — the chain dead-ended at
+quest four. Picking an item up now credits it, on the server, when the item
+genuinely enters the bag.
+
+The smoke test gained a check that walks every collect objective and confirms
+something in the game actually drops the thing it asks for. That class of bug —
+content referring to content that doesn't exist — is the one most likely to
+recur as the quest count grows.
 
 ### 2026-09-11 — Death, which was silently missing entirely
 A player who hit zero health simply stayed there: nothing listened for it. Now
