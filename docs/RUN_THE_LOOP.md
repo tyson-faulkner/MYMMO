@@ -100,3 +100,32 @@ Success looks like: both `godot` and `blender` listed as connected.
 
 If Blender shows as failed, it's almost always that Blender isn't open or
 **Connect to Claude** hasn't been clicked in that side panel yet.
+
+## The art loop (needs Blender open and connected)
+
+The build loop above works anywhere. **Art only works here**, on this PC, with
+Blender running and **Connect to Claude** pressed — nothing else can reach it.
+
+Open Blender, connect it, then in the MyMMO folder run `claude` and paste:
+
+> Read CLAUDE.md and docs/kingsmourn-kit-spec.md. Blender is open and the
+> Blender MCP server is connected. Build the modular kit, Phase 1 first, one
+> piece at a time in the listed order. For each piece: model it on a 1m grid in
+> Blender, UV unwrap simply, texture it flat then add painted shading, render a
+> preview so I can see it, and export the .glb to
+> godot-project/assets/kit/. Match the palette in the kit spec — cream stone,
+> blue slate roofs, warm timber, gold accents — and the reference images in
+> docs/reference/. Never redo an approved piece. Commit each piece as you go.
+> Work through as many pieces as you can without stopping to ask me.
+
+Phase 1 is five pieces: a stone wall section, a wall with a window, a wall with
+a door, a sloped slate roof plus corner, and a timber-frame upper storey. Those
+five are enough to build every house in Thornhollow Vale, which is currently
+made of tinted boxes.
+
+### Swapping art in
+
+Each placeholder in `scripts/world/zone_builder.gd` is a box with a colour.
+Replacing one means loading a `.glb` instead of building a `BoxMesh` in
+`_build_piece`. The layout — where every house, wall and prop sits — does not
+change, because the blockout was authored on the same grid the kit uses.
