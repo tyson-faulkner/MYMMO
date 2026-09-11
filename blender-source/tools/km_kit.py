@@ -135,8 +135,12 @@ def frame(bm, lo, hi, hole_lo, hole_hi, axis, mat=0):
     return faces
 
 
-def finish(bm, name, materials, smooth=False):
-    """Turn a bmesh into a real object: weld, box-UV, assign materials."""
+def finish(bm, name, materials, smooth=False, tile=TILE_METERS, rotate_axes=()):
+    """Turn a bmesh into a real object: weld, box-UV, assign materials.
+
+    `tile` overrides the world size one texture tile covers, for pieces that
+    want a finer grain than the 2m default (a plank door, say).
+    """
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
     bm.normal_update()
 
@@ -148,7 +152,7 @@ def finish(bm, name, materials, smooth=False):
     for m in materials:
         obj.data.materials.append(m)
 
-    box_uv(obj)
+    box_uv(obj, tile=tile, rotate_axes=rotate_axes)
     if not smooth:
         for p in mesh.polygons:
             p.use_smooth = False
@@ -241,7 +245,7 @@ def preview_rig(target_size=3.0):
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.42, 0.55, 0.78, 1.0)   # sky bounce
+    bg.inputs["Color"].default_value = (0.50, 0.58, 0.72, 1.0)   # sky bounce
     bg.inputs["Strength"].default_value = 0.55
 
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -254,7 +258,7 @@ def preview_rig(target_size=3.0):
     fill = bpy.data.objects.new("Fill", bpy.data.lights.new("Fill", "AREA"))
     fill.data.energy = 140.0
     fill.data.size = 8.0
-    fill.data.color = (0.72, 0.80, 1.0)
+    fill.data.color = (0.82, 0.87, 1.0)
     fill.location = (-6.0, 5.0, 3.5)
     fill.rotation_euler = (math.radians(65), 0, math.radians(-140))
     bpy.context.collection.objects.link(fill)
