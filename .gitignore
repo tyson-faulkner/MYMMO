@@ -48,3 +48,6 @@ desktop.ini
 *.log
 .vscode/
 .idea/
+
+# Stale git lock files the sandbox cannot delete itself. Safe to remove.
+_to_delete/
