@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://cffjduipbb3s5" path="res://scenes/level/player.tscn" id="1_uvcbi"]
 [ext_resource type="PackedScene" path="res://scenes/zones/thornhollow_vale.tscn" id="2_zone"]
 [ext_resource type="PackedScene" path="res://scenes/ui/npc_dialogue_ui.tscn" id="11_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/ui/game_hud.tscn" id="12_hud"]
 [ext_resource type="PackedScene" uid="uid://bclq8vh1x2goy" path="res://scenes/ui/inventory_ui.tscn" id="4_x8g2h"]
 [ext_resource type="PackedScene" uid="uid://ccencq0lcd3ph" path="res://scenes/ui/multiplayer_chat_ui.tscn" id="5_x9g3h"]
 [ext_resource type="PackedScene" uid="uid://bx7mq8t8hjn7q" path="res://scenes/ui/main_menu_ui.tscn" id="6_x9g3h"]
@@ -94,3 +95,5 @@ visible = false
 visible = false
 
 [node name="NpcDialogueUI" parent="." instance=ExtResource("11_dialogue")]
+
+[node name="GameHUD" parent="." instance=ExtResource("12_hud")]

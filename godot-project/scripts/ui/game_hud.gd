@@ -1,0 +1,345 @@
+# GameHUD — health, resource, experience, your target, your action bar and what
+# you are supposed to be doing.
+#
+# Purely a view. It reads signals and draws; it never decides anything. The
+# action bar buttons call into AbilityBar, which asks the server, same as
+# pressing the key would.
+class_name GameHUD
+extends CanvasLayer
+
+const SLOT_COUNT := 7
+const LOW_HEALTH_FRACTION := 0.35
+
+var _player: Node3D = null
+var _stats: Stats = null
+var _quest_log: QuestLog = null
+var _targeting: Targeting = null
+var _ability_bar: AbilityBar = null
+
+var _slot_buttons: Array[Button] = []
+var _slot_cooldowns: Array[Label] = []
+
+@onready var _player_name: Label = $PlayerFrame/Margin/Rows/NameRow/PlayerName
+@onready var _player_level: Label = $PlayerFrame/Margin/Rows/NameRow/PlayerLevel
+@onready var _health_bar: ProgressBar = $PlayerFrame/Margin/Rows/HealthBar
+@onready var _health_text: Label = $PlayerFrame/Margin/Rows/HealthBar/Text
+@onready var _resource_bar: ProgressBar = $PlayerFrame/Margin/Rows/ResourceBar
+@onready var _resource_text: Label = $PlayerFrame/Margin/Rows/ResourceBar/Text
+@onready var _xp_bar: ProgressBar = $PlayerFrame/Margin/Rows/XPBar
+@onready var _currency: Label = $PlayerFrame/Margin/Rows/Currency
+
+@onready var _target_frame: PanelContainer = $TargetFrame
+@onready var _target_name: Label = $TargetFrame/Margin/Rows/TargetName
+@onready var _target_health: ProgressBar = $TargetFrame/Margin/Rows/TargetHealth
+
+@onready var _action_bar: HBoxContainer = $ActionBar/Slots
+@onready var _tracker: VBoxContainer = $QuestTracker/Rows
+@onready var _quest_panel: PanelContainer = $QuestLogPanel
+@onready var _quest_panel_rows: VBoxContainer = $QuestLogPanel/Margin/Scroll/Rows
+@onready var _toast: Label = $Toast
+
+
+func _ready() -> void:
+	_build_action_bar()
+	_target_frame.visible = false
+	_quest_panel.visible = false
+	_toast.visible = false
+	visible = false
+	set_process(true)
+
+
+func _process(_delta: float) -> void:
+	# The local character doesn't exist until you've joined, and it's replaced
+	# on every reconnect, so the HUD keeps checking rather than assuming.
+	if _player == null or not is_instance_valid(_player):
+		_attach_to_local_player()
+		return
+	visible = true
+	_refresh_target_frame()
+	_refresh_cooldowns()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("quest_log"):
+		_quest_panel.visible = not _quest_panel.visible
+		if _quest_panel.visible:
+			_rebuild_quest_panel()
+		get_viewport().set_input_as_handled()
+
+
+func _attach_to_local_player() -> void:
+	if not multiplayer.has_multiplayer_peer():
+		return
+	var local_id := multiplayer.get_unique_id()
+	for container in get_tree().get_nodes_in_group("Players"):
+		var candidate := container.get_node_or_null(str(local_id)) as Node3D
+		if candidate == null:
+			continue
+		_player = candidate
+		_stats = candidate.get_node_or_null("Stats") as Stats
+		_quest_log = candidate.get_node_or_null("QuestLog") as QuestLog
+		_targeting = candidate.get_node_or_null("Targeting") as Targeting
+		_ability_bar = candidate.get_node_or_null("AbilityBar") as AbilityBar
+
+		if _stats:
+			_stats.health_changed.connect(_on_health_changed)
+			_stats.resource_changed.connect(_on_resource_changed)
+			_stats.xp_changed.connect(_on_xp_changed)
+			_stats.leveled_up.connect(_on_leveled_up)
+			_on_health_changed(_stats.health, _stats.max_health)
+			_on_resource_changed(_stats.mana, _stats.max_mana, _stats.get_resource_label())
+			_on_xp_changed(_stats.experience, Stats.xp_for_next_level(_stats.level))
+		if _quest_log:
+			_quest_log.log_changed.connect(_rebuild_tracker)
+			_quest_log.quest_turned_in.connect(_on_quest_turned_in)
+			_rebuild_tracker()
+		if _ability_bar:
+			_ability_bar.cast_failed.connect(_on_cast_failed)
+		var nickname := candidate.get_node_or_null("PlayerNick/Nickname") as Label3D
+		if nickname:
+			_player_name.text = nickname.text
+		_refresh_slot_labels()
+		return
+
+
+# --- The player's own frame ------------------------------------------------
+
+
+func _on_health_changed(current: int, maximum: int) -> void:
+	_health_bar.max_value = maxi(1, maximum)
+	_health_bar.value = current
+	_health_text.text = "%d / %d" % [current, maximum]
+	# Turn the bar red when things are getting serious.
+	var fraction := float(current) / float(maxi(1, maximum))
+	_health_bar.modulate = Color(1, 0.45, 0.4) if fraction <= LOW_HEALTH_FRACTION else Color.WHITE
+
+
+func _on_resource_changed(current: int, maximum: int, label: String) -> void:
+	_resource_bar.max_value = maxi(1, maximum)
+	_resource_bar.value = current
+	_resource_text.text = "%s   %d / %d" % [label, current, maximum]
+	_refresh_slot_labels()
+
+
+func _on_xp_changed(current: int, needed: int) -> void:
+	if _stats:
+		_player_level.text = "Level %d" % _stats.level
+		if _quest_log:
+			_currency.text = "%d Sovereigns" % _quest_log.currency
+	if needed <= 0:
+		_xp_bar.max_value = 1
+		_xp_bar.value = 1
+		return
+	_xp_bar.max_value = needed
+	_xp_bar.value = current
+
+
+func _on_leveled_up(new_level: int) -> void:
+	_show_toast("Level %d" % new_level)
+	_refresh_slot_labels()
+
+
+func _on_quest_turned_in(quest_id: StringName) -> void:
+	var quest := QuestDatabase.get_quest(quest_id)
+	if quest:
+		_show_toast("Completed: %s" % quest.title)
+
+
+func _on_cast_failed(_ability_id: StringName, reason: String) -> void:
+	_show_toast(reason)
+
+
+func _show_toast(message: String) -> void:
+	_toast.text = message
+	_toast.visible = true
+	_toast.modulate = Color(1, 0.92, 0.6, 1)
+	var tween := create_tween()
+	tween.tween_interval(1.6)
+	tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
+	tween.tween_callback(func() -> void: _toast.visible = false)
+
+
+# --- Target frame ----------------------------------------------------------
+
+
+func _refresh_target_frame() -> void:
+	if _targeting == null or _targeting.current_target == null:
+		_target_frame.visible = false
+		return
+	var target := _targeting.current_target
+	if not is_instance_valid(target):
+		_target_frame.visible = false
+		return
+	var stats := target.get_node_or_null("Stats") as Stats
+	if stats == null:
+		_target_frame.visible = false
+		return
+	_target_frame.visible = true
+	var mob := target as Mob
+	if mob and mob.mob_data:
+		_target_name.text = "%s   (Level %d)" % [mob.mob_data.display_name, mob.mob_data.level]
+	else:
+		_target_name.text = str(target.name)
+	_target_health.max_value = maxi(1, stats.max_health)
+	_target_health.value = stats.health
+
+
+# --- Action bar ------------------------------------------------------------
+
+
+func _build_action_bar() -> void:
+	for slot in range(1, SLOT_COUNT + 1):
+		var holder := VBoxContainer.new()
+		holder.custom_minimum_size = Vector2(78, 74)
+
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(78, 54)
+		button.clip_text = true
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.pressed.connect(_on_slot_pressed.bind(slot))
+		holder.add_child(button)
+
+		var keybind := Label.new()
+		keybind.text = str(slot)
+		keybind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		keybind.modulate = Color(0.75, 0.72, 0.62)
+		holder.add_child(keybind)
+
+		_action_bar.add_child(holder)
+		_slot_buttons.append(button)
+		_slot_cooldowns.append(keybind)
+
+
+func _on_slot_pressed(slot: int) -> void:
+	if _ability_bar:
+		_ability_bar.press_slot(slot)
+
+
+func _refresh_slot_labels() -> void:
+	if _ability_bar == null:
+		return
+	for index in range(SLOT_COUNT):
+		var ability := _ability_bar.ability_in_slot(index + 1)
+		var button := _slot_buttons[index]
+		if ability == null:
+			button.text = "—"
+			button.disabled = true
+			button.tooltip_text = "Unlocks at a higher level"
+			continue
+		button.disabled = false
+		button.text = ability.display_name
+		button.tooltip_text = "%s\n\n%s\n\nCost %d  •  Cooldown %.0fs  •  Range %.0fm" % [
+			ability.display_name, ability.description, maxi(0, ability.cost), ability.cooldown, ability.cast_range
+		]
+
+
+func _refresh_cooldowns() -> void:
+	if _ability_bar == null:
+		return
+	for index in range(SLOT_COUNT):
+		var remaining := _ability_bar.seconds_remaining(index + 1)
+		var label := _slot_cooldowns[index]
+		var button := _slot_buttons[index]
+		if remaining > 0.0:
+			label.text = "%.1fs" % remaining
+			button.modulate = Color(0.55, 0.55, 0.6)
+			continue
+		label.text = str(index + 1)
+		var ability := _ability_bar.ability_in_slot(index + 1)
+		# Dim anything you can't currently pay for.
+		var affordable := true
+		if ability and _stats and not ability.spends_all_resource and ability.cost > 0:
+			affordable = _stats.has_resource(ability.cost)
+		button.modulate = Color.WHITE if affordable else Color(0.75, 0.7, 0.55)
+
+
+# --- Quests ----------------------------------------------------------------
+
+
+func _rebuild_tracker() -> void:
+	for child in _tracker.get_children():
+		child.queue_free()
+	if _quest_log == null:
+		return
+	if _stats:
+		_on_xp_changed(_stats.experience, Stats.xp_for_next_level(_stats.level))
+	for quest_id in _quest_log.active.keys():
+		var quest := QuestDatabase.get_quest(quest_id)
+		if quest == null:
+			continue
+		var complete := _quest_log.is_complete(quest_id)
+		var title := Label.new()
+		title.text = quest.title + ("  (ready to hand in)" if complete else "")
+		title.modulate = Color(1, 0.85, 0.45) if complete else Color(0.95, 0.93, 0.85)
+		_tracker.add_child(title)
+		var progress: Array = _quest_log.progress_for(quest_id)
+		for index in range(quest.objective_count()):
+			var have := int(progress[index]) if index < progress.size() else 0
+			var line := Label.new()
+			line.text = "   %s  %d / %d" % [quest.objective_text(index), have, quest.objective_required(index)]
+			line.modulate = Color(0.72, 0.78, 0.6) if have >= quest.objective_required(index) else Color(0.78, 0.75, 0.68)
+			_tracker.add_child(line)
+	if _quest_panel.visible:
+		_rebuild_quest_panel()
+
+
+func _rebuild_quest_panel() -> void:
+	for child in _quest_panel_rows.get_children():
+		child.queue_free()
+	if _quest_log == null:
+		return
+	_add_panel_heading("Active")
+	var any_active := false
+	for quest_id in _quest_log.active.keys():
+		var quest := QuestDatabase.get_quest(quest_id)
+		if quest == null:
+			continue
+		any_active = true
+		_add_panel_quest(quest, _quest_log.progress_for(quest_id), _quest_log.is_complete(quest_id))
+	if not any_active:
+		_add_panel_note("Nothing accepted. Look for a gold ! above someone's head.")
+
+	_add_panel_heading("Completed")
+	if _quest_log.turned_in.is_empty():
+		_add_panel_note("None yet.")
+	for quest_id in _quest_log.turned_in.keys():
+		var quest := QuestDatabase.get_quest(quest_id)
+		if quest:
+			_add_panel_note(quest.title)
+
+
+func _add_panel_heading(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.modulate = Color(1, 0.85, 0.45)
+	_quest_panel_rows.add_child(label)
+
+
+func _add_panel_note(text: String) -> void:
+	var label := Label.new()
+	label.text = "   " + text
+	label.modulate = Color(0.72, 0.7, 0.64)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quest_panel_rows.add_child(label)
+
+
+func _add_panel_quest(quest: QuestData, progress: Array, complete: bool) -> void:
+	var title := Label.new()
+	title.text = "   " + quest.title + ("  (ready to hand in)" if complete else "")
+	title.modulate = Color(1, 0.9, 0.6) if complete else Color(0.95, 0.93, 0.85)
+	_quest_panel_rows.add_child(title)
+	var body := Label.new()
+	body.text = "      " + quest.progress_text
+	body.modulate = Color(0.72, 0.7, 0.64)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quest_panel_rows.add_child(body)
+	for index in range(quest.objective_count()):
+		var have := int(progress[index]) if index < progress.size() else 0
+		var line := Label.new()
+		line.text = "      %s  %d / %d" % [quest.objective_text(index), have, quest.objective_required(index)]
+		line.modulate = Color(0.72, 0.78, 0.6) if have >= quest.objective_required(index) else Color(0.8, 0.78, 0.72)
+		_quest_panel_rows.add_child(line)
+	var reward := Label.new()
+	reward.text = "      Reward: %d XP, %d Sovereigns" % [quest.experience_reward, quest.currency_reward]
+	reward.modulate = Color(0.65, 0.68, 0.6)
+	_quest_panel_rows.add_child(reward)

@@ -5,7 +5,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M2 done except the action-bar UI. Next: HUD, then class select, then persistence.
+- **Milestone:** M1-M6 all have a working first pass. Next: class selection on the menu, then M7 persistence.
 - **Loop status:** running
 - **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 50/50 checks passing
 
@@ -57,6 +57,16 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   this session. Validation stages files up to the container instead.
 
 ## Log
+
+### 2026-09-11 — The HUD, which is what makes any of it visible
+Health and class resource bars (the resource is named per class, so a
+Necromancer sees Soul and a Valkyr sees Valor), XP bar, level, Sovereigns, a
+target frame with the enemy's name and level, the seven-slot action bar with
+live cooldowns and tooltips, an on-screen quest tracker, a quest log on L, and
+toasts for levelling and completing things.
+
+Slots above the player's level correctly show as locked, and abilities you can't
+currently pay for dim rather than failing silently when pressed.
 
 ### 2026-09-11 — M2: tab-target and 28 abilities
 Tab cycles the nearest enemy and clears the target when it dies or walks off.

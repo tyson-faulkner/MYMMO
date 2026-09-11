@@ -1,0 +1,252 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
+bg_color = Color(0.09, 0.085, 0.08, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.52, 0.43, 0.16, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
+bg_color = Color(0.05, 0.05, 0.05, 0.9)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_health_fill"]
+bg_color = Color(0.42, 0.63, 0.31, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_resource_fill"]
+bg_color = Color(0.29, 0.45, 0.72, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_target_fill"]
+bg_color = Color(0.69, 0.3, 0.26, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="GameHUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="PlayerFrame" type="PanelContainer" parent="."]
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 312.0
+offset_bottom = 128.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Margin" type="MarginContainer" parent="PlayerFrame"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Rows" type="VBoxContainer" parent="PlayerFrame/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="NameRow" type="HBoxContainer" parent="PlayerFrame/Margin/Rows"]
+layout_mode = 2
+
+[node name="PlayerName" type="Label" parent="PlayerFrame/Margin/Rows/NameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.93, 0.76, 1)
+text = "You"
+
+[node name="PlayerLevel" type="Label" parent="PlayerFrame/Margin/Rows/NameRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.45, 1)
+text = "Level 1"
+
+[node name="HealthBar" type="ProgressBar" parent="PlayerFrame/Margin/Rows"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_health_fill")
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="Text" type="Label" parent="PlayerFrame/Margin/Rows/HealthBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 12
+text = "100 / 100"
+
+[node name="ResourceBar" type="ProgressBar" parent="PlayerFrame/Margin/Rows"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_resource_fill")
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="Text" type="Label" parent="PlayerFrame/Margin/Rows/ResourceBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 11
+text = "Mana   100 / 100"
+
+[node name="XPBar" type="ProgressBar" parent="PlayerFrame/Margin/Rows"]
+custom_minimum_size = Vector2(0, 7)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="Currency" type="Label" parent="PlayerFrame/Margin/Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.74, 0.42, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 Sovereigns"
+
+[node name="TargetFrame" type="PanelContainer" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -130.0
+offset_top = 16.0
+offset_right = 130.0
+offset_bottom = 78.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Margin" type="MarginContainer" parent="TargetFrame"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 7
+
+[node name="Rows" type="VBoxContainer" parent="TargetFrame/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="TargetName" type="Label" parent="TargetFrame/Margin/Rows"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.8, 0.72, 1)
+text = "Target"
+
+[node name="TargetHealth" type="ProgressBar" parent="TargetFrame/Margin/Rows"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_target_fill")
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="ActionBar" type="PanelContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -286.0
+offset_top = -96.0
+offset_right = 286.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Slots" type="HBoxContainer" parent="ActionBar"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="QuestTracker" type="MarginContainer" parent="."]
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -150.0
+offset_right = -16.0
+offset_bottom = 150.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="QuestTracker"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="QuestLogPanel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -220.0
+offset_right = 280.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Margin" type="MarginContainer" parent="QuestLogPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="Scroll" type="ScrollContainer" parent="QuestLogPanel/Margin"]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="QuestLogPanel/Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Toast" type="Label" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -140.0
+offset_right = 260.0
+offset_bottom = -108.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.92, 0.6, 1)
+theme_override_font_sizes/font_size = 26
+text = "Level 2"

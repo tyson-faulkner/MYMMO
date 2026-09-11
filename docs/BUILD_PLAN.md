@@ -81,7 +81,7 @@ Work top to bottom. Each milestone ends in a playable state.
       server-authoritative execution, resource cost enforced on the server.
 - [x] Seven abilities per class as data (28 total), effects implemented
       generically so new abilities are data, not code.
-- [ ] Action bar UI with cooldown sweeps + resource bar + health bar.
+- [x] Action bar UI with cooldown sweeps + resource bar + health bar.
 
 ### M3 — Enemies
 - [x] `Mob` base: Stats, aggro radius, leash, chase, melee swing, death,
@@ -99,7 +99,7 @@ Work top to bottom. Each milestone ends in a playable state.
       talk / reach), rewards (XP, currency, items), prerequisite chain.
 - [x] `QuestDatabase` autoload + `QuestLog` component on the player, server
       authoritative, with kill/collect credit hooks.
-- [ ] Quest log UI (accept, track, turn in) + objective tracker on screen.
+- [x] Quest log UI (accept, track, turn in) + objective tracker on screen.
 - [x] At least 12 quests forming a chain through the first zone.
 
 ### M5 — The first zone
