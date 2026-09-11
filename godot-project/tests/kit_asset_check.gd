@@ -14,6 +14,8 @@ const KIT_DIR := "res://assets/kit"
 const GRID := 1.0
 const GRID_SLACK := 0.55
 const MAX_TRIS_PER_PIECE := 4000
+# How far detail may hang below a piece's origin (jetty corbels, eaves).
+const MAX_OVERHANG_BELOW := 0.40
 
 
 func _init() -> void:
@@ -95,8 +97,11 @@ func _check(file_name: String) -> Array[String]:
 		problems.append("%s: %d tris, over the %d budget" % [file_name, tris, MAX_TRIS_PER_PIECE])
 
 	if not first:
-		# Pieces are authored sitting on the floor, so the base belongs at y=0.
-		if aabb.position.y < -0.02:
+		# Pieces are authored with their origin on the surface they sit on.
+		# Some legitimately hang below it -- jetty corbels on the timber
+		# storey, a fascia under an eave -- so allow a little, but not a
+		# piece that is simply sunk into the ground.
+		if aabb.position.y < -MAX_OVERHANG_BELOW:
 			problems.append("%s: sinks below the floor (min y = %.3f)" % [file_name, aabb.position.y])
 		elif aabb.position.y > 0.05:
 			problems.append("%s: floats above the floor (min y = %.3f)" % [file_name, aabb.position.y])

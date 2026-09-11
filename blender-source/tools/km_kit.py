@@ -98,6 +98,18 @@ def prism(bm, profile, extrude_axis, lo, hi, mat=0):
     order = {"x": (1, 2), "y": (0, 2), "z": (0, 1)}[extrude_axis]
     ai = "xyz".index(extrude_axis)
 
+    # Make the far cap face along +axis regardless of how the caller wound
+    # the profile. Note the parity: X cross Z is -Y, not +Y, so a profile
+    # wound the same way gives an inward normal on the Y axis.
+    parity = -1.0 if extrude_axis == "y" else 1.0
+    area = 0.0
+    for i in range(len(profile)):
+        a0, b0 = profile[i]
+        a1, b1 = profile[(i + 1) % len(profile)]
+        area += a0 * b1 - a1 * b0
+    if area * parity < 0:
+        profile = list(reversed(profile))
+
     def pt(p, depth):
         v = [0.0, 0.0, 0.0]
         v[order[0]], v[order[1]] = p
@@ -114,6 +126,19 @@ def prism(bm, profile, extrude_axis, lo, hi, mat=0):
     for f in faces:
         f.material_index = mat
     return faces
+
+
+def strut(bm, p0, p1, width, y0, y1, mat=0):
+    """A beam running from p0 to p1 in the XZ plane, `width` across its face
+    and spanning y0..y1 in depth. This is what makes diagonal braces cheap."""
+    (x0, z0), (x1, z1) = p0, p1
+    dx, dz = x1 - x0, z1 - z0
+    length = math.hypot(dx, dz)
+    ux, uz = dx / length, dz / length
+    px, pz = -uz * width / 2.0, ux * width / 2.0
+    corners = [(x0 - px, z0 - pz), (x1 - px, z1 - pz),
+               (x1 + px, z1 + pz), (x0 + px, z0 + pz)]
+    return prism(bm, corners, "y", y0, y1, mat)
 
 
 def frame(bm, lo, hi, hole_lo, hole_hi, axis, mat=0):
