@@ -70,7 +70,8 @@ Work top to bottom. Each milestone ends in a playable state.
       level + XP, XP-to-level curve targeting ~8–10h to 20.
 - [x] Class picker on the main menu, class carried through `Network.player_info`
       and applied on spawn.
-- [ ] Class tint on the placeholder body so four players are visually distinct.
+- [x] Class tint on the placeholder body so four players are visually distinct.
+      (Superseded: the four class models and their weapons shipped instead.)
 
 ### M2 — Targeting and abilities
 - [x] Tab-target system: Tab cycles nearest hostile, click selects, target
@@ -114,9 +115,10 @@ Work top to bottom. Each milestone ends in a playable state.
 - [x] Instanced dungeon scene loaded per group, with its own spawn point.
 - [x] Three trash packs + two bosses with scripted mechanics.
 - [x] Boss scaling by player count (one system, per the design doc).
-- [ ] Dungeon loot tables: armour + weapons only (world owns rings, trinkets,
-      cloaks — never break slot ownership).
-- [ ] One mount reward from the dungeon.
+- [x] Dungeon loot tables: armour + weapons only (world owns rings, trinkets,
+      cloaks — never break slot ownership). Enforced by the smoke test.
+- [x] One mount reward from the dungeon (the Veil Saber from the barrow; more
+      from the later dungeons; guaranteed at the top grudge tier).
 
 ### M7 — Persistence (Nakama)
 - [x] Account login wired to the real client (not just `nakama_test.tscn`).
@@ -133,11 +135,16 @@ Work top to bottom. Each milestone ends in a playable state.
 - [ ] Minimap, XP bar, buff bar, chat channels.
 
 ### M9 — Content expansion (the loop keeps running here)
-- [ ] Zone two, zone three.
-- [ ] Second dungeon, the raid, the heroic raid.
+- [x] Zone two, zone three.
+- [x] Second dungeon, the raid (with the boss mechanics engine, grudge tiers
+      and seasons).
+- [ ] The heroic raid (+40% health and damage, the Crown names two).
 - [ ] Remaining quests to fill 1–20 (~8–10 hours of play).
-- [ ] Art upgrade pass whenever Blender is reachable: kit spec Phases 1–3, then
-      class silhouettes from `docs/reference/`.
+- [x] Art upgrade pass whenever Blender is reachable: kit spec Phases 1–3, then
+      class silhouettes from `docs/reference/`, class weapons, and every enemy
+      (ten body variants and the vale wolf).
+- [ ] Endgame props (bookshelf, lectern, brazier, throne, banners) and the
+      season-two boss skins.
 
 ## When something genuinely can't be done in the sandbox
 
