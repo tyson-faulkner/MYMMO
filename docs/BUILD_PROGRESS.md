@@ -196,7 +196,22 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Weapon visuals key on class, not item id.** Every tier of a
+  class's weapon is the same model until tiers get their own art, so
+  `player.gd` maps the worn gear's `class_restriction` to one node per slot.
+  Adding a tier model later means a second table, not a rewrite.
+- 2026-09-13 — **Weapon transforms are measured, not reasoned.** The socket
+  bones at Idle are ~25 degrees off any axis, so the exact bases from a live
+  probe (`tests/character_shot.gd` prints them) go into `player.tscn` — as
+  rows, because that is how Godot serialises a Basis.
+
 ## Log
+
+### 2026-09-13 — Class weapons on the sockets
+
+- **Changed:** eight models in `assets/weapons/` (spear + kite shield, blade + lute, staff + skull focus, bolt thrower + toolkit; 80–288 tris) from `blender-source/tools/km_weapons.py`. `player.tscn` gains a `RightHandAttach` socket and the eight hidden instances; `player.gd` shows a class's weapon and off-hand from the *gear* it wears (any tier maps to the one model), on equip, unequip, spawn and save-restore, instead of the template's item ids.
+- **Test:** smoke 183/183 with 2 new checks (all eight models have geometry; each class's gear lights exactly its two nodes, unarmed lights none). Live probe prints every weapon's up as (0,1,0). Front and back shots of all four classes looked at.
+- **Surprising:** `Transform3D(...)` in a `.tscn` is **row-major** — I wrote rotations as columns twice and got their inverses (spear flat, lute upside down). Also the rig's "Left" bones are on the character's anatomical right; the weapon follows the attack clip's arm, so it is fine, but do not trust the names.
 
 ### 2026-09-13 — Kit Phase 3: lamp, market stall, tree, planter, fountain
 

@@ -65,6 +65,7 @@ func _ready() -> void:
 	_check_ground_textures(zone, sablemarch)
 	_check_template_cleanup()
 	_check_kit_props(zone, kingsmourn)
+	_check_class_weapons()
 
 	print("")
 	if _failures == 0:
@@ -1182,6 +1183,58 @@ func _check_character_models() -> void:
 	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
 
 
+# THE GAP THIS CLOSES: at distance, weapon shape is half of how you tell the
+# classes apart. Each class's weapon and off-hand must be a real model, and
+# wearing the gear must light exactly that model and nothing else's.
+func _check_class_weapons() -> void:
+	print("")
+	print("-- class weapons --")
+	var empty: Array[String] = []
+	for file in ["valkyr_spear", "valkyr_shield", "bard_blade", "bard_lute", "necromancer_staff",
+			"necromancer_skull", "tinker_bolt_thrower", "tinker_toolkit"]:
+		var path := "res://assets/weapons/%s.glb" % file
+		var scene := load(path) as PackedScene if ResourceLoader.exists(path) else null
+		var ok := false
+		if scene:
+			var probe := scene.instantiate()
+			ok = ZoneBuilder._has_geometry(probe)
+			probe.free()
+		if not ok:
+			empty.append(file)
+	_report("all eight class weapon models exist with geometry", empty.is_empty(), ", ".join(empty))
+
+	var player := (load("res://scenes/level/player.tscn") as PackedScene).instantiate()
+	var wrong: Array[String] = []
+	var all_nodes: Array[String] = []
+	for class_id in Character.CLASS_WEAPON_NODES:
+		all_nodes.append(Character.WEAPON_SOCKET_PATH + str(Character.CLASS_WEAPON_NODES[class_id]))
+	for class_id in Character.CLASS_OFFHAND_NODES:
+		var node_name: String = Character.CLASS_OFFHAND_NODES[class_id]
+		all_nodes.append(str(Character.OFFHAND_SOCKET_PATHS[node_name]) + node_name)
+	for class_id: StringName in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
+		var weapon := String(GearDatabase.generated_id(Item.GearTier.STARTER, Item.GearSlot.WEAPON, class_id))
+		var offhand := String(GearDatabase.generated_id(Item.GearTier.CAP, Item.GearSlot.OFFHAND, class_id))
+		player._set_equipment_visibility(weapon, offhand, "")
+		var want := [
+			Character.WEAPON_SOCKET_PATH + str(Character.CLASS_WEAPON_NODES[class_id]),
+			str(Character.OFFHAND_SOCKET_PATHS[Character.CLASS_OFFHAND_NODES[class_id]]) + str(Character.CLASS_OFFHAND_NODES[class_id])
+		]
+		for node_path in all_nodes:
+			var node := player.get_node_or_null(node_path) as Node3D
+			if node == null:
+				wrong.append("%s: missing %s" % [class_id, node_path])
+			elif node.visible != (node_path in want):
+				wrong.append("%s: %s %s" % [class_id, node_path.get_file(), "shown" if node.visible else "hidden"])
+	# Unarmed hides everything.
+	player._set_equipment_visibility("", "", "")
+	for node_path in all_nodes:
+		var node := player.get_node_or_null(node_path) as Node3D
+		if node and node.visible:
+			wrong.append("unarmed: %s still shown" % node_path.get_file())
+	player.free()
+	_report("wearing a class's gear shows its weapon and off-hand, and only those", wrong.is_empty(), "; ".join(wrong))
+
+
 # Kit Phase 3: the props exist as real geometry and the layouts actually use
 # them. kit_has() already refuses a stub; this checks the placeholders were
 # replaced, and that a tree's collision is its trunk, not its canopy.
@@ -1234,13 +1287,19 @@ func _check_template_cleanup() -> void:
 	_report("template hats and weapons are out of the item database", still_there.is_empty(), ", ".join(still_there))
 	_report("the backpack survives (it grants the bag slots)", ItemDatabase.get_item("backpack") != null, "")
 
+	# Only Kingsmourn's own class weapons may hang on the sockets now.
+	var allowed := {}
+	for node_name in Character.CLASS_WEAPON_NODES.values():
+		allowed[node_name] = true
+	for node_name in Character.CLASS_OFFHAND_NODES.values():
+		allowed[node_name] = true
 	var player := (load("res://scenes/level/player.tscn") as PackedScene).instantiate()
 	var stray: Array[String] = []
-	for socket in ["HeadAttach", "LeftHandAttach"]:
+	for socket in ["HeadAttach", "LeftHandAttach", "RightHandAttach"]:
 		var node := player.get_node_or_null("Body/" + socket)
 		if node:
 			for child in node.get_children():
-				if not (child is RemoteTransform3D):
+				if not (child is RemoteTransform3D) and not allowed.has(child.name):
 					stray.append("%s/%s" % [socket, child.name])
 	_report("no template props hang on the player's sockets", stray.is_empty(), ", ".join(stray))
 	player.free()

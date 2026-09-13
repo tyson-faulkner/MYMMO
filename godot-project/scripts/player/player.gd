@@ -25,14 +25,24 @@ const ALLOWED_ANIMATION_STATES := {
 	&"Attack1": true,
 	&"Emote2": true
 }
-# Item id -> the node under the matching socket that shows it. The template's
-# demo hats and weapons are gone; the class weapons will fill the hand table
-# when they are modelled. Head stays empty: helmets are gear, drawn by GearDatabase.
+# What shows on the body for the gear you wear. Weapons are the one
+# class-restricted slot, and every tier of a class's weapon is the same model,
+# so the tables key on class rather than item id: a Valkyr holding any spear
+# shows the Spear. The weapon hand is the right (the attack clip leads with
+# it); the off-hand goes on the left or, for the lute and the toolkit, the back.
+const CLASS_WEAPON_NODES := {&"valkyr": "Spear", &"bard": "Blade", &"necromancer": "Staff", &"tinker": "BoltThrower"}
+const CLASS_OFFHAND_NODES := {&"valkyr": "KiteShield", &"bard": "Lute", &"necromancer": "SkullFocus", &"tinker": "Toolkit"}
+const WEAPON_SOCKET_PATH := "Body/RightHandAttach/"
+const OFFHAND_SOCKET_PATHS := {
+	"KiteShield": "Body/LeftHandAttach/",
+	"SkullFocus": "Body/LeftHandAttach/",
+	"Lute": "Body/BackAttach/",
+	"Toolkit": "Body/BackAttach/"
+}
+# Head stays empty: the template's hats are gone and helmets are stat gear.
 const HAT_NODES_BY_ITEM: Dictionary = {}
-const WEAPON_NODES_BY_ITEM: Dictionary = {}
-const BACKPACK_NODES_BY_ITEM := {"backpack": "Backpack"}
 const HEAD_EQUIPMENT_PATH := "Body/HeadAttach/"
-const HAND_EQUIPMENT_PATH := "Body/LeftHandAttach/"
+const BACKPACK_NODES_BY_ITEM := {"backpack": "Backpack"}
 const BACK_EQUIPMENT_PATH := "Body/BackAttach/"
 const CLASS_RESOURCE_PATHS := {
 	&"valkyr": "res://resources/classes/valkyr.tres",
@@ -692,6 +702,7 @@ func request_equip_gear(from_slot: int) -> void:
 	if player_inventory.equip_gear_from_slot(from_slot, class_id, level):
 		_sync_inventory_to_owner()
 		_refresh_gear_bonuses()
+		_sync_equipment_appearance()
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -725,6 +736,7 @@ func request_unequip_gear(key_text: String, destination_slot: int = -1) -> void:
 	if player_inventory.unequip_gear(StringName(key_text), destination_slot):
 		_sync_inventory_to_owner()
 		_refresh_gear_bonuses()
+		_sync_equipment_appearance()
 
 
 ## Total up everything worn and hand it to Stats. Server only.
@@ -746,13 +758,18 @@ func _is_owner_request() -> bool:
 func _sync_equipment_appearance() -> void:
 	if not multiplayer.is_server() or not player_inventory:
 		return
-	var weapon_id := player_inventory.equipped_weapon.item_id
-	var hat_id := player_inventory.equipped_hat.item_id
+	var weapon_id := _worn_gear_id(&"weapon")
+	var offhand_id := _worn_gear_id(&"offhand")
 	var backpack_id := player_inventory.equipped_backpack.item_id
-	var nickname_height := _calculate_nickname_height(hat_id)
+	var nickname_height := _calculate_nickname_height("")
 	_broadcast_nickname_height(nickname_height)
-	sync_equipment_appearance.rpc(weapon_id, hat_id, backpack_id)
-	sync_equipment_appearance(weapon_id, hat_id, backpack_id)
+	sync_equipment_appearance.rpc(weapon_id, offhand_id, backpack_id)
+	sync_equipment_appearance(weapon_id, offhand_id, backpack_id)
+
+
+func _worn_gear_id(key: StringName) -> String:
+	var slot: InventorySlot = player_inventory.get_gear_slot(key) if player_inventory else null
+	return slot.item_id if slot else ""
 
 
 func _request_equipment_appearance() -> void:
@@ -777,25 +794,43 @@ func request_equipment_appearance() -> void:
 func _sync_equipment_appearance_to_peer(peer_id: int) -> void:
 	if not multiplayer.is_server() or not player_inventory or peer_id <= 0:
 		return
-	var weapon_id := player_inventory.equipped_weapon.item_id
-	var hat_id := player_inventory.equipped_hat.item_id
-	var backpack_id := player_inventory.equipped_backpack.item_id
-	sync_equipment_appearance.rpc_id(peer_id, weapon_id, hat_id, backpack_id)
+	sync_equipment_appearance.rpc_id(peer_id, _worn_gear_id(&"weapon"), _worn_gear_id(&"offhand"), player_inventory.equipped_backpack.item_id)
 
 
 @rpc("any_peer", "reliable")
-func sync_equipment_appearance(weapon_id: String, hat_id: String, backpack_id: String) -> void:
+func sync_equipment_appearance(weapon_id: String, offhand_id: String, backpack_id: String) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if sender != 1 and not (sender == 0 and multiplayer.is_server()):
 		return
-	_set_equipment_visibility(weapon_id, hat_id, backpack_id)
+	_set_equipment_visibility(weapon_id, offhand_id, backpack_id)
 
 
-func _set_equipment_visibility(weapon_id: String, hat_id: String, backpack_id: String) -> void:
-	_equipped_hat_visual_id = hat_id
-	_set_equipment_nodes_visibility(HEAD_EQUIPMENT_PATH, HAT_NODES_BY_ITEM, hat_id)
-	_set_equipment_nodes_visibility(HAND_EQUIPMENT_PATH, WEAPON_NODES_BY_ITEM, weapon_id)
+func _set_equipment_visibility(weapon_id: String, offhand_id: String, backpack_id: String) -> void:
+	_equipped_hat_visual_id = ""
+	var weapon_node := _gear_visual_node(weapon_id, CLASS_WEAPON_NODES)
+	for class_id in CLASS_WEAPON_NODES:
+		var node_name: String = CLASS_WEAPON_NODES[class_id]
+		var node := get_node_or_null(WEAPON_SOCKET_PATH + node_name) as Node3D
+		if node:
+			node.visible = node_name == weapon_node
+	var offhand_node := _gear_visual_node(offhand_id, CLASS_OFFHAND_NODES)
+	for class_id in CLASS_OFFHAND_NODES:
+		var node_name: String = CLASS_OFFHAND_NODES[class_id]
+		var node := get_node_or_null(str(OFFHAND_SOCKET_PATHS[node_name]) + node_name) as Node3D
+		if node:
+			node.visible = node_name == offhand_node
 	_set_equipment_nodes_visibility(BACK_EQUIPMENT_PATH, BACKPACK_NODES_BY_ITEM, backpack_id)
+
+
+## The node that shows a worn gear item, or "" for nothing. Any tier of a
+## class's weapon maps to that class's one model.
+func _gear_visual_node(item_id: String, nodes_by_class: Dictionary) -> String:
+	if item_id.is_empty():
+		return ""
+	var item := ItemDatabase.get_item(item_id)
+	if item == null or item.item_type != Item.ItemType.GEAR:
+		return ""
+	return str(nodes_by_class.get(item.class_restriction, ""))
 
 
 func _broadcast_nickname_height(height: float) -> void:

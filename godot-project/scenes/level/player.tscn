@@ -14,6 +14,14 @@
 [ext_resource type="FontFile" uid="uid://diapabmalpcrj" path="res://assets/fonts/Kurland.ttf" id="16_xgf8p"]
 [ext_resource type="PackedScene" uid="uid://cc8gkp6u5tr2e" path="res://assets/items/backpacks/models/backpack.fbx" id="27_backpack"]
 [ext_resource type="PackedScene" path="res://assets/characters/char_valkyr.glb" id="5_valkyr"]
+[ext_resource type="PackedScene" path="res://assets/weapons/valkyr_spear.glb" id="60_spear"]
+[ext_resource type="PackedScene" path="res://assets/weapons/valkyr_shield.glb" id="61_shield"]
+[ext_resource type="PackedScene" path="res://assets/weapons/bard_blade.glb" id="62_blade"]
+[ext_resource type="PackedScene" path="res://assets/weapons/bard_lute.glb" id="63_lute"]
+[ext_resource type="PackedScene" path="res://assets/weapons/necromancer_staff.glb" id="64_staff"]
+[ext_resource type="PackedScene" path="res://assets/weapons/necromancer_skull.glb" id="65_skull"]
+[ext_resource type="PackedScene" path="res://assets/weapons/tinker_bolt_thrower.glb" id="66_thrower"]
+[ext_resource type="PackedScene" path="res://assets/weapons/tinker_toolkit.glb" id="67_toolkit"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_mx45w"]
 radius = 0.35796
@@ -88,6 +96,35 @@ bone_name = "LeftHandAttach"
 use_external_skeleton = true
 external_skeleton = NodePath("../ClassModel/Armature/Skeleton3D")
 
+[node name="KiteShield" parent="Body/LeftHandAttach" instance=ExtResource("61_shield")]
+transform = Transform3D(0.2756, -0.8913, 0.3601, 0, -0.3746, -0.9272, 0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
+[node name="SkullFocus" parent="Body/LeftHandAttach" instance=ExtResource("65_skull")]
+transform = Transform3D(0.2756, -0.8913, 0.3601, 0, -0.3746, -0.9272, 0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
+[node name="RightHandAttach" type="BoneAttachment3D" parent="Body"]
+bone_name = "RightHandAttach"
+use_external_skeleton = true
+external_skeleton = NodePath("../ClassModel/Armature/Skeleton3D")
+
+[node name="Spear" parent="Body/RightHandAttach" instance=ExtResource("60_spear")]
+transform = Transform3D(0.2756, 0.8913, -0.3601, 0, -0.3746, -0.9272, -0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
+[node name="Blade" parent="Body/RightHandAttach" instance=ExtResource("62_blade")]
+transform = Transform3D(0.2756, 0.8913, -0.3601, 0, -0.3746, -0.9272, -0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
+[node name="Staff" parent="Body/RightHandAttach" instance=ExtResource("64_staff")]
+transform = Transform3D(0.2756, 0.8913, -0.3601, 0, -0.3746, -0.9272, -0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
+[node name="BoltThrower" parent="Body/RightHandAttach" instance=ExtResource("66_thrower")]
+transform = Transform3D(0.2756, 0.8913, -0.3601, 0, -0.3746, -0.9272, -0.9613, 0.2556, -0.1033, 0, 0, 0)
+visible = false
+
 [node name="BackAttach" type="BoneAttachment3D" parent="Body" unique_id=1338054728]
 bone_name = "BackAttach"
 use_external_skeleton = true
@@ -95,6 +132,14 @@ external_skeleton = NodePath("../ClassModel/Armature/Skeleton3D")
 
 [node name="Backpack" parent="Body/BackAttach" unique_id=1163041908 instance=ExtResource("27_backpack")]
 transform = Transform3D(-1.1, 2.8865799e-15, -1.4210855e-14, -6.661338e-16, 1.1000006, -1.8626451e-09, 1.4210855e-14, -1.8626451e-09, -1.1000006, -9.863218e-09, -0.029237866, -0.3850029)
+visible = false
+
+[node name="Lute" parent="Body/BackAttach" instance=ExtResource("63_lute")]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, -0.3)
+visible = false
+
+[node name="Toolkit" parent="Body/BackAttach" instance=ExtResource("67_toolkit")]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, -0.25)
 visible = false
 
 [node name="SpringArmOffset" type="Node3D" parent="." unique_id=1408823775 node_paths=PackedStringArray("_spring_arm", "_first_person_anchor")]

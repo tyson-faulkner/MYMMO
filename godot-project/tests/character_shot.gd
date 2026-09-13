@@ -45,6 +45,14 @@ func _ready() -> void:
 	var body: Body = _player._body
 	for class_id in CLASSES:
 		_player.apply_class(class_id)
+		# Hand the class its own starter weapon and off-hand, the way a fresh
+		# character of that class would spawn with them.
+		var inventory: PlayerInventory = _player.player_inventory
+		inventory.get_gear_slot(&"weapon").item_id = String(GearDatabase.generated_id(Item.GearTier.STARTER, Item.GearSlot.WEAPON, class_id))
+		inventory.get_gear_slot(&"weapon").quantity = 1
+		inventory.get_gear_slot(&"offhand").item_id = String(GearDatabase.generated_id(Item.GearTier.STARTER, Item.GearSlot.OFFHAND, class_id))
+		inventory.get_gear_slot(&"offhand").quantity = 1
+		_player._sync_equipment_appearance()
 		await _place(SPOT)
 		body.rotation.y = 0.0
 		await _frames(4)
@@ -53,7 +61,28 @@ func _ready() -> void:
 		var centre := _player.global_position + Vector3(0, 1.0, 0)
 		# Front-and-slightly-to-the-side, so the face and the silhouette both read.
 		await _shot("char_%s_front" % class_id, centre + forward * 3.4 + right * 1.2 + Vector3(0, 0.35, 0), centre)
-		print("model: %s wears %s" % [class_id, body.model_class])
+		# And from behind, for what hangs on the back socket.
+		await _shot("char_%s_back" % class_id, centre - forward * 3.4 - right * 1.2 + Vector3(0, 0.35, 0), centre)
+		var shown: Array[String] = []
+		for socket in ["RightHandAttach", "LeftHandAttach", "BackAttach"]:
+			for child in body.get_node(socket).get_children():
+				if child is Node3D and (child as Node3D).visible and not (child is RemoteTransform3D):
+					shown.append(child.name)
+		print("model: %s wears %s, showing %s" % [class_id, body.model_class, ", ".join(shown)])
+		# Where the sockets really are, in Body space. If a weapon hangs wrong,
+		# this is the number to read, not the rest pose.
+		var skeleton := body.get_skeleton()
+		var to_body := body.global_transform.affine_inverse()
+		for socket in ["RightHandAttach", "LeftHandAttach", "BackAttach"]:
+			var attach := body.get_node(socket) as BoneAttachment3D
+			var socket_in_body: Transform3D = to_body * attach.global_transform
+			var bone_in_body: Transform3D = to_body * skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(socket))
+			print("  socket %-16s node origin=%s x=%s y=%s z=%s" % [socket, _v(socket_in_body.origin), _v(socket_in_body.basis.x), _v(socket_in_body.basis.y), _v(socket_in_body.basis.z)])
+			print("         %-16s bone origin=%s x=%s y=%s z=%s" % ["", _v(bone_in_body.origin), _v(bone_in_body.basis.x), _v(bone_in_body.basis.y), _v(bone_in_body.basis.z)])
+			for child in attach.get_children():
+				if child is Node3D and (child as Node3D).visible and not (child is RemoteTransform3D):
+					var w: Transform3D = to_body * (child as Node3D).global_transform
+					print("         %-16s up->%s fwd(-z)->%s at %s" % [child.name, _v(w.basis.y), _v(-w.basis.z), _v(w.origin)])
 
 	# Idle is 3.0s long. If it still plays after 4s, it loops.
 	body.play_animation_state(&"Idle", true)
@@ -121,6 +150,10 @@ func _save(shot_name: String) -> void:
 	var path := ProjectSettings.globalize_path(OUT_DIR) + shot_name + ".png"
 	var err := get_viewport().get_texture().get_image().save_png(path)
 	print("shot: %s (err %d)" % [shot_name, err])
+
+
+func _v(v: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [v.x, v.y, v.z]
 
 
 func _frames(n: int) -> void:

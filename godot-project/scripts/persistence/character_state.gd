@@ -122,9 +122,12 @@ static func apply(character: Node, data: Dictionary) -> bool:
 			inventory.from_dict(migrated["inventory"])
 			if character.has_method("_sync_inventory_to_owner"):
 				character._sync_inventory_to_owner()
-			# Worn gear came back; its numbers have to come back with it.
+			# Worn gear came back; its numbers have to come back with it, and
+			# so does what it looks like in the hand.
 			if character.has_method("_refresh_gear_bonuses"):
 				character._refresh_gear_bonuses()
+			if character.has_method("_sync_equipment_appearance"):
+				character._sync_equipment_appearance()
 
 	return true
 

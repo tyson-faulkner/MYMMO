@@ -41,7 +41,12 @@ const LOOPING_CLIPS: Array[StringName] = [&"Idle", &"Run", &"Sprint", &"Fall"]
 const ONE_SHOT_CLIPS: Array[StringName] = [&"Attack1", &"Emote2"]
 
 ## Equipment socket node on this body -> socket bone in every class skeleton.
-const SOCKETS := {"HeadAttach": &"HeadAttach", "LeftHandAttach": &"LeftHandAttach", "BackAttach": &"BackAttach"}
+const SOCKETS := {
+	"HeadAttach": &"HeadAttach",
+	"LeftHandAttach": &"LeftHandAttach",
+	"RightHandAttach": &"RightHandAttach",
+	"BackAttach": &"BackAttach"
+}
 
 @export_category("Objects")
 @export var _character: CharacterBody3D = null
