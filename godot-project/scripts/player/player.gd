@@ -198,6 +198,8 @@ func _physics_process(delta):
 			should_freeze = true
 		elif current_scene.has_method("is_inventory_visible") and current_scene.is_inventory_visible():
 			should_freeze = true
+		elif current_scene.has_method("is_character_sheet_visible") and current_scene.is_character_sheet_visible():
+			should_freeze = true
 
 	if is_attacking or is_collecting:
 		velocity.x = 0

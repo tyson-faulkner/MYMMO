@@ -12,11 +12,8 @@ const SLOT_COUNT := 12
 const KEY_LABELS := ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="]
 const LOW_HEALTH_FRACTION := 0.35
 
-## The spec chooser: a button on the player frame from level 10, and the
-## little panel it opens.
-var _spec_button: Button = null
-var _spec_panel: PanelContainer = null
-var _spec_rows: VBoxContainer = null
+## The spec chooser lives on the character sheet (C) now; the HUD only
+## announces the change.
 
 ## Quest markers: the minimap in the corner, the big map on M, the tracked
 ## objective, and the areas every active objective covers.
@@ -90,7 +87,6 @@ func _ready() -> void:
 	_build_target_cast_bar()
 	_build_meter()
 	_build_recap()
-	_build_spec_chooser()
 	_build_maps()
 	_build_party_frames()
 	PartyManager.party_changed.connect(func(_party_id: int, _members: Array) -> void: _rebuild_party_frames())
@@ -688,8 +684,6 @@ func _on_xp_changed(current: int, needed: int) -> void:
 	if _stats:
 		var spec_name := str(SpecDatabase.get_spec(_stats.spec_id).get("name", ""))
 		_player_level.text = "Level %d%s" % [_stats.level, "  · " + spec_name if not spec_name.is_empty() else ""]
-		if _spec_button:
-			_spec_button.visible = _stats.level >= SpecDatabase.CHOOSE_LEVEL
 		if _quest_log:
 			_currency.text = "%d Sovereigns" % _quest_log.currency
 	if needed <= 0:
@@ -703,7 +697,7 @@ func _on_xp_changed(current: int, needed: int) -> void:
 func _on_leveled_up(new_level: int) -> void:
 	_show_toast("Level %d" % new_level)
 	if new_level == SpecDatabase.CHOOSE_LEVEL:
-		_show_toast("Level %d — choose a spec at an inn or a graveyard" % new_level)
+		_show_toast("Level %d — press C at an inn or a graveyard to choose a spec" % new_level)
 	_refresh_slot_labels()
 	_rebuild_tracker()
 
@@ -712,78 +706,8 @@ func _on_spec_changed(spec_id: StringName) -> void:
 	var spec := SpecDatabase.get_spec(spec_id)
 	if not spec.is_empty():
 		_show_toast("You are now %s: %s" % [spec.get("name", ""), spec.get("passive", "")])
-	if _spec_panel:
-		_spec_panel.visible = false
 	_on_xp_changed(_stats.experience if _stats else 0, Stats.xp_for_next_level(_stats.level) if _stats else 0)
 	_refresh_slot_labels()
-
-
-# --- The spec chooser ----------------------------------------------------------
-
-
-func _build_spec_chooser() -> void:
-	_spec_button = Button.new()
-	_spec_button.text = "Spec"
-	_spec_button.visible = false
-	_spec_button.tooltip_text = "Choose or change your spec (at an inn or a graveyard)"
-	_spec_button.pressed.connect(_toggle_spec_panel)
-	$PlayerFrame/Margin/Rows.add_child(_spec_button)
-	_spec_panel = PanelContainer.new()
-	_spec_panel.name = "SpecChooser"
-	_spec_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_spec_panel.offset_left = -220
-	_spec_panel.offset_right = 220
-	_spec_panel.offset_top = -140
-	_spec_panel.offset_bottom = 140
-	_spec_panel.visible = false
-	add_child(_spec_panel)
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 12)
-	_spec_panel.add_child(margin)
-	_spec_rows = VBoxContainer.new()
-	margin.add_child(_spec_rows)
-
-
-func _toggle_spec_panel() -> void:
-	if _spec_panel.visible:
-		_spec_panel.visible = false
-		return
-	for child in _spec_rows.get_children():
-		child.queue_free()
-	if _stats == null or _stats.class_data == null:
-		return
-	var title := Label.new()
-	title.text = "Choose a spec — free, at an inn or a graveyard"
-	title.modulate = Color(1, 0.85, 0.45)
-	_spec_rows.add_child(title)
-	for spec_id in SpecDatabase.specs_for(_stats.class_data.id):
-		var spec := SpecDatabase.get_spec(spec_id)
-		var button := Button.new()
-		button.text = "%s  —  %s" % [spec.get("name", ""), spec.get("role", "")]
-		button.disabled = _stats.spec_id == spec_id
-		button.pressed.connect(_on_spec_pressed.bind(spec_id))
-		_spec_rows.add_child(button)
-		var text := Label.new()
-		text.text = "   %s\n   %s" % [spec.get("text", ""), spec.get("passive", "")]
-		text.modulate = Color(0.8, 0.78, 0.7)
-		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_spec_rows.add_child(text)
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(func() -> void: _spec_panel.visible = false)
-	_spec_rows.add_child(close)
-	_spec_panel.visible = true
-
-
-func _on_spec_pressed(spec_id: StringName) -> void:
-	if _stats == null:
-		return
-	if multiplayer.is_server():
-		if not _stats.choose_spec(spec_id):
-			_show_toast("Find an inn or a graveyard to change spec")
-	else:
-		_stats.request_choose_spec.rpc_id(1, String(spec_id))
 
 
 func _on_quest_turned_in(quest_id: StringName) -> void:

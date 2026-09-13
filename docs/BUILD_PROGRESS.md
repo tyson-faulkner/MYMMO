@@ -46,7 +46,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   shared-health rule and the heroic raid, and moving records/chronicle into a
   Nakama server module when saves go server-authoritative.
 - **Loop status:** build list complete
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 343/343 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 365/365 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -207,6 +207,11 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Every new system gets a door check, not just a
+  correctness check.** A working system with no UI path has happened four
+  times (credit_collect, gear, mounts, runes). The pattern now: actionable
+  buttons carry a "door" meta, the smoke test presses them against a stub
+  that records the request, and `EXPECTED_CHECKS` catches a crashed section.
 - 2026-09-13 — **The map is two instances of one drawing.** Minimap and big
   map are the same `MapView` at two scales, so they can never disagree.
 - 2026-09-13 — **The chronicle rides in the host's character save** (key
@@ -257,6 +262,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — The character sheet (C): a door for gear, runes, mounts and spec
+
+- **Changed:** `scripts/ui/character_sheet_ui.gd` (built in code, added by `level.gd`, toggled on C, closes on Escape, freezes movement like the bag). Gear tab: the eleven worn slots (click to take off) and the bag (click gear to wear it, with the ▲ and the stat delta; mount items get a Learn button). Runes tab: three slots, two runes each, worn one marked, a clear button, locked with the reason. Mounts tab: learned mounts with speed and level, click to summon or dismiss, the refusal reason shown and the button disabled when you cannot ride. Spec tab: the chooser, moved out of the HUD. `RuneLoadout.request_choose` now enforces the swap rule (out of combat, at an inn or graveyard) via `swap_refusal()`, which the sheet shows.
+- **Test:** smoke 365/365 with 21 new checks that press the REAL sheet buttons against a stub character (`tests/stub_character.gd`) recording which request fired: equip, unequip, learn mount, rune choose/clear, mount summon/dismiss, spec, plus the key binding and the level wiring. In-game shots of all four tabs looked at.
+- **Surprising:** the first run "passed" while the sheet failed to compile, because a script error aborts a check function silently and the remaining checks never print. The test now counts its checks and fails if fewer than `EXPECTED_CHECKS` ran — raise that constant when adding checks. The untyped-inference trap struck twice more (`var x := a == b` on Variant keys).
 
 ### 2026-09-13 — Quest markers and minimap, healer frames, upgrade arrows, gravestones and chronicle, chests
 

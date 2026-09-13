@@ -22,11 +22,19 @@ const PLAYER_RUNES := preload("res://scripts/combat/rune_loadout.gd")
 const PLAYER_MOUNTS := preload("res://scripts/combat/mount_controller.gd")
 const PLAYER_GRUDGE := preload("res://scripts/progression/grudge_ledger.gd")
 const PLAYER_RECORDS := preload("res://scripts/progression/record_book.gd")
+const STUB_CHARACTER := preload("res://tests/stub_character.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
+var _checks: int = 0
 var _players: Node3D = null
 var _fake_player: CharacterBody3D = null
+
+## A script error inside a check function aborts that function silently and
+## the rest of its checks never print. This is how many checks a full run
+## reports; fewer means a section crashed, and that is a failure. Raise it
+## when you add checks.
+const EXPECTED_CHECKS := 364
 
 
 func _ready() -> void:
@@ -75,7 +83,10 @@ func _ready() -> void:
 	await _check_grudge_and_seasons(kingsmourn)
 	await _check_combat_recorder(kingsmourn)
 	await _check_quality_of_life(zone, kingsmourn)
+	_check_character_sheet_doors(zone)
 
+	print("")
+	_report("every check section ran to the end", _checks >= EXPECTED_CHECKS, "%d checks, expected at least %d — a section crashed if fewer (see the .err log)" % [_checks, EXPECTED_CHECKS])
 	print("")
 	if _failures == 0:
 		print("SMOKE TEST PASSED")
@@ -2221,6 +2232,137 @@ func _check_quality_of_life(zone: Node3D, kingsmourn: Node3D) -> void:
 	_fake_player.global_position = Vector3(0, 1, 10)
 
 
+# THE GAP THIS CLOSES: a working system with no door. It has happened four
+# times (credit_collect, then gear, mounts and runes): the code passed every
+# correctness check and no player could reach it. These checks press the
+# REAL buttons on the character sheet and assert the underlying request
+# fires, with a stub character that records what it was asked.
+func _check_character_sheet_doors(zone: Node3D) -> void:
+	print("")
+	print("-- character sheet: every system has a door --")
+	_report("the sheet opens on a key the level listens for",
+		InputMap.has_action("character_sheet")
+		and FileAccess.get_file_as_string("res://scripts/level/level.gd").contains('is_action_pressed("character_sheet")')
+		and FileAccess.get_file_as_string("res://scripts/level/level.gd").contains("CharacterSheetUI.new()"), "")
+
+	var stub := CharacterBody3D.new()
+	stub.set_script(STUB_CHARACTER)
+	stub.name = "Stub"
+	for pair in [[PLAYER_STATS, "Stats"], [PLAYER_RUNES, "RuneLoadout"], [PLAYER_MOUNTS, "MountController"]]:
+		var part := Node.new()
+		part.set_script(pair[0])
+		part.name = pair[1]
+		stub.add_child(part)
+	add_child(stub)
+	var stats := stub.get_node("Stats") as Stats
+	var runes := stub.get_node("RuneLoadout") as RuneLoadout
+	var mounts := stub.get_node("MountController") as MountController
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+	# At the vale graveyard: where runes and specs may change.
+	var graveyard: Node3D = zone.get_node("Graveyards/ValeGraveyard")
+	stub.global_position = graveyard.global_position + Vector3(2, 1, 0)
+	var inventory: PlayerInventory = stub.inventory
+	inventory.get_gear_slot(&"chest").item_id = "gear_levy_chest"
+	inventory.get_gear_slot(&"chest").quantity = 1
+	inventory.get_slot(0).item_id = "gear_marcher_chest"
+	inventory.get_slot(0).quantity = 1
+	inventory.get_slot(1).item_id = "mount_veil_saber"
+	inventory.get_slot(1).quantity = 1
+
+	var sheet := CharacterSheetUI.new()
+	add_child(sheet)
+	sheet.open_for(stub)
+	_report("the sheet has Gear, Runes, Mounts and Spec", sheet.tab_names() == ["Gear", "Runes", "Mounts", "Spec"], str(sheet.tab_names()))
+
+	# Gear: a bag item's button asks the server to equip it; a worn slot's
+	# button asks to take it off; the arrow and delta are on the button.
+	sheet.show_tab(0)
+	var bag_button := sheet.find_door("equip", 0)
+	_report("a bag item has an equip button with the upgrade arrow and delta", bag_button != null and bag_button.text.contains("▲") and bag_button.text.contains("+4 armour"), bag_button.text.split("\n")[0] if bag_button else "no button")
+	if bag_button:
+		bag_button.pressed.emit()
+	_report("clicking a bag item calls request_equip_gear", stub.called("equip") == ["equip", 0], str(stub.calls))
+	var worn_button := sheet.find_door("unequip", "chest")
+	if worn_button:
+		worn_button.pressed.emit()
+	_report("clicking a worn slot calls request_unequip_gear", stub.called("unequip").size() == 3 and str(stub.called("unequip")[1]) == "chest", str(stub.calls))
+	var learn_button := sheet.find_door("learn_mount", 1)
+	if learn_button:
+		learn_button.pressed.emit()
+	_report("a mount item in the bag has a Learn button that calls request_learn_mount", stub.called("learn_mount") == ["learn_mount", 1], str(stub.calls))
+	_report("the eleven worn slots are all on the paper doll", PlayerInventory.GEAR_KEYS.all(func(key: StringName) -> bool: return sheet.find_door("unequip", key) != null), "")
+
+	# Runes: the option button calls request_choose, which grants the move.
+	sheet.show_tab(1)
+	var rune_button := sheet.find_door("rune", "valkyr_2b")
+	_report("each rune slot offers its two runes as buttons", rune_button != null and sheet.find_door("rune", "valkyr_2a") != null and sheet.find_door("rune", "valkyr_3a") != null, "")
+	if rune_button:
+		rune_button.pressed.emit()
+	_report("clicking a rune calls request_choose and the move reaches bar slot 11", str(runes.chosen.get(2, "")) == "valkyr_2b" and runes.granted_ids()[1] == "valkyr_rally", str(runes.chosen))
+	sheet.show_tab(1)
+	var clear_button := sheet.find_door("rune_clear", 2)
+	if clear_button:
+		clear_button.pressed.emit()
+	_report("the rune can be taken out again", not runes.chosen.has(2), str(runes.chosen))
+	var mob_any: Mob = null
+	for child in zone.get_node("MobContainer").get_children():
+		if child is Mob and not (child as Mob).is_friendly:
+			mob_any = child
+			break
+	if mob_any:
+		mob_any.target = stub
+		mob_any.state = Mob.State.CHASING
+		_report("runes refuse to swap in combat", not runes.swap_refusal().is_empty(), runes.swap_refusal())
+		runes.request_choose(1, "valkyr_1b")
+		_report("the server refuses too, whatever the panel showed", not runes.chosen.has(1), "")
+		mob_any.target = null
+		mob_any.state = Mob.State.IDLE
+	stub.global_position = Vector3(0, 1, 60)
+	_report("runes refuse to swap away from an inn or graveyard", runes.swap_refusal().contains("inn"), runes.swap_refusal())
+	stub.global_position = graveyard.global_position + Vector3(2, 1, 0)
+	_report("and allow it back at the graveyard", runes.swap_refusal().is_empty(), "")
+
+	# Mounts: learned mounts are buttons; one click summons, the next dismisses;
+	# a mount you cannot ride says why and cannot be pressed.
+	sheet.show_tab(2)
+	var empty_note := sheet.find_door("mount", "mount_veil_saber")
+	_report("with nothing learned there is no mount button", empty_note == null, "")
+	mounts.learn(&"mount_veil_saber")
+	sheet.show_tab(2)
+	var mount_button := sheet.find_door("mount", "mount_veil_saber")
+	if mount_button:
+		mount_button.pressed.emit()
+	_report("clicking a learned mount calls request_mount and summons it", mounts.current == &"mount_veil_saber", String(mounts.current))
+	sheet.show_tab(2)
+	mount_button = sheet.find_door("mount", "mount_veil_saber")
+	_report("the riding mount's button offers to dismiss", mount_button != null and mount_button.text.contains("dismiss"), mount_button.text if mount_button else "none")
+	if mount_button:
+		mount_button.pressed.emit()
+	_report("clicking again dismisses", not mounts.is_mounted(), "")
+	stub.global_position = Vector3(1200, -1500, -600)
+	sheet.show_tab(2)
+	mount_button = sheet.find_door("mount", "mount_veil_saber")
+	var reason_shown := false
+	for label in sheet._pages[2].find_children("*", "Label", true, false):
+		if (label as Label).text.contains("down here"):
+			reason_shown = true
+	_report("a mount you cannot ride shows the reason and is disabled", mount_button != null and mount_button.disabled and reason_shown, "")
+	stub.global_position = graveyard.global_position + Vector3(2, 1, 0)
+
+	# Spec: the button calls request_choose_spec.
+	sheet.show_tab(3)
+	var spec_button := sheet.find_door("spec", "lance")
+	if spec_button:
+		spec_button.pressed.emit()
+	_report("clicking a spec calls request_choose_spec", stats.spec_id == &"lance", String(stats.spec_id))
+	_report("the HUD no longer carries its own spec chooser", not FileAccess.get_file_as_string("res://scripts/ui/game_hud.gd").contains("_build_spec_chooser"), "")
+
+	sheet.close()
+	sheet.queue_free()
+	stub.queue_free()
+
+
 # THE GAP THIS CLOSES: an enemy with a model that never loads, or loads with
 # no rig, silently stays a capsule. Every human must wear the shared body, the
 # wolf must be its own beast, and the spawned mobs must actually be dressed.
@@ -2439,6 +2581,7 @@ func _check_ground_textures(vale: Node3D, sablemarch: Node3D) -> void:
 
 
 func _report(label: String, passed: bool, detail: String) -> void:
+	_checks += 1
 	if not passed:
 		_failures += 1
 	var suffix := "" if detail.is_empty() else "  (%s)" % detail

@@ -233,11 +233,21 @@ func _ready() -> void:
 	runes.choose(2, &"bard_2b")
 	var huds := _level.find_children("*", "GameHUD", true, false)
 	if not huds.is_empty():
-		var hud: GameHUD = huds[0]
-		hud._refresh_slot_labels()
-		hud._toggle_spec_panel()
-	await _frames(8)
+		(huds[0] as GameHUD)._refresh_slot_labels()
+	# The character sheet, one shot per tab, with something on every tab.
+	_player.request_add_item("gear_marcher_chest", 1)
+	_player.request_add_item("mount_veil_saber", 1)
+	_player.get_node("MountController").learn(&"mount_wraithcat")
+	var sheet: CharacterSheetUI = _level.character_sheet
+	sheet.open_for(_player)
+	for tab in range(4):
+		sheet.show_tab(tab)
+		await _frames(6)
+		await _save("sheet_%s" % sheet.tab_names()[tab].to_lower())
+	sheet.show_tab(3)
+	await _frames(4)
 	await _save("spec_chooser_bar")
+	sheet.close()
 	var bar_ui: AbilityBar = _player.get_node("AbilityBar")
 	var names := []
 	for slot in range(1, 13):
@@ -249,7 +259,6 @@ func _ready() -> void:
 	# minimap and its arrow, a gravestone, a chest, then the big map.
 	if not huds.is_empty():
 		var hud: GameHUD = huds[0]
-		hud._spec_panel.visible = false
 		hud._recap.visible = false
 		hud._coach.visible = false
 	_player.fall_limit_y = -15.0

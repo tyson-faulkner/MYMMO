@@ -81,7 +81,27 @@ func request_choose(slot: int, rune_id_text: String) -> void:
 		sender = 1
 	if sender != body.get_multiplayer_authority():
 		return
+	# Swappable out of combat, free, in town or at a gravestone — and the
+	# server is the one that checks, whatever the panel showed.
+	if not swap_refusal().is_empty():
+		return
 	choose(slot, StringName(rune_id_text))
+
+
+## Why a swap would be refused right now, in words, or "" when it is fine.
+## The sheet shows this; request_choose enforces it.
+func swap_refusal() -> String:
+	var body := get_parent() as Node3D
+	if body == null:
+		return ""
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var mob := node as Mob
+		if mob and mob.target == body and (mob.state == Mob.State.CHASING or mob.state == Mob.State.ATTACKING):
+			return "not while something is trying to kill you."
+	var stats := _get_stats()
+	if stats and not stats._at_rest_spot():
+		return "only at an inn or a graveyard."
+	return ""
 
 
 func choose(slot: int, rune_id: StringName) -> bool:

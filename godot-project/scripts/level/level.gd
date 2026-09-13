@@ -15,6 +15,10 @@ signal _quit_save_finished
 var chat_visible := false
 var inventory_visible := false
 var player_list_visible := false
+var character_sheet_visible := false
+
+## Gear, runes, mounts and spec, on C. Built in code: no scene to keep in step.
+var character_sheet: CharacterSheetUI = null
 
 var _player_nickname_heights: Dictionary = {}
 var _nickname_heights_requested := false
@@ -52,6 +56,11 @@ func _ready():
 
 	if inventory_ui:
 		inventory_ui.inventory_closed.connect(_on_inventory_closed)
+
+	character_sheet = CharacterSheetUI.new()
+	character_sheet.name = "CharacterSheetUI"
+	add_child(character_sheet)
+	character_sheet.closed.connect(_on_character_sheet_closed)
 
 	if multiplayer_chat:
 		multiplayer_chat.message_sent.connect(_on_chat_message_sent)
@@ -278,6 +287,8 @@ func _input(event):
 		pass
 	elif event.is_action_pressed("inventory"):
 		toggle_inventory()
+	elif event.is_action_pressed("character_sheet"):
+		toggle_character_sheet()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F1:
 		_debug_add_item()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F2:
@@ -422,6 +433,36 @@ func is_inventory_visible() -> bool:
 	return inventory_visible
 
 
+func toggle_character_sheet() -> void:
+	if main_menu.is_menu_visible() or is_gameplay_input_blocked() or character_sheet == null:
+		return
+	var local_player = _get_local_player()
+	if not local_player:
+		return
+	character_sheet_visible = not character_sheet_visible
+	if character_sheet_visible:
+		character_sheet.open_for(local_player)
+	else:
+		character_sheet.close()
+	_update_mouse_mode()
+
+
+func is_character_sheet_visible() -> bool:
+	return character_sheet_visible
+
+
+func _on_character_sheet_closed() -> void:
+	character_sheet_visible = false
+	_update_mouse_mode()
+
+
+func _close_character_sheet() -> void:
+	if character_sheet:
+		character_sheet.close()
+	character_sheet_visible = false
+	_update_mouse_mode()
+
+
 func _show_player_list() -> void:
 	if main_menu.is_menu_visible() or pause_menu.is_menu_visible() or not multiplayer.has_multiplayer_peer():
 		return
@@ -515,10 +556,13 @@ func is_gameplay_input_blocked() -> bool:
 
 
 func is_camera_input_blocked() -> bool:
-	return is_gameplay_input_blocked() or inventory_visible or multiplayer_chat.is_chat_visible()
+	return is_gameplay_input_blocked() or inventory_visible or character_sheet_visible or multiplayer_chat.is_chat_visible()
 
 
 func _handle_pause_action() -> void:
+	if character_sheet_visible:
+		_close_character_sheet()
+		return
 	if inventory_visible:
 		_close_inventory()
 		return
@@ -565,6 +609,7 @@ func _update_mouse_mode() -> void:
 		main_menu.is_menu_visible()
 		or pause_menu.is_menu_visible()
 		or inventory_visible
+		or character_sheet_visible
 		or not multiplayer.has_multiplayer_peer()
 	)
 	if ui_requires_cursor:
