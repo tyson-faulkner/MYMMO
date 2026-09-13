@@ -25,15 +25,11 @@ const ALLOWED_ANIMATION_STATES := {
 	&"Attack1": true,
 	&"Emote2": true
 }
-const HAT_NODES_BY_ITEM := {
-	"fedora": "Fedora",
-	"headphones": "Headphones",
-	"pirate_hat": "PirateHat",
-	"sheriff_hat": "SheriffHat",
-	"sombrero": "Sombrero",
-	"wizard_hat": "WizardHat"
-}
-const WEAPON_NODES_BY_ITEM := {"sword": "Sword", "sword_big": "SwordBig", "axe": "Axe"}
+# Item id -> the node under the matching socket that shows it. The template's
+# demo hats and weapons are gone; the class weapons will fill the hand table
+# when they are modelled. Head stays empty: helmets are gear, drawn by GearDatabase.
+const HAT_NODES_BY_ITEM: Dictionary = {}
+const WEAPON_NODES_BY_ITEM: Dictionary = {}
 const BACKPACK_NODES_BY_ITEM := {"backpack": "Backpack"}
 const HEAD_EQUIPMENT_PATH := "Body/HeadAttach/"
 const HAND_EQUIPMENT_PATH := "Body/LeftHandAttach/"

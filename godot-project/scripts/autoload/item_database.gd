@@ -1,15 +1,14 @@
 extends Node
 
-const FEDORA_ICON: Texture2D = preload("res://assets/items/hats/icons/fedora.png")
-const HEADPHONES_ICON: Texture2D = preload("res://assets/items/hats/icons/headphones.png")
-const PIRATE_HAT_ICON: Texture2D = preload("res://assets/items/hats/icons/pirate_hat.png")
-const SHERIFF_HAT_ICON: Texture2D = preload("res://assets/items/hats/icons/sheriff_hat.png")
-const SOMBRERO_ICON: Texture2D = preload("res://assets/items/hats/icons/sombrero.png")
-const WIZARD_HAT_ICON: Texture2D = preload("res://assets/items/hats/icons/wizard_hat.png")
+# Everything that isn't gear or a mount. Gear lives in GearDatabase and mounts
+# in MountDatabase; get_item() answers for all three so one lookup serves loot,
+# pickup, inventory and tooltips alike.
+#
+# The template's demo hats and weapons (fedora, sombrero, sword, axe...) are
+# gone: real class gear replaced them. The backpack stays until Kingsmourn has
+# its own bag item, because it is what grants the four extra slots.
+
 const BACKPACK_ICON: Texture2D = preload("res://assets/items/backpacks/icons/backpack.png")
-const SWORD_ICON: Texture2D = preload("res://assets/items/weapons/icons/sword.png")
-const SWORD_BIG_ICON: Texture2D = preload("res://assets/items/weapons/icons/sword_big.png")
-const AXE_ICON: Texture2D = preload("res://assets/items/weapons/icons/axe.png")
 const CHICKEN_LEG_ICON: Texture2D = preload("res://assets/items/misc/icons/chicken_leg.png")
 const BONE_ICON: Texture2D = preload("res://assets/items/misc/icons/bone.png")
 const CHALICE_ICON: Texture2D = preload("res://assets/items/misc/icons/chalice.png")
@@ -18,15 +17,13 @@ var items: Dictionary = {}
 
 
 func _ready():
-	_create_sample_items()
+	_create_items()
 
 
 func get_item(item_id: String) -> Item:
 	var found: Item = items.get(item_id)
 	if found:
 		return found
-	# Gear lives in its own database. Answering for it here means every
-	# existing lookup — loot, pickup, inventory, tooltips — just works.
 	var gear := GearDatabase.get_item(StringName(item_id))
 	if gear:
 		return gear
@@ -37,39 +34,7 @@ func get_all_items() -> Dictionary:
 	return items
 
 
-func _create_sample_items():
-	_create_hat_item("fedora", "Fedora", "A timeless felt fedora.", "res://scenes/items/hats/fedora.tscn", FEDORA_ICON)
-	_create_hat_item(
-		"headphones",
-		"Headphones",
-		"Comfortable over-ear headphones.",
-		"res://scenes/items/hats/headphones.tscn",
-		HEADPHONES_ICON
-	)
-	_create_hat_item(
-		"pirate_hat",
-		"Pirate Hat",
-		"A weathered hat for a daring pirate.",
-		"res://scenes/items/hats/pirate_hat.tscn",
-		PIRATE_HAT_ICON
-	)
-	_create_hat_item(
-		"sheriff_hat",
-		"Sheriff Hat",
-		"A frontier hat with a sheriff badge.",
-		"res://scenes/items/hats/sheriff_hat.tscn",
-		SHERIFF_HAT_ICON
-	)
-	_create_hat_item(
-		"sombrero", "Sombrero", "A broad and colorful sombrero.", "res://scenes/items/hats/sombrero.tscn", SOMBRERO_ICON
-	)
-	_create_hat_item(
-		"wizard_hat",
-		"Wizard Hat",
-		"A pointed hat filled with arcane style.",
-		"res://scenes/items/hats/wizard_hat.tscn",
-		WIZARD_HAT_ICON
-	)
+func _create_items():
 	_create_item(
 		"backpack",
 		"Backpack",
@@ -79,36 +44,6 @@ func _create_sample_items():
 		BACKPACK_ICON,
 		true,
 		60
-	)
-	_create_item(
-		"sword",
-		"Sword",
-		"A balanced hand sword.",
-		Item.ItemType.WEAPON,
-		"res://scenes/items/weapons/sword.tscn",
-		SWORD_ICON,
-		true,
-		80
-	)
-	_create_item(
-		"sword_big",
-		"Big Sword",
-		"A large two-handed sword.",
-		Item.ItemType.WEAPON,
-		"res://scenes/items/weapons/sword_big.tscn",
-		SWORD_BIG_ICON,
-		true,
-		120
-	)
-	_create_item(
-		"axe",
-		"Small Axe",
-		"A compact axe with a sharp steel head.",
-		Item.ItemType.WEAPON,
-		"res://scenes/items/weapons/axe.tscn",
-		AXE_ICON,
-		true,
-		95
 	)
 	_create_item(
 		"chicken_leg",
@@ -167,21 +102,3 @@ func _create_item(
 		item.context_options.append(Item.ContextOptions.EQUIP)
 	item.context_options.append(Item.ContextOptions.DROP)
 	items[item.id] = item
-
-
-func _create_hat_item(
-	item_id: String, item_name: String, item_description: String, scene_path: String, item_icon: Texture2D
-) -> void:
-	var hat := Item.new()
-	hat.id = item_id
-	hat.name = item_name
-	hat.description = item_description
-	hat.item_type = Item.ItemType.HAT
-	hat.rarity = Item.ItemRarity.COMMON
-	hat.stackable = false
-	hat.value = 25
-	hat.icon = item_icon
-	hat.scene_path = scene_path
-	hat.context_options.append(Item.ContextOptions.EQUIP)
-	hat.context_options.append(Item.ContextOptions.DROP)
-	items[hat.id] = hat

@@ -63,6 +63,7 @@ func _ready() -> void:
 	_check_graveyards(zone, sablemarch, kingsmourn)
 	_check_character_models()
 	_check_ground_textures(zone, sablemarch)
+	_check_template_cleanup()
 
 	print("")
 	if _failures == 0:
@@ -1178,6 +1179,37 @@ func _check_character_models() -> void:
 					unresolved.append(str(property))
 		player_node.free()
 	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
+
+
+# The template's demo hats and weapons, and its skin-colour picker, were cut.
+# Nothing should quietly bring them back: not a database entry, not a scene
+# node, not a menu control.
+func _check_template_cleanup() -> void:
+	print("")
+	print("-- template cleanup --")
+	var template_ids := ["fedora", "headphones", "pirate_hat", "sheriff_hat", "sombrero", "wizard_hat", "sword", "sword_big", "axe"]
+	var still_there: Array[String] = []
+	for id in template_ids:
+		if ItemDatabase.get_item(id) != null:
+			still_there.append(id)
+	_report("template hats and weapons are out of the item database", still_there.is_empty(), ", ".join(still_there))
+	_report("the backpack survives (it grants the bag slots)", ItemDatabase.get_item("backpack") != null, "")
+
+	var player := (load("res://scenes/level/player.tscn") as PackedScene).instantiate()
+	var stray: Array[String] = []
+	for socket in ["HeadAttach", "LeftHandAttach"]:
+		var node := player.get_node_or_null("Body/" + socket)
+		if node:
+			for child in node.get_children():
+				if not (child is RemoteTransform3D):
+					stray.append("%s/%s" % [socket, child.name])
+	_report("no template props hang on the player's sockets", stray.is_empty(), ", ".join(stray))
+	player.free()
+
+	var menu := (load("res://scenes/ui/main_menu_ui.tscn") as PackedScene).instantiate()
+	var has_skin_picker := menu.find_child("SkinInput", true, false) != null
+	_report("the menu has no skin picker", not has_skin_picker, "")
+	menu.free()
 
 
 func _check_ground_textures(vale: Node3D, sablemarch: Node3D) -> void:

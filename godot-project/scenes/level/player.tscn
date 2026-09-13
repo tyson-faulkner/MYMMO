@@ -11,17 +11,8 @@
 [ext_resource type="Script" path="res://scripts/combat/mount_controller.gd" id="97_mount"]
 [ext_resource type="Script" uid="uid://v8j54rbc0ik" path="res://scripts/player/3d_godot_robot.gd" id="2_mexc5"]
 [ext_resource type="Script" uid="uid://bj7yrijm7bppq" path="res://scripts/player/spring_arm_offset.gd" id="4_ygggd"]
-[ext_resource type="PackedScene" uid="uid://difodi4a2r6vc" path="res://assets/items/weapons/models/sword.fbx" id="16_sword"]
 [ext_resource type="FontFile" uid="uid://diapabmalpcrj" path="res://assets/fonts/Kurland.ttf" id="16_xgf8p"]
-[ext_resource type="PackedScene" uid="uid://dj7318sc4o37l" path="res://assets/items/weapons/models/sword_big.fbx" id="17_sword_big"]
 [ext_resource type="PackedScene" uid="uid://cc8gkp6u5tr2e" path="res://assets/items/backpacks/models/backpack.fbx" id="27_backpack"]
-[ext_resource type="PackedScene" uid="uid://dghg7ospl0imy" path="res://assets/items/weapons/models/axe.fbx" id="28_axe"]
-[ext_resource type="PackedScene" uid="uid://i1ar5au3vy7a" path="res://assets/items/hats/models/fedora.glb" id="34_fedora"]
-[ext_resource type="PackedScene" uid="uid://bcfswa3gh780w" path="res://assets/items/hats/models/headphones.glb" id="39_headphones"]
-[ext_resource type="PackedScene" uid="uid://dogjmlb8ci3gr" path="res://assets/items/hats/models/pirate_hat.glb" id="41_pirate"]
-[ext_resource type="PackedScene" uid="uid://crcqxt31qmp7k" path="res://assets/items/hats/models/sheriff_hat.glb" id="42_sheriff"]
-[ext_resource type="PackedScene" uid="uid://b0kmc4gvkiqfw" path="res://assets/items/hats/models/sombrero.glb" id="43_sombrero"]
-[ext_resource type="PackedScene" uid="uid://bry1poskgbmg0" path="res://assets/items/hats/models/wizard_hat.glb" id="45_wizard"]
 [ext_resource type="PackedScene" path="res://assets/characters/char_valkyr.glb" id="5_valkyr"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_mx45w"]
@@ -42,39 +33,12 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath("Body:rotation")
 properties/2/spawn = true
 properties/2/replication_mode = 1
-properties/3/path = NodePath("Body/LeftHandAttach/Sword:visible")
+properties/3/path = NodePath("Body/BackAttach/Backpack:visible")
 properties/3/spawn = true
 properties/3/replication_mode = 2
-properties/4/path = NodePath("Body/LeftHandAttach/SwordBig:visible")
+properties/4/path = NodePath("Body/InfrontArea3D:rotation")
 properties/4/spawn = true
 properties/4/replication_mode = 2
-properties/5/path = NodePath("Body/BackAttach/Backpack:visible")
-properties/5/spawn = true
-properties/5/replication_mode = 2
-properties/6/path = NodePath("Body/LeftHandAttach/Axe:visible")
-properties/6/spawn = true
-properties/6/replication_mode = 2
-properties/7/path = NodePath("Body/HeadAttach/Fedora:visible")
-properties/7/spawn = true
-properties/7/replication_mode = 2
-properties/8/path = NodePath("Body/HeadAttach/Headphones:visible")
-properties/8/spawn = true
-properties/8/replication_mode = 2
-properties/9/path = NodePath("Body/HeadAttach/PirateHat:visible")
-properties/9/spawn = true
-properties/9/replication_mode = 2
-properties/10/path = NodePath("Body/HeadAttach/SheriffHat:visible")
-properties/10/spawn = true
-properties/10/replication_mode = 2
-properties/11/path = NodePath("Body/HeadAttach/Sombrero:visible")
-properties/11/spawn = true
-properties/11/replication_mode = 2
-properties/12/path = NodePath("Body/HeadAttach/WizardHat:visible")
-properties/12/spawn = true
-properties/12/replication_mode = 2
-properties/13/path = NodePath("Body/InfrontArea3D:rotation")
-properties/13/spawn = true
-properties/13/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D" unique_id=1972894128 node_paths=PackedStringArray("_body", "_spring_arm_offset")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, 0)
@@ -119,46 +83,10 @@ remote_path = NodePath("../../FirstPersonCameraSource")
 update_rotation = false
 update_scale = false
 
-[node name="Fedora" parent="Body/HeadAttach" unique_id=525657311 instance=ExtResource("34_fedora")]
-transform = Transform3D(-4.8082526e-08, -6.661338e-16, -1.1, 1.8626451e-09, 1.1, -4.440892e-16, 1.1, 0, -4.8082512e-08, -1.1953105e-11, 0.93114185, -5.0127506e-05)
-visible = false
-
-[node name="Headphones" parent="Body/HeadAttach" unique_id=1013512068 instance=ExtResource("39_headphones")]
-transform = Transform3D(1.3033442, 0, 0, 0, 1.3033442, 0, 0, 0, 1.3033442, 0, 0.7998626, 0)
-visible = false
-
-[node name="PirateHat" parent="Body/HeadAttach" unique_id=1392735862 instance=ExtResource("41_pirate")]
-transform = Transform3D(1.3331646, 0.0055106063, -0.6993711, -0.0055106045, 1.5054717, 0.0013576727, 0.6993713, 0.0013576644, 1.3331753, 0.22902387, 0.19673097, 0.07076195)
-visible = false
-
-[node name="SheriffHat" parent="Body/HeadAttach" unique_id=1012174585 instance=ExtResource("42_sheriff")]
-transform = Transform3D(1.3335581, 0, 0, 0, 1.3335581, 0, 0, 0, 1.3335582, 0, 0.88481236, 0)
-visible = false
-
-[node name="Sombrero" parent="Body/HeadAttach" unique_id=966944071 instance=ExtResource("43_sombrero")]
-transform = Transform3D(1.6, -6.661338e-16, 5.684342e-14, 4.440892e-16, 1.6, 1.8626451e-09, -5.684342e-14, -2.7939677e-09, 1.6, -1.6552981e-10, 0.906646, -0.00069428235)
-visible = false
-
-[node name="WizardHat" parent="Body/HeadAttach" unique_id=265283568 instance=ExtResource("45_wizard")]
-transform = Transform3D(1.6, -1.6993842e-23, 1.440293e-14, 0, 1.6, 1.8878208e-09, -1.440293e-14, -1.8878208e-09, 1.6, -2.9316993e-11, 0.91060805, -0.00012296438)
-visible = false
-
 [node name="LeftHandAttach" type="BoneAttachment3D" parent="Body" unique_id=1883396408]
 bone_name = "LeftHandAttach"
 use_external_skeleton = true
 external_skeleton = NodePath("../ClassModel/Armature/Skeleton3D")
-
-[node name="Sword" parent="Body/LeftHandAttach" unique_id=1261523624 instance=ExtResource("16_sword")]
-transform = Transform3D(0.60000014, -1.8626451e-09, 2.689194e-08, -1.4086254e-08, 0, -0.5999999, -2.6077032e-08, 0.6, 2.2351742e-08, 0.0015582442, 0.21649343, 0.15789248)
-visible = false
-
-[node name="SwordBig" parent="Body/LeftHandAttach" unique_id=778398978 instance=ExtResource("17_sword_big")]
-transform = Transform3D(0.55, -7.450581e-09, -2.8405339e-08, 2.6251655e-08, -1.8626451e-09, -0.55, 0, 0.55, 5.5879354e-09, -0.0023369193, 0.21792626, 0.025737152)
-visible = false
-
-[node name="Axe" parent="Body/LeftHandAttach" unique_id=352347370 instance=ExtResource("28_axe")]
-transform = Transform3D(0.75, -1.1175871e-08, 1.0128133e-08, -1.3154931e-08, 0, -0.7499999, -7.450581e-09, 0.7499998, 1.8626451e-09, 0.013932824, 0.23088384, 0.3978039)
-visible = false
 
 [node name="BackAttach" type="BoneAttachment3D" parent="Body" unique_id=1338054728]
 bone_name = "BackAttach"

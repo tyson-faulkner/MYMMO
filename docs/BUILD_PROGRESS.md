@@ -198,6 +198,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 
 ## Log
 
+### 2026-09-13 — Template hats and weapons removed
+
+- **Changed:** fedora, headphones, pirate/sheriff/wizard hats, sombrero, sword, big sword and axe are gone from `ItemDatabase`, `player.tscn` (nodes, ext_resources and 9 synced `visible` properties), the level's item spawner and `assets/items/`; 49 files deleted. The backpack stays for its four bag slots.
+- **Test:** smoke 175/175, two new checks — none of the ids resolve, and nothing but the camera remote hangs on the head or hand sockets.
+- **Surprising:** nothing. The inventory UI still draws an empty hat slot; it is harmless and goes when the equipment paper-doll replaces that panel.
+
 ### 2026-09-13 — The classes wear their own models, and the ground is painted
 
 **Characters.** `player.tscn` no longer instances the template robot. `Body`
