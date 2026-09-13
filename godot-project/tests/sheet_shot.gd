@@ -60,6 +60,31 @@ func _ready() -> void:
 	_press("character_sheet")
 	await _frames(6)
 	print("sheet: visible=%s after second C" % _level.is_character_sheet_visible())
+
+	# Over to the innkeeper, where runes may change, and the Runes tab again.
+	var bryn: Node3D = null
+	for node in get_tree().get_nodes_in_group("NPCs"):
+		if node.get("npc_id") == &"npc_bryn":
+			bryn = node
+	if bryn:
+		_player.teleport_to(bryn.global_position + Vector3(3.0, 1.0, 2.0))
+		await get_tree().create_timer(1.5).timeout
+		var runes: RuneLoadout = _player.get_node("RuneLoadout")
+		print("innkeeper: %.1fm away, refusal='%s'" % [_player.global_position.distance_to(bryn.global_position), runes.swap_refusal()])
+		_press("character_sheet")
+		await _frames(6)
+		sheet.show_tab(1)
+		await _frames(6)
+		await _save("innkeeper_runes_unlocked")
+		# Wear one through the sheet's own button, the way a player would.
+		var button := sheet.find_door("rune", "tinker_1b")
+		if button:
+			button.pressed.emit()
+		await _frames(8)
+		await _save("innkeeper_runes_worn")
+		print("runes: chosen=%s granted=%s" % [str(runes.chosen), str(runes.granted_ids())])
+		_press("character_sheet")
+		await _frames(4)
 	print("SHEET SHOT COMPLETE")
 	get_tree().quit(0)
 
