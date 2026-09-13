@@ -1757,7 +1757,7 @@ func _check_boss_mechanics(kingsmourn: Node3D) -> void:
 	_report("the Heralds walk in", heralds == 2, "%d heralds" % heralds)
 	_report("each living herald makes the King hit harder", king._scaled_damage() > base_damage, "%d -> %d" % [base_damage, king._scaled_damage()])
 	var enraged_before: int = king._scaled_damage()
-	king_engine.fire_by_name("Kingsmourn")
+	king_engine.fire_by_name("Ironhold")
 	_report("the enrage stacks damage", king._scaled_damage() > enraged_before, "%d -> %d" % [enraged_before, king._scaled_damage()])
 	for add in container.get_children().slice(mobs_before):
 		if is_instance_valid(add):

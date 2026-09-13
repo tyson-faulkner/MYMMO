@@ -81,7 +81,7 @@ fight each other until you touch one, then both turn on you.
 - **Heralds** (at 75/50/25%): `first_king_herald` ×2 walk in through the
   doors. Tank picks them up; DPS kill them fast — each alive herald adds
   10% damage to the King.
-- **Kingsmourn** (enrage at 15%): he stops using mechanics and just hits
+- **Ironhold** (enrage at 15%): he stops using mechanics and just hits
   harder every 5s. Burn.
 
 Heroic version: same fights, +40% health and damage, the Crown names two

@@ -54,7 +54,7 @@ const SEASONS := [
 				{"name": "Drowned Heralds", "at": [75, 50, 25], "effect": "spawn", "spawn": [{"id": "flood_warden", "count": 2}], "alive_bonus": 0.10},
 				{"name": "Undertow", "every": 10.0, "first": 6.0, "effect": "pool", "target": "random", "range": 60.0, "radius": 3.5, "slow": 0.5, "power": 24, "tick": 1.0, "persist": false, "seconds": 15.0, "avoidable": true},
 				{"name": "Grave Wind", "every": 18.0, "first": 12.0, "cast": 1.5, "effect": "line", "target": "tank", "width": 3.0, "length": 50.0, "power": 100, "interruptible": false, "avoidable": true},
-				{"name": "Kingsmourn", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10}
+				{"name": "Ironhold", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10}
 			]
 		},
 		"models": {
