@@ -54,7 +54,7 @@ const CLASS_RESOURCE_PATHS := {
 @export var skin_color: SkinColor = SkinColor.BLUE
 
 ## Which of the four classes this character is. Set when the player spawns, from
-## what they picked on the menu. There are no races in Kingsmourn: class and
+## what they picked on the menu. There are no races in Ironveil: class and
 ## gear are the whole of your identity.
 @export var class_id: StringName = &"valkyr"
 

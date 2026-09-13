@@ -179,14 +179,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 620, 0.3, 40)
 script = ExtResource("9_chest")
 tier = 0
 respawn_minutes = 30.0
-glint_text = "something glints in the Sablemarch flood"
+glint_text = "something glints in the Greymarch flood"
 
 [node name="ChestFlood" type="Node3D" parent="Chests"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 0.3, -60)
 script = ExtResource("9_chest")
 tier = 0
 respawn_minutes = 30.0
-glint_text = "something glints in the Sablemarch flood"
+glint_text = "something glints in the Greymarch flood"
 
 [node name="GlintingChestMarch" type="Node3D" parent="Chests"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 640, 0.3, -100)
@@ -194,7 +194,7 @@ script = ExtResource("9_chest")
 tier = 1
 respawn_minutes = 120.0
 rare_spots = Array[Vector3]([Vector3(640, 0.3, -100), Vector3(560, 0.3, 120), Vector3(660, 0.3, 30)])
-glint_text = "something glints in the Sablemarch flood"
+glint_text = "something glints in the Greymarch flood"
 
 [node name="NPCs" type="Node3D" parent="."]
 
@@ -266,7 +266,7 @@ display_name = "Causeway Rest"
 [node name="RedoubtWatchGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 622, 0.3, -146)
 script = ExtResource("7_grave")
-display_name = "Redoubt Watch"
+display_name = "Hold Watch"
 
 [node name="WestDitchGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 504, 0.3, 58)
@@ -281,7 +281,7 @@ display_name = "The East Ditch"
 [node name="RedoubtGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -999.7, -570)
 script = ExtResource("7_grave")
-display_name = "The Redoubt Causeway"
+display_name = "The Hold Causeway"
 
 [node name="Triggers" type="Node3D" parent="."]
 
@@ -379,7 +379,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, 2.5, -166)
 script = ExtResource("5_portal")
 destination = Vector3(600, -998.5, -590)
 destination_fall_limit = -1020
-label_text = "The Drowned Redoubt"
+label_text = "The Drowned Hold"
 required_level = 14
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/RedoubtEntrance"]
@@ -397,13 +397,13 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "The Drowned Redoubt"
+text = "The Drowned Hold"
 
 [node name="RedoubtExit" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -998.5, -570)
 script = ExtResource("5_portal")
 destination = Vector3(600, 1.5, -156)
-label_text = "Leave the Redoubt"
+label_text = "Leave the Hold"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/RedoubtExit"]
 shape = SubResource("BoxShape3D_portal")
@@ -420,4 +420,4 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "Leave the Redoubt"
+text = "Leave the Hold"

@@ -10,11 +10,11 @@ BUILD=${2:?usage: deploy.sh user@host /path/to/build-dir}
 [ -d "$BUILD" ] || { echo "No such build directory: $BUILD"; exit 1; }
 
 echo "==> uploading"
-rsync -az --delete --exclude 'backups' "$BUILD"/ "$HOST":/tmp/kingsmourn-build/
+rsync -az --delete --exclude 'backups' "$BUILD"/ "$HOST":/tmp/ironveil-build/
 echo "==> installing"
-ssh "$HOST" 'sudo rsync -a /tmp/kingsmourn-build/ /opt/kingsmourn/ \
-  && sudo chown -R kingsmourn:kingsmourn /opt/kingsmourn \
-  && sudo chmod +x /opt/kingsmourn/Kingsmourn.x86_64 \
-  && sudo systemctl restart kingsmourn \
-  && sleep 2 && systemctl is-active kingsmourn'
+ssh "$HOST" 'sudo rsync -a /tmp/ironveil-build/ /opt/ironveil/ \
+  && sudo chown -R ironveil:ironveil /opt/ironveil \
+  && sudo chmod +x /opt/ironveil/Ironveil.x86_64 \
+  && sudo systemctl restart ironveil \
+  && sleep 2 && systemctl is-active ironveil'
 echo "==> live"

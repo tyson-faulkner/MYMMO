@@ -1,6 +1,6 @@
 # CombatRecorder — every hit, heal, death and interrupt, written down once.
 #
-# docs/kingsmourn-qol-spec.md sections 1-3. The server already owns every
+# docs/ironveil-qol-spec.md sections 1-3. The server already owns every
 # number an addon would want, so the meter, the recap, the coach and the parse
 # are all just reads of this list. Nobody can fudge their bars.
 #

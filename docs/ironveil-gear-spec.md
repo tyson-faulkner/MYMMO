@@ -1,4 +1,4 @@
-# Kingsmourn — Gear
+# Ironveil — Gear
 
 Decided with Tyson, 2026-09-11. Built and tested the same day.
 
@@ -31,8 +31,8 @@ Two tests enforce this in both directions. It cannot be broken by accident.
 | Tier | Name | Levels | Where from |
 |---|---|---|---|
 | Starter | Levy | 1–8 | Issued at creation; Odda sells replacements; Barrow drops |
-| Mid | Marcher | 8–14 | Sablemarch quests and world drops; Redoubt drops; Wrenn sells some |
-| Cap | Sovereign | 14–20 | Kingsmourn quests; Hall of Records and raid drops |
+| Mid | Marcher | 8–14 | Greymarch quests and world drops; Hold drops; Wrenn sells some |
+| Cap | Sovereign | 14–20 | Ironhold quests; the Archive and raid drops |
 
 Everyone starts wearing the Levy chest, legs, feet and their class weapon.
 Real numbers from the first swing.

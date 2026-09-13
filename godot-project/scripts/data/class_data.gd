@@ -1,6 +1,6 @@
 # ClassData — the definition of one playable class.
 #
-# Kingsmourn has exactly four: Valkyr (tank), Bard (healer), Necromancer and
+# Ironveil has exactly four: Valkyr (tank), Bard (healer), Necromancer and
 # Tinker (ranged damage). There are no playable races — your class and your
 # gear are your whole identity, which also means one body, one skeleton and one
 # animation set for the entire game.

@@ -5,7 +5,7 @@ extends Node
 # pickup, inventory and tooltips alike.
 #
 # The template's demo hats and weapons (fedora, sombrero, sword, axe...) are
-# gone: real class gear replaced them. The backpack stays until Kingsmourn has
+# gone: real class gear replaced them. The backpack stays until Ironveil has
 # its own bag item, because it is what grants the four extra slots.
 
 const BACKPACK_ICON: Texture2D = preload("res://assets/items/backpacks/icons/backpack.png")

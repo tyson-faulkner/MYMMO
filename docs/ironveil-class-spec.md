@@ -1,4 +1,4 @@
-# Kingsmourn — Classes, Specs and Runes
+# Ironveil — Classes, Specs and Runes
 
 Proposal, 2026-09-11. Builds on what is already in the game: four classes,
 seven abilities each (28 in `AbilityDatabase`), three rune slots with two
@@ -150,7 +150,7 @@ drain, summon. The specs need four more, all small:
 
 - **damage_reduction** — Wingguard, Unbroken Wing, Bone Ward, Last Stand.
 - **interrupt** — Broken Verse is *meant* to be one and is currently a slow,
-  because nothing in the engine can stop a cast. The Hall of Records boss and
+  because nothing in the engine can stop a cast. The Archive boss and
   the parse both assume interrupts exist. This is the most urgent of the four.
 - **stun** — Piercing Fall, Grave Claim's root.
 - **stack** (a stacking debuff) — Dirge's bleeds, Crescendo consumes them.
@@ -167,7 +167,7 @@ drain, summon. The specs need four more, all small:
 - `CharacterState` saves `spec`. Switching spec: out of combat, at any inn or
   graveyard, free. A cost would only ever stop someone filling the role the
   night needs, and in a group of five that is the one thing you never want.
-- The parse baseline (`kingsmourn-qol-spec.md` §3) is per spec, which it
+- The parse baseline (`ironveil-qol-spec.md` §3) is per spec, which it
   already assumes.
 - 8 spec passives, 12 spec abilities (6 are existing ones re-flagged), 8
   capstones, 12 rune moves. **~26 new ability entries.** The ability system is

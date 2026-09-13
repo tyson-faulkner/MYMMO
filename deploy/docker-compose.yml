@@ -1,7 +1,7 @@
-# Kingsmourn backend: Nakama (accounts, characters, saves) on CockroachDB.
+# Ironveil backend: Nakama (accounts, characters, saves) on CockroachDB.
 #
 # Runs on the VPS. The game server itself is NOT here — it is a systemd
-# service (kingsmourn.service) so it can be restarted without touching the
+# service (ironveil.service) so it can be restarted without touching the
 # database.
 #
 #   docker compose up -d      start
@@ -13,7 +13,7 @@ services:
     command: start-single-node --insecure --store=attrs=ssd,path=/var/lib/cockroach/
     restart: unless-stopped
     volumes:
-      - kingsmourn-db:/var/lib/cockroach
+      - ironveil-db:/var/lib/cockroach
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
       interval: 10s
@@ -36,7 +36,7 @@ services:
       - >
         /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
         exec /nakama/nakama
-        --name kingsmourn
+        --name ironveil
         --database.address root@cockroachdb:26257
         --logger.level INFO
         --session.token_expiry_sec 7200
@@ -58,4 +58,4 @@ services:
       - "127.0.0.1:7351:7351"
 
 volumes:
-  kingsmourn-db:
+  ironveil-db:

@@ -4,7 +4,7 @@
 # server decides, the answer is broadcast. A client that simply sets its own
 # speed multiplier would be a client that can outrun the game.
 #
-# The rules, from docs/kingsmourn-mount-spec.md:
+# The rules, from docs/ironveil-mount-spec.md:
 #   - A mount arrives as an item. Using it learns the mount and eats the item.
 #   - Summoning puts you on it and multiplies your speed.
 #   - Taking damage or attacking throws you off.

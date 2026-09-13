@@ -3,7 +3,7 @@
 # Why build geometry from a script instead of placing thousands of nodes by
 # hand: a blockout written as data is something the build loop can extend in
 # one line, and every piece here is a PLACEHOLDER with a swap-in point. When the
-# modular kit from docs/kingsmourn-kit-spec.md exists, each entry stops being a
+# modular kit from docs/ironveil-kit-spec.md exists, each entry stops being a
 # tinted box and starts being a .glb, without the zone layout changing at all.
 #
 # The palette is the one the design doc locked: cream stone, blue slate roofs,
@@ -580,7 +580,7 @@ static func banner(at: Vector3, color: Color) -> Array:
 # --- Layouts ---------------------------------------------------------------
 
 
-## Thornhollow Vale: the first zone. Town at the south end, farmland and
+## Thornfell: the first zone. Town at the south end, farmland and
 ## hedgerow in the middle, the barrow rising at the north end.
 static func thornhollow_vale() -> Array:
 	var pieces: Array = []

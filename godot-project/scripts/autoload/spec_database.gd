@@ -1,6 +1,6 @@
 # SpecDatabase — two specs per class, so any five friends can form a party.
 #
-# docs/kingsmourn-class-spec.md. A spec is a passive that sets the role, two
+# docs/ironveil-class-spec.md. A spec is a passive that sets the role, two
 # or three spec abilities, and a capstone at 20. The abilities themselves are
 # entries in AbilityDatabase carrying a `spec` field; this file is the passive
 # and the words. You pick a spec at level 10, at an inn or a graveyard, free.

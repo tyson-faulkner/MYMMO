@@ -1,6 +1,6 @@
 # AbilityDatabase — every ability in the game, as data.
 #
-# Per docs/kingsmourn-class-spec.md: each class shares five abilities across
+# Per docs/ironveil-class-spec.md: each class shares five abilities across
 # its two specs, each spec adds two or three of its own plus a capstone at 20
 # (`spec` field), and twelve rune moves (`rune_move`, slot 0) reach the bar
 # only through a GRANT rune. Bar slots 1-8 are the class and spec abilities,

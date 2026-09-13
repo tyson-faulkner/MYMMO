@@ -1621,7 +1621,7 @@ func _check_boss_mechanics(kingsmourn: Node3D) -> void:
 	var king: Mob = bosses.get(&"first_king_crowned")
 	var ashcombe: Mob = bosses.get(&"lord_ashcombe")
 	var severin: Mob = bosses.get(&"lady_severin")
-	_report("the bosses stand in the Hall and the Throne", ledger and kell_mob and king and ashcombe and severin, "%d found" % bosses.size())
+	_report("the bosses stand in the Archive and the Broken Throne", ledger and kell_mob and king and ashcombe and severin, "%d found" % bosses.size())
 	if not (ledger and kell_mob and king and ashcombe and severin):
 		return
 	var engines := 0
@@ -2515,7 +2515,7 @@ func _check_kit_props(vale: Node3D, kingsmourn: Node3D) -> void:
 		int(counts.get("fountain.glb", 0)) >= 2 and int(counts.get("lamp_iron.glb", 0)) >= 8
 		and int(counts.get("planter_box.glb", 0)) >= 2 and int(counts.get("tree_round.glb", 0)) >= 10,
 		"fountains=%d lamps=%d planters=%d trees=%d" % [counts.get("fountain.glb", 0), counts.get("lamp_iron.glb", 0), counts.get("planter_box.glb", 0), counts.get("tree_round.glb", 0)])
-	_report("Kingsmourn's market has kit stalls", int(counts.get("market_stall.glb", 0)) >= 8, "%d stalls" % counts.get("market_stall.glb", 0))
+	_report("Ironhold's market has kit stalls", int(counts.get("market_stall.glb", 0)) >= 8, "%d stalls" % counts.get("market_stall.glb", 0))
 	_report("trees collide at the trunk, not the canopy", trunk_only, "")
 
 
@@ -2533,7 +2533,7 @@ func _check_template_cleanup() -> void:
 	_report("template hats and weapons are out of the item database", still_there.is_empty(), ", ".join(still_there))
 	_report("the backpack survives (it grants the bag slots)", ItemDatabase.get_item("backpack") != null, "")
 
-	# Only Kingsmourn's own class weapons may hang on the sockets now.
+	# Only Ironveil's own class weapons may hang on the sockets now.
 	var allowed := {}
 	for node_name in Character.CLASS_WEAPON_NODES.values():
 		allowed[node_name] = true

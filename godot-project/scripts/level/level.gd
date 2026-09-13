@@ -232,7 +232,7 @@ func save_and_quit() -> void:
 	# in, no character), in which case the signal has been and gone.
 	if outcome[0] == "":
 		await _quit_save_finished
-	print("Kingsmourn: quit save %s after %d ms" % [outcome[0], Time.get_ticks_msec() - started])
+	print("Ironveil: quit save %s after %d ms" % [outcome[0], Time.get_ticks_msec() - started])
 	Network.leave_game()
 	get_tree().quit()
 

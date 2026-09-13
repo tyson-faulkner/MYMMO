@@ -1,4 +1,4 @@
-"""Headless build driver for the Kingsmourn kit.
+"""Headless build driver for the Ironveil kit.
 
 Usage:
     blender --background --python km_build.py -- <piece_module> [more...]

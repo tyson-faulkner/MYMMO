@@ -1,4 +1,4 @@
-"""Kingsmourn class weapons -- the eight models that hang off the sockets.
+"""Ironveil class weapons -- the eight models that hang off the sockets.
 
 All modelled in socket space: the origin is where the hand (or the back
 socket) is, +Z is up, +Y is the character's forward, X across. Godot then
@@ -15,7 +15,7 @@ from mathutils import Matrix, Vector
 import km_kit as K
 import km_textures as T
 
-# Palette, per docs/kingsmourn-enemy-weapon-spec.md.
+# Palette, per docs/ironveil-enemy-weapon-spec.md.
 DARK_STEEL = (0.30, 0.31, 0.35)
 SILVER = (0.78, 0.80, 0.84)
 BONE = (0.86, 0.82, 0.72)

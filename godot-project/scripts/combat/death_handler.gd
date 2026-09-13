@@ -1,6 +1,6 @@
 # DeathHandler — what happens when you lose.
 #
-# Kingsmourn uses WoW's answer, because it is proven and cheap to build: when
+# Ironveil uses WoW's answer, because it is proven and cheap to build: when
 # you die you become a ghost, and you choose between two bad options.
 #
 #   Release   — resurrect at the graveyard immediately, and carry about five

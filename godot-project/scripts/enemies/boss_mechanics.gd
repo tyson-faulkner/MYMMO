@@ -1,6 +1,6 @@
 # BossMechanics — what a boss DOES, from data.
 #
-# docs/kingsmourn-endgame-spec.md describes every boss as a list of timed or
+# docs/ironveil-endgame-spec.md describes every boss as a list of timed or
 # health-triggered abilities: "every 12s, a 2s cast at a random non-tank",
 # "at 70% and 35%, four adds", "every 8s a pool under someone". This node reads
 # exactly that from MobData.mechanics and runs it on the server. One script,

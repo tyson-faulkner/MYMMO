@@ -1,4 +1,4 @@
-# Kingsmourn — Build Progress
+# Ironveil — Build Progress
 
 > ## PRIORITY, set by Tyson 2026-09-11 before sleeping
 >
@@ -10,7 +10,7 @@
 > Build order for that: base humanoid body (WoW proportions, big shoulders,
 > ~7 heads tall) → shared skeleton and skinning → the four class silhouettes as
 > armour and texture on that body → enemy variants. Full spec in
-> `docs/kingsmourn-character-spec.md`.
+> `docs/ironveil-character-spec.md`.
 >
 > **Premade assets are allowed.** He has said so explicitly: a CC0 low-poly
 > rigged humanoid as a starting base is fine, as long as it matches the guide —
@@ -28,8 +28,8 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 - **Milestone:** M1-M7 done, parties and runes in. Also shipped: **gear** (53
   items across three tiers, five uniques), **mounts** (all ten from the mount
-  spec, each with a way to get it), **zones two and three** (Sablemarch and
-  Kingsmourn, with their four interiors, linked by the Marcher Road and King's
+  spec, each with a way to get it), **zones two and three** (Greymarch and
+  Ironhold, with their four interiors, linked by the Marcher Road and King's
   Road portals), **23 graveyards**, each with a spirit healer, the **four
   class models** worn by the player with their weapons on the sockets, painted
   grass and marsh-mud ground, the Phase 3 props (fountain, stalls, lamps,
@@ -93,8 +93,8 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   `Mesh` node using the design-doc palette, so a `.glb` swap later needs no code
   change. Rationale: never block gameplay work on Blender availability.
 - 2026-09-11 — Names, which the design doc left open: the realm is **Aldermarch**,
-  the capital is **Kingsmourn**, the first zone is **Thornhollow Vale**, the
-  first dungeon is **The Barrow of the First King**, and the shared
+  the capital is **Ironhold**, the first zone is **Thornfell**, the
+  first dungeon is **The Deepbarrow**, and the shared
   quest-and-dungeon currency is the **Sovereign**.
 - 2026-09-11 — The Valkyr's resource is **Valor**, and it builds from damage
   dealt and taken rather than draining, which the design doc predicted a tank
@@ -263,6 +263,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 
 ## Log
 
+### 2026-09-13 — Renamed: the game is Ironveil; Thornfell, Greymarch, Ironhold
+
+- **Changed:** display names only. Game title Kingsmourn → Ironveil (project name, menu, log lines, doc titles); Thornhollow Vale → Thornfell; Sablemarch → Greymarch; the city Kingsmourn → Ironhold; the Barrow of the First King → The Deepbarrow; the Drowned Redoubt → The Drowned Hold; the Hall of Records → The Archive; the Throne of Kingsmourn → The Broken Throne; Kingsgate → Irongate. Internal ids, scene filenames, node names, layout keys, dictionary keys, resource paths, function names and the Nakama collection key are untouched. `docs/kingsmourn-*.md` are now `docs/ironveil-*.md` with every cross-reference fixed; `deploy/` uses `ironveil.service`, `/opt/ironveil`, `/var/log/ironveil`, the `ironveil` user and `Ironveil.x86_64`.
+- **Test:** smoke 365/365, the same count as before the pass; the windowed tour crossed all three zones through their portals; the menu title and the Deepbarrow portal sign photographed.
+- **Surprising:** "Kingsguard" appears nowhere in the repo, so that line of the mapping had nothing to do. Left alone as ambiguous: the First King's enrage mechanic named "Kingsmourn" (the king's mourning, not the city), the season title "Kingsmourner", the ability "Chill of the Barrow", and the mob names "Barrow Wight" and "Barrow Guardian" (barrow the noun).
+
 ### 2026-09-13 — The character sheet (C): a door for gear, runes, mounts and spec
 
 - **Changed:** `scripts/ui/character_sheet_ui.gd` (built in code, added by `level.gd`, toggled on C, closes on Escape, freezes movement like the bag). Gear tab: the eleven worn slots (click to take off) and the bag (click gear to wear it, with the ▲ and the stat delta; mount items get a Learn button). Runes tab: three slots, two runes each, worn one marked, a clear button, locked with the reason. Mounts tab: learned mounts with speed and level, click to summon or dismiss, the refusal reason shown and the button disabled when you cannot ride. Spec tab: the chooser, moved out of the HUD. `RuneLoadout.request_choose` now enforces the swap rule (out of combat, at an inn or graveyard) via `swap_refusal()`, which the sheet shows.
@@ -293,7 +299,7 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 - **Test:** smoke 257/257 with 21 new checks (caps, gating, name mark, lowest-member rule, loot bump, guaranteed mount, kill raises and caps, save round-trip, season data well formed, list and skin swap, engine reads the season). In-game shot of the tier mark looked at.
 - **Surprising:** a boss never leaves combat while a player stands in its aggro range, so the "second pull" in the test had to reset the engine by hand, the way walking home does. Kell's list was reordered so Call the Shelves is base and the Bind is the first grudge reward. Chronicle lines for tiers and season turnover are signals/strings waiting for unit 12.
 
-### 2026-09-13 — Boss mechanics engine: the Hall and the Throne fight back
+### 2026-09-13 — Boss mechanics engine: the Archive and the Broken Throne fight back
 
 - **Changed:** `scripts/enemies/boss_mechanics.gd` runs `MobData.mechanics` on the server: timer (`every`/`first`) and health (`at: [70, 35]`) triggers, target rules tank/random/furthest/self, optional cast wind-up through the unit-7 cast bar, and eleven effects (damage, heal, slow, stun, pool, pools_fire, line, charge, named, spawn, stat). `scripts/combat/ground_effect.gd` is the persistent pool (drawn on every peer from one RPC, hurts only on the server); `scripts/world/interactable.gd` is the generalised press-F: four braziers in the vault (3s channel, clear pools within 6m, 25s relight) and the throne dais (`stand`). Spawns go through the existing MobContainer. All five endgame bosses are written as data per the spec; Records packs and the claimants carry a `feud` tag and fight each other until a player interferes. `Stats` gains a `damaged` signal; players gain `apply_knockback`.
 - **Test:** smoke 236/236 with 27 new checks (data well formed, pools hurt and persist, brazier clears and cools, Turn the Page fires pools, Call the Shelves at 70% once, Bind, Charge, Sun Lance hits the line and misses off it, the Crown heals the King unless the named player is on the dais, Heralds add damage, enrage stacks). In-game shot: ink pool under the player beside a brazier, looked at.
@@ -363,7 +369,7 @@ are gone.
 into `blender-source/textures/` and copied to
 `godot-project/assets/textures/ground/`. ZoneBuilder paints any piece carrying
 `{texture: ...}`: the vale's plates, farmland and barrow mound are grass;
-Sablemarch's plates, field camp and redoubt approach are mud; Kingsmourn's
+Greymarch's plates, field camp and hold approach are mud; Ironhold's
 outskirts are grass.
 
 **Verified:** smoke test 171/171 (7 new checks: every class swaps on and back,
@@ -374,7 +380,7 @@ five rigged models. Screenshots from the running game via
 
 **Not done:** the template's hats, swords and backpack keep transforms fitted to
 the robot's bones, so one equipped would sit wrong on a class body — they are
-template items rather than Kingsmourn gear, and none is equipped by default. The
+template items rather than Ironveil gear, and none is equipped by default. The
 mud's 4m repeat is visible from low angles.
 
 ### 2026-09-12 — Saving on quit actually saves, and a dead server can't freeze the game
@@ -406,12 +412,12 @@ Everything written in the cloud while the desktop was unreachable is now in the
 repo, applied per `APPLY_THESE.md` (that file, `pending/`, the zip and the stale
 `_to_delete/` lock files are gone).
 
-- **World.** Sablemarch (x~600) and Kingsmourn (x~1200) with their four
-  interiors (redoubt, royal crypt, hall of records, throne), all as
+- **World.** Greymarch (x~600) and Ironhold (x~1200) with their four
+  interiors (redoubt, royal crypt, archive, throne), all as
   `ZoneLayouts` data; the Marcher Road and King's Road portals link the three
   regions, six portals lead underground, gated 8/14/16/18/20. The barrow finally
   has lights.
-- **Data.** 34 quests, 36 enemies incl. the Hall of Records and raid bosses,
+- **Data.** 34 quests, 36 enemies incl. the the Archive and raid bosses,
   16 NPCs, 53 gear items across three tiers with five uniques; three new
   autoloads (`GearDatabase`, `MountDatabase`, `NpcDatabase`), registered with
   Gear/Mount ahead of `ItemDatabase` because it delegates to them.
@@ -638,7 +644,7 @@ Reclaim distance is re-checked on the server, so a client cannot reclaim its
 corpse from across the zone. Ghosts cannot swing.
 
 ### 2026-09-11 — Class selection, which finishes M1
-The menu is Kingsmourn's now, not the template's. Picking a class shows its
+The menu is Ironveil's now, not the template's. Picking a class shows its
 role, its flavour line and what its resource bar is called, and the choice
 travels through Network.player_info into the spawned character, so a Bard
 actually arrives with 95 health and a Verse bar.
@@ -677,7 +683,7 @@ Also: Tab belonged to the player list, and tab-target combat obviously needs it
 more. The player list moved to O.
 
 ### 2026-09-11 — M3/M4/M5/M6 blockout: a walkable zone with a dungeon
-Thornhollow Vale exists and is playable end to end. 109 geometry pieces on the
+Thornfell exists and is playable end to end. 109 geometry pieces on the
 surface, a buried barrow interior, 7 NPCs, 69 enemies across level bands 1-12,
 two bosses, a stone circle, a portal into the barrow, and the twelve-quest chain
 wired to the people who hand it out.

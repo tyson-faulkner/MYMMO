@@ -293,7 +293,7 @@ npc_id = &"npc_spirit_healer"
 [node name="ValeGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0.3, 22)
 script = ExtResource("7_grave")
-display_name = "Thornhollow Rest"
+display_name = "Thornfell Rest"
 
 [node name="BarrowGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -588)
@@ -342,7 +342,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -116)
 script = ExtResource("5_portal")
 destination = Vector3(0, -498.5, -592)
 destination_fall_limit = -520.0
-label_text = "The Barrow of the First King"
+label_text = "The Deepbarrow"
 required_level = 8
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/BarrowEntrance"]
@@ -360,13 +360,13 @@ no_depth_test = true
 font_size = 56
 outline_size = 20
 modulate = Color(0.82, 0.74, 1, 1)
-text = "The Barrow of the First King"
+text = "The Deepbarrow"
 
 [node name="BarrowExit" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -497.5, -580)
 script = ExtResource("5_portal")
 destination = Vector3(0, 1.5, -108)
-label_text = "Leave the Barrow"
+label_text = "Leave the Deepbarrow"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/BarrowExit"]
 shape = SubResource("BoxShape3D_portal")
@@ -383,7 +383,7 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "Leave the Barrow"
+text = "Leave the Deepbarrow"
 
 [node name="MarcherRoad" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2.5, 20)

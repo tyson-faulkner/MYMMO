@@ -1,4 +1,4 @@
-# Kingsmourn — Hall of Records & The Throne (mechanics)
+# Ironveil — The Archive & The Broken Throne (mechanics)
 
 Fight design for dungeon 3 and the raid. Mechanics only, no backstory — the
 players have said they skip the text. Every enemy named here already exists in
@@ -9,7 +9,7 @@ one scaling system. Health numbers in the database are for 5.
 
 ---
 
-## The Hall of Records — level 18, 5 players
+## The Archive — level 18, 5 players
 
 Layout: one long reading hall (trash), a side scriptorium (boss 1), the vault
 stair (trash), the vault (boss 2). Reuses the building kit: interior walls,
@@ -17,7 +17,7 @@ timber upper story, doors. New props: bookshelf, lectern, brazier — three
 pieces, all boxes.
 
 Trash: `record_burner` (Sunburst) and `record_forger` (Stag) in mixed packs
-of 3-4. They fight each other as well as you — same rule as the Redoubt
+of 3-4. They fight each other as well as you — same rule as the Hold
 captains. Pull them apart from each other and they focus you; leave them and
 they thin themselves out but the braziers spread (below).
 
@@ -32,7 +32,7 @@ Binder-type caster, 1700 HP.
 - **Burn the Page** (every 12s): targets a random non-tank, 2s cast, big
   fire hit. Interruptible — Tinker's job.
 
-Mechanically the lesson is "manage two factions at once", which the Redoubt
+Mechanically the lesson is "manage two factions at once", which the Hold
 taught in the open and this tests indoors.
 
 ### Boss 2 — The Bound Ledger
@@ -53,7 +53,7 @@ few Sovereign pieces.
 
 ---
 
-## The Throne of Kingsmourn — level 20, 5-10 players
+## The Broken Throne — level 20, 5-10 players
 
 Layout: the throne room, one big hall. The building kit's biggest room plus
 banners. One new prop: the throne.
@@ -62,7 +62,7 @@ Three bosses, no trash worth mentioning between them (a few
 `stag_guard`/`sunburst_guard` at the doors).
 
 ### Boss 1 — Lord Ashcombe (Stag) and Lady Severin (Sunburst), together
-Both 3200 HP. Same trick as the Redoubt but they are alive and *smart*: they
+Both 3200 HP. Same trick as the Hold but they are alive and *smart*: they
 fight each other until you touch one, then both turn on you.
 - **Shared health rule**: whichever one is lower gets healed by the other's
   retainers unless both are within 15% of each other. So you split damage and
@@ -102,6 +102,6 @@ Code, in order:
    already does this — generalise it.
 4. Add spawning (`Call the Shelves`, `Heralds`) via the existing
    `_spawner.spawn(data)` path.
-5. Faction-vs-faction aggro, already partly there from the Redoubt captains.
+5. Faction-vs-faction aggro, already partly there from the Hold captains.
 
 Art: bookshelf, lectern, brazier, throne, banners. Five props, all simple.

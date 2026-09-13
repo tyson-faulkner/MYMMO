@@ -1,4 +1,4 @@
-# Kingsmourn — Mounts
+# Ironveil — Mounts
 
 Ten mounts, from Tyson's reference sheet (2026-09-11). Each is a model, a ride
 animation, and a speed buff — cheap mechanically, and among the most motivating
@@ -17,17 +17,17 @@ So the real bill is one quadruped rig, seven variants, three props.
 
 ## The mounts
 
-| # | Reference | Kingsmourn name | Source | Build |
+| # | Reference | Ironveil name | Source | Build |
 |---|---|---|---|---|
-| 1 | Spectral Tiger | **Wraithcat** | Hall of Records (dungeon 3) | 6 |
-| 2 | Witchfire Saber | **Veil Saber** | Barrow of the First King (dungeon 1) | 2 |
-| 3 | Runeback Direbear | **Marcher Bear** | Sablemarch quest chain, final reward | 4 |
+| 1 | Spectral Tiger | **Wraithcat** | the Archive (dungeon 3) | 6 |
+| 2 | Witchfire Saber | **Veil Saber** | The Deepbarrow (dungeon 1) | 2 |
+| 3 | Runeback Direbear | **Marcher Bear** | Greymarch quest chain, final reward | 4 |
 | 4 | Cindermaw Corehound | **Twin-Furnace Hound** | Raid | 8 |
-| 8 | Plaguebound Brute | **Risen Brute** | Drowned Redoubt (dungeon 2) | 5 |
-| 9 | Blackdraft Crawler | **Foundry Walker** | Kingsmourn vendor, very expensive | 7 |
+| 8 | Plaguebound Brute | **Risen Brute** | Drowned Hold (dungeon 2) | 5 |
+| 9 | Blackdraft Crawler | **Foundry Walker** | Ironhold vendor, very expensive | 7 |
 | 10 | Scrapfang Chopper | **Scrap Chopper** | Odda, for Sovereigns — the first mount anyone gets | 1 |
 | 12 | Ironhide Devilsaur | **Ironhide** | Heroic raid — the unique one | 3 |
-| 18 | Tombthrone Crawler | **Tombthrone** | Kingsmourn quest chain, final reward | 9 |
+| 18 | Tombthrone Crawler | **Tombthrone** | Ironhold quest chain, final reward | 9 |
 | 19 | Foundry Ironjaw | **Furnace Rhino** | Raid | 10 |
 
 ## The first three

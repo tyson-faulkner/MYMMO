@@ -1,4 +1,4 @@
-# MobDatabase — every enemy in Kingsmourn, in one place.
+# MobDatabase — every enemy in Ironveil, in one place.
 #
 # Adding an enemy is adding an entry to DEFINITIONS. No new code, no new scene:
 # the spawner reads the id and builds it. That is what makes a whole zone's
@@ -11,7 +11,7 @@
 extends Node
 
 const DEFINITIONS := {
-	# --- Thornhollow Vale, levels 1-5 (close to town) ---
+	# --- Thornfell, levels 1-5 (close to town) ---
 	&"vale_wolf":
 	{
 		"name": "Vale Wolf",
@@ -72,7 +72,7 @@ const DEFINITIONS := {
 		"loot": {"bone": 0.5, "gear_levy_cloak": 0.04},
 		"currency": 3
 	},
-	# --- Thornhollow Vale, levels 6-12 (out toward the barrow) ---
+	# --- Thornfell, levels 6-12 (out toward the barrow) ---
 	&"stag_outrider":
 	{
 		"name": "Stag Outrider",
@@ -167,7 +167,7 @@ const DEFINITIONS := {
 		"loot": {},
 		"currency": 0
 	},
-	# --- The Barrow of the First King (dungeon) ---
+	# --- The Deepbarrow (dungeon) ---
 	&"barrow_guardian":
 	{
 		"name": "Barrow Guardian",
@@ -235,7 +235,7 @@ const DEFINITIONS := {
 			{"name": "The Crown Remembers", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
 		]
 	},
-	# --- Sablemarch, levels 9-14 ---------------------------------------------
+	# --- Greymarch, levels 9-14 ----------------------------------------------
 	&"stag_picket":
 	{
 		"name": "Stag Picket",
@@ -327,7 +327,7 @@ const DEFINITIONS := {
 		"loot": {"gear_marcher_trinket": 0.06, "ferrymans_coin": 0.04},
 		"currency": 18
 	},
-	# --- The Drowned Redoubt -------------------------------------------------
+	# --- The Drowned Hold ----------------------------------------------------
 	# The two captains are one encounter: they fight you AND each other, which
 	# is the whole point of them. Killing one first makes the other worse.
 	&"captain_derrow":
@@ -407,7 +407,7 @@ const DEFINITIONS := {
 			{"name": "Every One of Them", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
 		]
 	},
-	# --- Kingsmourn (14-20) ----------------------------------------------------
+	# --- Ironhold (14-20) ------------------------------------------------------
 	&"street_agitator":
 	{
 		"name": "Street Agitator",
@@ -529,7 +529,7 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_trinket": 0.04, "gear_sovereign_cloak": 0.04},
 		"currency": 26
 	},
-	# --- The Hall of Records (dungeon 3, level 18) ------------------------------
+	# --- The Archive (dungeon 3, level 18) --------------------------------------
 	&"record_burner":
 	{
 		"name": "Sunburst Record-Burner",
@@ -580,7 +580,7 @@ const DEFINITIONS := {
 		"currency": 120,
 		"dungeon": true,
 		"boss": true,
-		# docs/kingsmourn-endgame-spec.md, boss 1. Burn the Page is the
+		# docs/ironveil-endgame-spec.md, boss 1. Burn the Page is the
 		# Tinker's interrupt; the Bind is what the Bard will cleanse.
 		"mechanics": [
 			{"name": "Burn the Page", "every": 12.0, "first": 6.0, "cast": 2.0, "effect": "damage", "power": 150, "target": "random", "range": 30.0, "avoidable": true},
@@ -620,7 +620,7 @@ const DEFINITIONS := {
 			{"name": "Final Entry", "at": [10], "every": 5.0, "effect": "stat", "damage_bonus": 0.15}
 		]
 	},
-	# --- The Throne of Kingsmourn (raid, level 20) ------------------------------
+	# --- The Broken Throne (raid, level 20) -------------------------------------
 	&"lord_ashcombe":
 	{
 		"name": "Lord Ashcombe of the Stag",
@@ -698,7 +698,7 @@ const DEFINITIONS := {
 }
 
 ## Which model each enemy wears, from assets/enemies/. Ten human variants and
-## the wolf cover the vale (docs/kingsmourn-enemy-weapon-spec.md); zones two
+## the wolf cover the vale (docs/ironveil-enemy-weapon-spec.md); zones two
 ## and three reuse them by house and by kind, per the spec's "reuse
 ## ruthlessly". Constructs (the turret, the Ledger) stay placeholders: they are
 ## props, not people. Add a line here when a new variant is modelled.
@@ -714,7 +714,7 @@ const MODELS := {
 	&"barrow_guardian": "enemy_barrow_guardian",
 	&"captain_reyne": "enemy_captain_reyne",
 	&"the_first_king": "enemy_the_first_king",
-	# Sablemarch
+	# Greymarch
 	&"stag_picket": "enemy_stag_outrider",
 	&"sunburst_picket": "enemy_sunburst_serjeant",
 	&"drowned_levy": "enemy_risen_levy",
@@ -724,7 +724,7 @@ const MODELS := {
 	&"captain_derrow": "enemy_stag_outrider",
 	&"captain_vance": "enemy_sunburst_serjeant",
 	&"the_weight_of_them": "enemy_barrow_wight",
-	# Kingsmourn
+	# Ironhold
 	&"street_agitator": "enemy_hedge_bandit",
 	&"stag_retainer": "enemy_stag_outrider",
 	&"sunburst_retainer": "enemy_sunburst_serjeant",

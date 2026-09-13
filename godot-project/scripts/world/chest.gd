@@ -1,6 +1,6 @@
 # Chest — never contains something you'd shrug at.
 #
-# docs/kingsmourn-qol-spec.md section 8. Three kinds:
+# docs/ironveil-qol-spec.md section 8. Three kinds:
 #   COMMON  a few per zone, 30 minutes: Sovereigns and one run-changing
 #           consumable. Never a stat potion.
 #   RARE    one per zone, two hours, announced in chat; it moves between a
@@ -22,7 +22,7 @@ const RARE_GEAR_CHANCE := 0.7
 @export var respawn_minutes: float = 30.0
 ## World spots a RARE chest moves between when it respawns.
 @export var rare_spots: Array[Vector3] = []
-## For the announcement: "something glints in the Sablemarch flood".
+## For the announcement: "something glints in the Greymarch flood".
 @export var glint_text: String = "something glints in the vale"
 
 ## peer -> msec when they opened it

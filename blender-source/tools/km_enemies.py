@@ -1,6 +1,6 @@
 """Enemy variants on the shared body -- step 7 of the character spec.
 
-docs/kingsmourn-enemy-weapon-spec.md: every human enemy is the base body
+docs/ironveil-enemy-weapon-spec.md: every human enemy is the base body
 with a different texture and ONE silhouette tell. No new meshes, rigs or
 clips -- each variant here is the same skinned body the classes use, so the
 shared animation set plays on all of them.

@@ -1,11 +1,11 @@
-# Kingsmourn — Autonomous Build Plan
+# Ironveil — Autonomous Build Plan
 
 This file is **the prompt**. A new Claude session reads this plus
 `docs/BUILD_PROGRESS.md` and continues building without asking Tyson anything.
 
 ## The loop prompt (paste this, or let the scheduled loop fire it)
 
-> Continue the Kingsmourn autonomous build. Read `docs/BUILD_PLAN.md` and
+> Continue the Ironveil autonomous build. Read `docs/BUILD_PLAN.md` and
 > `docs/BUILD_PROGRESS.md`. Do the next unchecked task, in order. Write real
 > code and content — no questions, no approval gates. Validate with headless
 > Godot. Commit locally. Tick the box in BUILD_PROGRESS.md with a one-line
@@ -16,7 +16,7 @@ This file is **the prompt**. A new Claude session reads this plus
 1. **Never stop to ask.** If a detail is unspecified, decide it, build it, and
    record the decision in BUILD_PROGRESS.md under "Decisions made autonomously".
    Tyson has explicitly asked not to be interrupted until the game is playable.
-2. **The design doc is law.** `docs/kingsmourn-design.md` is locked. Do not
+2. **The design doc is law.** `docs/ironveil-design.md` is locked. Do not
    re-open settled decisions (4 classes, no races, level cap 20, tab-target,
    slot ownership for gear, one scaling system). Anything it lists under
    "Still open" is yours to decide — decide it and write it down.
@@ -35,7 +35,7 @@ This file is **the prompt**. A new Claude session reads this plus
    that changes health, currency, quest state or loot follows it.
 6. **Validate before committing.** Run the headless check (see below). A commit
    that fails to parse is worse than no commit.
-7. **Commit every completed task**, message `Kingsmourn: <what>`. Never push —
+7. **Commit every completed task**, message `Ironveil: <what>`. Never push —
    the sandbox has no GitHub credentials. Pushing is Tyson's `git push`.
 8. **Leave the repo playable.** At the end of every task the game must still
    launch. If a change is half-finished, finish it or revert it.

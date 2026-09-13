@@ -4,7 +4,7 @@ An octagonal limestone basin 6m across (three grid units, a vertex on each
 axis), a raised pedestal, a column, an upper bowl, and a gold finial. Water
 is a flat painted surface in the basin and the bowl. 3.2m tall.
 
-Thornhollow's square placed a 7.5m placeholder here; Kingsmourn a 9m one.
+Thornfell's square placed a 7.5m placeholder here; Ironhold a 9m one.
 ZoneBuilder scales this piece 1.0 and 1.4 rather than exporting two.
 """
 

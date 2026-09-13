@@ -1,0 +1,23 @@
+# The Ironveil game server: the same Godot build everyone plays, run
+# headless. Install with:
+#   sudo cp ironveil.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ironveil
+[Unit]
+Description=Ironveil game server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=ironveil
+WorkingDirectory=/opt/ironveil
+ExecStart=/opt/ironveil/Ironveil.x86_64 --headless
+Restart=always
+RestartSec=5
+# Godot writes its user data here rather than into root's home.
+Environment=HOME=/opt/ironveil
+StandardOutput=append:/var/log/ironveil/server.log
+StandardError=append:/var/log/ironveil/server.log
+
+[Install]
+WantedBy=multi-user.target

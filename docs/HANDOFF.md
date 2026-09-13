@@ -1,4 +1,4 @@
-# Kingsmourn (MyMMO) — Handoff
+# Ironveil (MyMMO) — Handoff
 
 Read this first in any new session. Last updated 2026-09-11.
 
@@ -8,7 +8,7 @@ Read this first in any new session. Last updated 2026-09-11.
 
 ## 1. What this project is
 
-A small-scale MMO called **Kingsmourn**, built solo for a group of 5-10 friends. Visually it copies World of Warcraft's Stormwind style; the story is Game-of-Thrones political (a dead king, rival houses, no cosmic evil). Full pitch, world, classes, progression, gear, combat, and art rules are locked in `docs/kingsmourn-design.md` — read that before proposing anything that touches game design, it is the source of truth and should not be re-litigated casually.
+A small-scale MMO called **Ironveil**, built solo for a group of 5-10 friends. Visually it copies World of Warcraft's Stormwind style; the story is Game-of-Thrones political (a dead king, rival houses, no cosmic evil). Full pitch, world, classes, progression, gear, combat, and art rules are locked in `docs/ironveil-design.md` — read that before proposing anything that touches game design, it is the source of truth and should not be re-litigated casually.
 
 Quick facts from that doc (see the file for the reasoning behind each):
 - No playable races — one body, one skeleton. Class + gear is your identity.
@@ -32,8 +32,8 @@ C:\Users\tyson\Desktop\MyMMO/       <- the actual project (git repo root)
 ├── nakama-server/                 Full heroiclabs/nakama source clone (only its docker-compose.yml is actually used)
 ├── blender-source/                Raw .blend files (source of truth for 3D art) — currently empty
 ├── docs/
-│   ├── kingsmourn-design.md       Locked design doc (source of truth, see section 1)
-│   ├── kingsmourn-kit-spec.md     Modular building-kit spec + build order (section 5 below)
+│   ├── ironveil-design.md       Locked design doc (source of truth, see section 1)
+│   ├── ironveil-kit-spec.md     Modular building-kit spec + build order (section 5 below)
 │   ├── reference/                 Approved final visual reference images + README
 │   └── HANDOFF.md                 This file
 ├── Claude outputs/                Scratch screenshots Claude has produced (e.g. first working build)
@@ -86,9 +86,9 @@ committed. Run it every session.
   death and respawn. Factions, so pets and placed enemies hunt each other.
   Bosses scale health and damage with how many players are present — one
   system, so "a 5-man that works with 4" needs no second tuning pass.
-- **The world.** Thornhollow Vale: town square, gate and wall, farmland,
-  hedgerows, river and bridge, a stone circle, and the barrow. The Barrow of the
-  First King sits 500m underground behind a portal, with an entry hall, two boss
+- **The world.** Thornfell: town square, gate and wall, farmland,
+  hedgerows, river and bridge, a stone circle, and the barrow. The Deepbarrow
+sits 500m underground behind a portal, with an entry hall, two boss
   rooms and a rock shell.
 - **Quests.** A twelve-quest chain from the gates to the First King, handed out
   by seven NPCs with ! and ? markers. Kill, kill-by-tag, collect, talk and reach
@@ -123,7 +123,7 @@ committed. Run it every session.
 
 ## 6. The art kit spec (building blocks for the world)
 
-Full detail in `docs/kingsmourn-kit-spec.md`. Summary:
+Full detail in `docs/ironveil-kit-spec.md`. Summary:
 
 - Low-poly, WoW-Classic proportions; cream/tan stone, blue slate roofs, warm brown timber, gold accents; hand-painted texture look (baked shading, no normal maps yet).
 - Every piece snaps to a **1-meter grid** so pieces click together like LEGO.

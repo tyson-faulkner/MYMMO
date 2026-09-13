@@ -1,6 +1,6 @@
-# Kingsmourn — Enemy and Weapon Art Spec
+# Ironveil — Enemy and Weapon Art Spec
 
-Companion to `kingsmourn-character-spec.md`. That one covers the player classes
+Companion to `ironveil-character-spec.md`. That one covers the player classes
 and the shared body; this one covers everything you fight and everything you
 hold.
 

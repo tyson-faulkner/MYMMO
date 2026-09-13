@@ -1,6 +1,6 @@
 # QuestMarkers — where a quest objective IS, worked out from data.
 #
-# docs/kingsmourn-qol-spec.md section 5: markers are derived, never hand
+# docs/ironveil-qol-spec.md section 5: markers are derived, never hand
 # placed. A quest names a target; MobDatabase says what that is; the zone's
 # spawners say where. Move a camp and the marker moves. Reach objectives use
 # the AreaTrigger's box, kill objectives the bounding circle of the matching

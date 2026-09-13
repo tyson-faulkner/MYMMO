@@ -394,7 +394,7 @@ npc_id = &"npc_spirit_healer"
 [node name="CityGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1166, 0.3, 150)
 script = ExtResource("7_grave")
-display_name = "Kingsgate Rest"
+display_name = "Irongate Rest"
 
 [node name="MarketGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1246, 0.3, 96)
@@ -429,7 +429,7 @@ display_name = "The Crypt Stair"
 [node name="HallGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1499.7, -570)
 script = ExtResource("7_grave")
-display_name = "The Hall Steps"
+display_name = "The Archive Steps"
 
 [node name="ThroneGraveyard" type="Node3D" parent="Graveyards"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1999.7, -576)
@@ -630,7 +630,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1126, 2.5, -54)
 script = ExtResource("5_portal")
 destination = Vector3(1200, -1498.5, -586)
 destination_fall_limit = -1520
-label_text = "The Hall of Records"
+label_text = "The Archive"
 required_level = 18
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/HallEntrance"]
@@ -648,13 +648,13 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "The Hall of Records"
+text = "The Archive"
 
 [node name="HallExit" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1498.5, -570)
 script = ExtResource("5_portal")
 destination = Vector3(1126, 1.5, -44)
-label_text = "Leave the Hall"
+label_text = "Leave the Archive"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/HallExit"]
 shape = SubResource("BoxShape3D_portal")
@@ -671,14 +671,14 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "Leave the Hall"
+text = "Leave the Archive"
 
 [node name="ThroneEntrance" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 2.5, -158)
 script = ExtResource("5_portal")
 destination = Vector3(1200, -1998.5, -600)
 destination_fall_limit = -2020
-label_text = "The Throne of Kingsmourn"
+label_text = "The Broken Throne"
 required_level = 20
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/ThroneEntrance"]
@@ -696,7 +696,7 @@ no_depth_test = true
 font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
-text = "The Throne of Kingsmourn"
+text = "The Broken Throne"
 
 [node name="ThroneExit" type="Area3D" parent="Portals"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1998.5, -576)

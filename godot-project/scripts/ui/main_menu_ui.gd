@@ -6,7 +6,7 @@ signal join_pressed(nickname: String, address: String, class_id: String)
 signal quit_pressed
 
 ## The four classes, in party order: tank, healer, damage, damage. There are no
-## races in Kingsmourn — this choice is your whole identity. There is no
+## races in Ironveil — this choice is your whole identity. There is no
 ## appearance picker either: that is cut from v1, and each class model carries
 ## its own painted textures.
 const CLASS_OPTIONS: Array[String] = ["valkyr", "bard", "necromancer", "tinker"]

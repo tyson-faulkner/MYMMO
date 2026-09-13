@@ -1,4 +1,4 @@
-﻿"""Kingsmourn hand-painted texture library.
+"""Ironveil hand-painted texture library.
 
 Generates the tileable, hand-painted-look textures every kit piece shares:
 cream limestone, blue slate, warm timber, gray cobblestone, white plaster,
@@ -458,7 +458,7 @@ def grass(size=SIZE, seed=241):
 
 
 def marsh_mud(size=SIZE, seed=251):
-    """Churned marsh mud for Sablemarch: wet black hollows, drier ridged silt,
+    """Churned marsh mud for Greymarch: wet black hollows, drier ridged silt,
     ruts pressed through it, and sky caught in the standing water."""
     u, v = _uv(size)
     hollows = fbm(size, 4, seed, octaves=4)

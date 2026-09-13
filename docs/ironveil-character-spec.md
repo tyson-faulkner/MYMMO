@@ -1,4 +1,4 @@
-# Kingsmourn — Character Build Spec
+# Ironveil — Character Build Spec
 
 The kit spec covers buildings. This covers the people. Same discipline: one
 piece at a time, approved before the next, never redo an approved piece.
@@ -18,7 +18,7 @@ Concretely, from the design doc:
 
 ## One body, one skeleton — this is load-bearing
 
-There are **no playable races** in Kingsmourn. Every character shares one body
+There are **no playable races** in Ironveil. Every character shares one body
 type and therefore one skeleton and one animation set. Every enemy that is a
 person shares it too.
 

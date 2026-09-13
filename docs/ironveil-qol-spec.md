@@ -1,4 +1,4 @@
-# Kingsmourn — Quality of Life & Systems Spec
+# Ironveil — Quality of Life & Systems Spec
 
 Agreed 2026-09-11. Everything here is built into the game, not an addon: the
 server already owns every number an addon would want, so it is cheaper to do
@@ -28,7 +28,7 @@ been dodged — the boss ability system flags these).
 **Existing hooks:** `Stats.apply_damage(amount, source_peer_id)` already
 carries who did it. Add the ability id to that call and every ability already
 routes through `AbilityBar`, so the change is one parameter. Heals go through
-`Stats.heal()`. Boss abilities (per `kingsmourn-endgame-spec.md`) carry an
+`Stats.heal()`. Boss abilities (per `ironveil-endgame-spec.md`) carry an
 `avoidable` flag in their data.
 
 **Fight boundaries:** a fight starts when a boss encounter takes damage and
@@ -227,7 +227,7 @@ a project like this dies. Grudge makes the fifth kill a different fight from
 the first without a single new room. It also *is* the season system's engine
 (section 9): the same mechanic-swapping code powers both.
 
-**Existing:** the boss ability component from `kingsmourn-endgame-spec.md` is
+**Existing:** the boss ability component from `ironveil-endgame-spec.md` is
 where the mechanic list lives. Grudge is a per-player-per-boss counter in
 `CharacterState`.
 
@@ -248,7 +248,7 @@ chests a week beats fifty with a green in them.
   death in the next dungeon doesn't count); *Ferryman's Coin, lesser* (one free
   corpse-run teleport); *Widow's Salt* (your next gravestone buff is doubled).
 - **Rare** (one per zone, 2 hours, announced in chat — *"something glints in
-  the Sablemarch flood"*): a **gear token for the slot your character is
+  the Greymarch flood"*): a **gear token for the slot your character is
   weakest in** — the game knows your eleven slots and picks the worst — or a
   cosmetic: a weapon glow, a banner colour, a title.
 - **Season chest** (one, at the end of the raid, once per season): the season's

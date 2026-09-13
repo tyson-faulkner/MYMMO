@@ -1,4 +1,4 @@
-"""Kingsmourn modular kit -- shared Blender rig.
+"""Ironveil modular kit -- shared Blender rig.
 
 Everything the per-piece build scripts need: a clean scene, box-shaped mesh
 building, world-scale box UV mapping, the shared hand-painted materials, a

@@ -1,10 +1,10 @@
 # QuestDatabase — every quest in the game, as data.
 #
-# The chain below walks a player from the gates of Thornhollow Vale out to the
-# Barrow of the First King, which is roughly levels 1 to 12. Adding a quest is
+# The chain below walks a player from the gates of Thornfell out to the
+# Deepbarrow, which is roughly levels 1 to 12. Adding a quest is
 # adding an entry: no code, no scene work.
 #
-# The setting, per docs/kingsmourn-design.md: the king is dead with no heir and
+# The setting, per docs/ironveil-design.md: the king is dead with no heir and
 # the great houses are all certain the throne is theirs. The enemies are people.
 # Two houses are settled in the reference art — blue-and-gold sword-and-sunburst,
 # and a green banner with a white stag — and both are out here throwing their
@@ -172,7 +172,7 @@ const DEFINITIONS := {
 	},
 	&"q_first_king":
 	{
-		"title": "The Barrow of the First King",
+		"title": "The Deepbarrow",
 		"giver": &"npc_halvard",
 		"level": 8,
 		"prereq": &"q_wights",
@@ -189,7 +189,7 @@ const DEFINITIONS := {
 		"xp": 650,
 		"currency": 120
 	},
-	# --- Sablemarch, levels 8-14 ---------------------------------------------
+	# --- Greymarch, levels 8-14 ----------------------------------------------
 	# The borderland both houses burnt. Neither army will move first, so the
 	# dead of last year's fighting are still lying where they fell, and lately
 	# they have stopped lying still.
@@ -293,9 +293,9 @@ const DEFINITIONS := {
 		"prereq": &"sm_colm",
 		"offer":
 		"There is a fort out in the flood that we took nine times and they took nine times. Nobody holds it now. Go and look at it, and do not go inside.",
-		"progress": "Reach the approach to the Drowned Redoubt.",
+		"progress": "Reach the approach to the Drowned Hold.",
 		"completion": "You felt it. Everyone does. That is why nobody garrisons it any more.",
-		"objectives": [{"type": "reach", "target": "redoubt_approach", "count": 1, "text": "Reach the Redoubt approach"}],
+		"objectives": [{"type": "reach", "target": "redoubt_approach", "count": 1, "text": "Reach the Hold approach"}],
 		"xp": 500,
 		"currency": 30
 	},
@@ -307,7 +307,7 @@ const DEFINITIONS := {
 		"prereq": &"sm_reach_redoubt",
 		"offer":
 		"Colm and I have spoken. Do not tell anyone; we would both hang. Whatever is in that fort is walking out of it at night and it does not check colours before it kills.",
-		"progress": "Thin both houses' dead around the Redoubt.",
+		"progress": "Thin both houses' dead around the Hold.",
 		"completion":
 		"Two officers of two houses agreeing about something. If the histories record one honest thing about this war, let it be that.",
 		"objectives": [{"type": "kill_tag", "target": "drowned", "count": 12, "text": "Drowned dead thinned"}],
@@ -332,13 +332,13 @@ const DEFINITIONS := {
 	},
 	&"sm_redoubt":
 	{
-		"title": "The Drowned Redoubt",
+		"title": "The Drowned Hold",
 		"giver": &"npc_wrenn",
 		"level": 14,
 		"prereq": &"sm_ferry",
 		"offer":
 		"Two captains died in that fort with their hands on each other. They are both still in there, and they are both still doing it. Take people with you. I will be here when you come back, and I will be busy.",
-		"progress": "Break the Redoubt: the two captains, and whatever the water made.",
+		"progress": "Break the Hold: the two captains, and whatever the water made.",
 		"completion":
 		"You look like everyone who comes back from there. Sit. The capital can wait an hour, and when you get there, it will not have waited at all.",
 		"objectives":
@@ -350,7 +350,7 @@ const DEFINITIONS := {
 		"currency": 180,
 		"items": {"mount_marcher_bear": 1}
 	},
-	# --- Kingsmourn (14-20) ----------------------------------------------------
+	# --- Ironhold (14-20) ------------------------------------------------------
 	# Short and functional on purpose: the players have said they do not read
 	# quest text. Each line tells you where to go and what to hit.
 	&"km_arrival":
@@ -360,8 +360,8 @@ const DEFINITIONS := {
 		"level": 14,
 		"prereq": &"sm_redoubt",
 		"offer": "You're from the Marches. Good. The city needs hands that have already seen the dead walk.",
-		"progress": "Report to Castellan Orrin at the Kingsgate.",
-		"completion": "Welcome to Kingsmourn. Nobody's buried the king and everybody's armed. Start in the market.",
+		"progress": "Report to Castellan Orrin at the Irongate.",
+		"completion": "Welcome to Ironhold. Nobody's buried the king and everybody's armed. Start in the market.",
 		"objectives": [{"type": "talk", "target": "npc_orrin", "count": 1, "text": "Report to Castellan Orrin"}],
 		"xp": 500,
 		"currency": 40
@@ -398,7 +398,7 @@ const DEFINITIONS := {
 		"giver": &"npc_ilsa",
 		"level": 15,
 		"prereq": &"km_retainers",
-		"offer": "The histories are in the Hall of Records, and the Hall is shut. Walk me to the quarter and we'll see who shut it.",
+		"offer": "The histories are in the Archive, and the Archive is shut. Walk me to the quarter and we'll see who shut it.",
 		"progress": "Reach the Records Quarter.",
 		"completion": "Locked, and guarded by both houses. That's an answer of a kind.",
 		"objectives": [{"type": "reach", "target": "records_quarter", "count": 1, "text": "Reach the Records Quarter"}],
@@ -464,25 +464,25 @@ const DEFINITIONS := {
 	},
 	&"km_records_gate":
 	{
-		"title": "The Hall Is Open",
+		"title": "The Archive Is Open",
 		"giver": &"npc_ilsa",
 		"level": 17,
 		"prereq": &"km_heralds",
-		"offer": "The guards on the Hall are gone — inside, I'd guess. Get to the doors. Archivist Pell will be there if he's alive.",
-		"progress": "Reach the Hall of Records.",
+		"offer": "The guards on the Archive are gone — inside, I'd guess. Get to the doors. Archivist Pell will be there if he's alive.",
+		"progress": "Reach the Archive.",
 		"completion": "He's alive. He's also the only one who knows what's in there.",
-		"objectives": [{"type": "reach", "target": "hall_of_records_gate", "count": 1, "text": "Reach the Hall of Records"}],
+		"objectives": [{"type": "reach", "target": "hall_of_records_gate", "count": 1, "text": "Reach the Archive"}],
 		"xp": 1000,
 		"currency": 50
 	},
 	&"km_hall":
 	{
-		"title": "The Hall of Records",
+		"title": "The Archive",
 		"giver": &"npc_pell",
 		"level": 18,
 		"prereq": &"km_records_gate",
 		"offer": "Both houses are inside forging and burning, and Master Kell is letting them. Kell has the claim. Take a party. Stop him, and stop the thing he's bound the ledgers into.",
-		"progress": "Clear the Hall of Records: Master Kell, then the Bound Ledger.",
+		"progress": "Clear the Archive: Master Kell, then the Bound Ledger.",
 		"completion": "The claim is real and it names nobody living. He went to the throne room. So will everyone else.",
 		"objectives":
 		[
@@ -507,7 +507,7 @@ const DEFINITIONS := {
 	},
 	&"km_throne":
 	{
-		"title": "The Throne of Kingsmourn",
+		"title": "The Broken Throne",
 		"giver": &"npc_orrin",
 		"level": 19,
 		"prereq": &"km_palace",

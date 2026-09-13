@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Kingsmourn — fresh Ubuntu 24.04 box to a running server, one command.
+# Ironveil — fresh Ubuntu 24.04 box to a running server, one command.
 #
 #   scp -r deploy/ user@your-server:~/
 #   ssh user@your-server
@@ -8,9 +8,9 @@
 # Safe to run twice: every step checks before it acts.
 set -euo pipefail
 
-APP_DIR=/opt/kingsmourn
-LOG_DIR=/var/log/kingsmourn
-SERVICE_USER=kingsmourn
+APP_DIR=/opt/ironveil
+LOG_DIR=/var/log/ironveil
+SERVICE_USER=ironveil
 
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$1"; }
 
@@ -59,8 +59,8 @@ fi
 say "Firewall"
 ufw allow OpenSSH >/dev/null
 ufw allow 7350/tcp comment 'Nakama API' >/dev/null
-ufw allow 8080/tcp comment 'Kingsmourn game' >/dev/null
-ufw allow 8080/udp comment 'Kingsmourn game' >/dev/null
+ufw allow 8080/tcp comment 'Ironveil game' >/dev/null
+ufw allow 8080/udp comment 'Ironveil game' >/dev/null
 ufw --force enable >/dev/null
 echo "open: 22, 7350/tcp, 8080/tcp+udp. Database and Nakama console stay private."
 
@@ -69,27 +69,27 @@ cp docker-compose.yml .env "$APP_DIR"/ 2>/dev/null || true
 (cd "$APP_DIR" && docker compose up -d)
 
 say "Game server service"
-cp kingsmourn.service /etc/systemd/system/
+cp ironveil.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable kingsmourn >/dev/null
-if [ -x "$APP_DIR/Kingsmourn.x86_64" ]; then
-  systemctl restart kingsmourn
+systemctl enable ironveil >/dev/null
+if [ -x "$APP_DIR/Ironveil.x86_64" ]; then
+  systemctl restart ironveil
   echo "started"
 else
-  echo "No game build at $APP_DIR/Kingsmourn.x86_64 yet."
+  echo "No game build at $APP_DIR/Ironveil.x86_64 yet."
   echo "Export a Linux build from Godot, then run ./deploy.sh from your PC."
 fi
 
 say "Nightly backup"
 cp backup.sh "$APP_DIR"/ && chmod +x "$APP_DIR/backup.sh"
-cat > /etc/cron.d/kingsmourn-backup <<'CRON'
+cat > /etc/cron.d/ironveil-backup <<'CRON'
 # Seven rolling nightly backups. Losing everyone's characters would end the
 # project; this is the two minutes that prevents it.
-30 4 * * * root /opt/kingsmourn/backup.sh >> /var/log/kingsmourn/backup.log 2>&1
+30 4 * * * root /opt/ironveil/backup.sh >> /var/log/ironveil/backup.log 2>&1
 CRON
 
 say "Done"
 echo "Backend:  docker compose -f $APP_DIR/docker-compose.yml ps"
-echo "Game:     systemctl status kingsmourn"
+echo "Game:     systemctl status ironveil"
 echo "Logs:     tail -f $LOG_DIR/server.log"
 echo "Console:  ssh -L 7351:localhost:7351 $SUDO_USER@\$(hostname -I | awk '{print \$1}')  then http://localhost:7351"

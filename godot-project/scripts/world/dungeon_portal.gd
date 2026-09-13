@@ -1,6 +1,6 @@
 # DungeonPortal — walk in here, come out somewhere else.
 #
-# The Barrow of the First King is a separate region of the same world rather
+# The Deepbarrow is a separate region of the same world rather
 # than a per-group instance. For a server of five to ten friends that is the
 # right trade: it costs almost nothing, and everyone who walks in is in the same
 # barrow, which is what a small group wants anyway. Real per-group instancing
@@ -16,7 +16,7 @@ const COOLDOWN_SECONDS := 2.0
 @export var destination: Vector3 = Vector3.ZERO
 
 ## Shown floating over the portal.
-@export var label_text: String = "The Barrow of the First King"
+@export var label_text: String = "The Deepbarrow"
 
 ## Minimum level to enter. Sends low players away rather than into a wipe.
 @export var required_level: int = 1

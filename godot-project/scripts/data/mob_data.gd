@@ -1,6 +1,6 @@
 # MobData — the definition of one kind of enemy.
 #
-# Kingsmourn's enemies are people, not demons, so nearly every one of them
+# Ironveil's enemies are people, not demons, so nearly every one of them
 # shares a single humanoid body. That is a production decision as much as a
 # creative one: one skeleton, one animation set, and a new enemy costs a data
 # file instead of an art budget. Adding the fortieth mob type should be filling

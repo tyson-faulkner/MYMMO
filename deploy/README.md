@@ -1,6 +1,6 @@
-# Running the Kingsmourn server
+# Running the Ironveil server
 
-Everything needed to take a fresh Ubuntu box to an always-on Kingsmourn world.
+Everything needed to take a fresh Ubuntu box to an always-on Ironveil world.
 Written for somebody who has never rented a server before — every step says
 what it does and why.
 
@@ -57,7 +57,7 @@ client; the console password is not shown again.
 
 ## Sending it a build
 
-Export a **Linux/X11** build from Godot named `Kingsmourn.x86_64`, then from
+Export a **Linux/X11** build from Godot named `Ironveil.x86_64`, then from
 your PC:
 
 ```
@@ -70,10 +70,10 @@ update.
 ## Day to day
 
 ```
-systemctl status kingsmourn                              # is the game up
-tail -f /var/log/kingsmourn/server.log                   # what it's doing
-docker compose -f /opt/kingsmourn/docker-compose.yml ps  # is the backend up
-sudo systemctl restart kingsmourn                        # kick it
+systemctl status ironveil                              # is the game up
+tail -f /var/log/ironveil/server.log                   # what it's doing
+docker compose -f /opt/ironveil/docker-compose.yml ps  # is the backend up
+sudo systemctl restart ironveil                        # kick it
 ```
 
 **The Nakama admin console** (player list, storage browser) is deliberately not
@@ -102,19 +102,19 @@ console is somebody else's server.
 ## Backups
 
 `backup.sh` runs at 04:30 nightly and keeps seven days in
-`/opt/kingsmourn/backups`. Losing everyone's characters to a bad update is the
+`/opt/ironveil/backups`. Losing everyone's characters to a bad update is the
 one failure this project would not recover from, so this is not optional.
 
 To pull a copy down to your own machine now and then:
 
 ```
-scp you@your-server-ip:/opt/kingsmourn/backups/\*.tar.gz ./
+scp you@your-server-ip:/opt/ironveil/backups/\*.tar.gz ./
 ```
 
 ## Two things setup.sh does not do
 
 **A domain name.** Friends can type an IP; it just isn't pretty. If you want
-`play.kingsmourn.example`, point an A record at the server's IP and use that
+`play.ironveil.example`, point an A record at the server's IP and use that
 instead — no server-side change needed.
 
 **TLS on Nakama.** Fine for a private server among friends. If you ever want

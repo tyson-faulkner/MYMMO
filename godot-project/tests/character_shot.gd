@@ -4,7 +4,7 @@
 #
 # Hosts, wears each class model in turn and photographs it from the front (the
 # check that it faces the way it walks), then a running pose, the first-person
-# camera, and the painted ground in the vale and Sablemarch. Prints the facts a
+# camera, and the painted ground in the vale and Greymarch. Prints the facts a
 # picture can't show: whether Idle is still playing after its length has run
 # out, and where the first-person camera actually sits. Needs a real renderer,
 # so it runs windowed. Writes PNGs to "Claude outputs/".

@@ -1,6 +1,6 @@
-# Kingsmourn — Modular Kit Build Spec
+# Ironveil — Modular Kit Build Spec
 
-Low-poly, WoW-Classic-styled modular kit for Kingsmourn.
+Low-poly, WoW-Classic-styled modular kit for Ironveil.
 
 ## Style rules (apply to every piece)
 

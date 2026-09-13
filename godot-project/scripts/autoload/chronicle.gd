@@ -1,6 +1,6 @@
 # Chronicle — your group's history, which is the only kind anyone reads.
 #
-# docs/kingsmourn-qol-spec.md section 6. The server keeps a short log of
+# docs/ironveil-qol-spec.md section 6. The server keeps a short log of
 # notable things: the first fall of each boss (and of each grudge tier),
 # personal bests and records, deaths, the season turning over. Ilsa tells you
 # the last few when you talk to her, and there is a weekly line. This is also

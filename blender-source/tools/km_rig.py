@@ -1,4 +1,4 @@
-"""Kingsmourn character rig -- the shared skeleton.
+"""Ironveil character rig -- the shared skeleton.
 
 There are no playable races, so there is exactly ONE skeleton. Every class,
 every human enemy and both bosses use it, which is why it is defined here as

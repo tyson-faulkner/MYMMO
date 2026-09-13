@@ -1,6 +1,6 @@
 # SeasonDatabase — what changes every six to eight weeks, and what never does.
 #
-# docs/kingsmourn-qol-spec.md section 9. The level cap and the gear tiers are
+# docs/ironveil-qol-spec.md section 9. The level cap and the gear tiers are
 # forever; nobody's gear becomes junk. A season swaps each boss's mechanic list
 # and skin, and hands out cosmetics, mounts and titles. Never power.
 #
@@ -28,8 +28,8 @@ const SEASONS := [
 		"name": "The Drowned Court",
 		"starts": "2026-11-08",
 		"weeks": 7,
-		# The Sablemarch flood reaches the capital: the Hall and the Throne fight
-		# with the Redoubt's tricks, and their masters wear the drowned.
+		# The Greymarch flood reaches the capital: the Archive and the Broken Throne fight
+		# with the Hold's tricks, and their masters wear the drowned.
 		"mechanics": {
 			&"master_kell": [
 				{"name": "Undertow", "every": 8.0, "first": 5.0, "effect": "pool", "target": "random", "range": 40.0, "radius": 3.0, "slow": 0.5, "power": 18, "tick": 1.0, "persist": false, "seconds": 12.0, "avoidable": true},

@@ -1,6 +1,6 @@
 # RecordBook — your best on every boss, and (on the host) the group's.
 #
-# docs/kingsmourn-qol-spec.md section 3, "comparisons": your own best matters
+# docs/ironveil-qol-spec.md section 3, "comparisons": your own best matters
 # most, then the record. Personal bests are saved with the character. The
 # group record is kept by whoever hosts, because the host is what the group
 # has in common; if a different friend hosts, they keep their own book.

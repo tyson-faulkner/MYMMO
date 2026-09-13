@@ -1,7 +1,7 @@
 # GrudgeLedger — how many times you have beaten each boss, which is how hard
 # it fights you next time.
 #
-# docs/kingsmourn-qol-spec.md section 7. Every boss's mechanics are an ordered
+# docs/ironveil-qol-spec.md section 7. Every boss's mechanics are an ordered
 # list; grudge tier N turns on the first 2+N. Each kill raises the tier by one
 # for everyone present, up to 5 for dungeon bosses and 3 for raid bosses. The
 # group fights at the LOWEST member's tier, so a new friend is never dragged

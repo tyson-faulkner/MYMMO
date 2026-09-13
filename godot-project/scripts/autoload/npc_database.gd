@@ -11,7 +11,7 @@
 extends Node
 
 const DEFINITIONS := {
-	# --- Thornhollow Vale ----------------------------------------------------
+	# --- Thornfell -----------------------------------------------------------
 	&"npc_halvard":
 	{
 		"name": "Serjeant Halvard",
@@ -74,7 +74,7 @@ const DEFINITIONS := {
 		"color": Color(0.5, 0.44, 0.5),
 		"greeting": "Two houses want this road and neither one of them will say so out loud. Keep your head down."
 	},
-	# --- Sablemarch ----------------------------------------------------------
+	# --- Greymarch -----------------------------------------------------------
 	&"npc_wrenn":
 	{
 		"name": "Sister Wrenn",
@@ -122,7 +122,7 @@ const DEFINITIONS := {
 		"greeting":
 		"I can send you back from here, and you will feel it for a while. Or you can walk to yourself. Most walk."
 	},
-	# --- Kingsmourn ------------------------------------------------------------
+	# --- Ironhold --------------------------------------------------------------
 	&"npc_orrin":
 	{
 		"name": "Castellan Orrin",
@@ -150,7 +150,7 @@ const DEFINITIONS := {
 	&"npc_pell":
 	{
 		"name": "Archivist Pell",
-		"title": "Of the Hall of Records",
+		"title": "Of the Archive",
 		"zones": [&"kingsmourn"],
 		"color": Color(0.7, 0.62, 0.45),
 		"greeting": "Everything that's ever been decided in this realm is on a shelf in there. That's why they're burning it."

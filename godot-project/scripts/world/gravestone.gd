@@ -1,7 +1,7 @@
 # Gravestone — a small stone where a player fell, with their name and what
 # killed them.
 #
-# docs/kingsmourn-qol-spec.md section 6. Anyone can pay respects (a 3s
+# docs/ironveil-qol-spec.md section 6. Anyone can pay respects (a 3s
 # channel) for a ten-minute +5% to damage and healing, once per stone per
 # player. Three or more stones together are a cairn, and the cairn's buff is
 # +8%. Widow's Salt doubles the next one. Stones last a day of play.

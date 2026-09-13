@@ -1,4 +1,4 @@
-# Kingsmourn — Death, Loot, Hosting, Launcher and the Guild
+# Ironveil — Death, Loot, Hosting, Launcher and the Guild
 
 Five decisions taken 2026-09-12. These are the ones that turn a working build
 into something five to ten friends can actually live in.
@@ -25,11 +25,11 @@ dungeon gets one at its entrance.
 
 | Zone | Graveyards |
 |---|---|
-| Thornhollow Vale | Thornhollow Rest (town), Hedgerow Rest (mid), Barrow Watch (north) |
+| Thornfell | Thornfell Rest (town), Hedgerow Rest (mid), Barrow Watch (north) |
 | The Barrow | The Barrow Threshold |
-| Sablemarch | The Field Camp (south), The Fordside (east), Causeway Rest (mid), Redoubt Watch (north) |
-| The Drowned Redoubt | The Redoubt Causeway |
-| Kingsmourn | Kingsgate Rest (south), Market Rest, Guild Quarter Rest, Palace Rest |
+| Greymarch | The Field Camp (south), The Fordside (east), Causeway Rest (mid), Hold Watch (north) |
+| The Drowned Hold | The Hold Causeway |
+| Ironhold | Irongate Rest (south), Market Rest, Guild Quarter Rest, Palace Rest |
 | Crypt / Hall / Throne | one each at the entrance |
 
 **Spirit healers.** Every graveyard has one — a single shared NPC
@@ -144,7 +144,7 @@ would end the project, and the cron line that prevents it takes two minutes.
 **The bar to clear:** a friend gets one link, double-clicks one thing, types a
 name, and is in. No IP addresses, no zip files, no "which version are you on".
 
-**The launcher** is a small separate Godot app, `KingsmournLauncher.exe`:
+**The launcher** is a small separate Godot app, `IronveilLauncher.exe`:
 
 1. On start, fetches `version.json` from the VPS.
 2. If the local build is older, downloads the new `game.pck` with a progress
@@ -180,7 +180,7 @@ actually do:
 - **A roster panel**: who's online now, and for everyone else their level,
   class, spec and when they were last seen. On a small server "who played last
   night" is genuinely interesting.
-- **The guild hall.** Bryn Aldercott's inn in Thornhollow Vale becomes the OTPH
+- **The guild hall.** Bryn Aldercott's inn in Thornfell becomes the OTPH
   tavern — the reference tavern art is the interior it is built toward, and the
   crest hangs over the door. A real place to meet, with the hearth as a bind
   point.

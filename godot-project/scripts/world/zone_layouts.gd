@@ -13,9 +13,9 @@
 # World layout, since portals move you inside one continuous world rather than
 # loading a level:
 #
-#   Thornhollow Vale   x ~ 0        y 0        (barrow at y -500)
-#   Sablemarch         x ~ 600      y 0        (redoubt at y -1000)
-#   Kingsmourn         x ~ 1200     y 0        (crypt -1200, hall -1500,
+#   Thornfell          x ~ 0        y 0        (barrow at y -500)
+#   Greymarch          x ~ 600      y 0        (hold at y -1000)
+#   Ironhold           x ~ 1200     y 0        (crypt -1200, archive -1500,
 #                                               throne -2000)
 #
 # The gaps are deliberate and generous: a zone you can see from another zone
@@ -138,16 +138,16 @@ static func stall(at: Vector3, cloth: Color, rot: float = 0.0) -> Array:
 	]
 
 
-# --- Zone 2: Sablemarch ----------------------------------------------------
+# --- Zone 2: Greymarch -----------------------------------------------------
 
 
-## Sablemarch: a year-old battlefield between two armies, flooded and full of
+## Greymarch: a year-old battlefield between two armies, flooded and full of
 ## the dead that the water keeps giving back. Levels 8-14.
 ##
 ## Shape: the road arrives from the vale in the south, runs through a field camp
 ## that both houses tolerate because the surgeon is in it, out across the
 ## contested middle with a picket line on each flank, over the ferry crossing,
-## and up to the Drowned Redoubt in the north.
+## and up to the Drowned Hold in the north.
 static func sablemarch() -> Array:
 	var o := SABLEMARCH_ORIGIN
 	var pieces: Array = []
@@ -166,7 +166,7 @@ static func sablemarch() -> Array:
 	]:
 		pieces.append(slab(o + pool["at"] + Vector3(0, 0.05, 0), pool["size"], FLOOD, false))
 
-	# The road in from Thornhollow, and on to the redoubt.
+	# The road in from Thornfell, and on to the hold.
 	pieces.append(slab(o + Vector3(0, 0.08, 120), Vector3(8, 0.2, 120), ZoneBuilder.ROAD, false))
 	pieces.append(slab(o + Vector3(0, 0.08, -40), Vector3(7, 0.2, 200), ZoneBuilder.ROAD, false))
 
@@ -224,7 +224,7 @@ static func sablemarch() -> Array:
 	return pieces
 
 
-## Inside the Drowned Redoubt. A siege fort standing in water, held by nobody:
+## Inside the Drowned Hold. A siege fort standing in water, held by nobody:
 ## both houses threw men at it for a year and the water gave them all back.
 static func redoubt_interior() -> Array:
 	var o := REDOUBT_ORIGIN
@@ -263,13 +263,13 @@ static func redoubt_interior() -> Array:
 	return pieces
 
 
-# --- Zone 3: Kingsmourn ----------------------------------------------------
+# --- Zone 3: Ironhold ------------------------------------------------------
 
 
-## Kingsmourn: the capital, sunlit and prosperous and about a week from tearing
+## Ironhold: the capital, sunlit and prosperous and about a week from tearing
 ## itself apart. Levels 14-20.
 ##
-## Shape: Kingsgate in the south, one avenue running the length of the city,
+## Shape: the Irongate in the south, one avenue running the length of the city,
 ## market ward, guild quarter either side, the Records Quarter west, and the
 ## palace ward walled off at the north end.
 static func kingsmourn() -> Array:
@@ -283,7 +283,7 @@ static func kingsmourn() -> Array:
 	# The avenue, gate to palace.
 	pieces.append(slab(o + Vector3(0, 0.08, 0), Vector3(16, 0.2, 380), ZoneBuilder.STONE_DARK, false))
 
-	# --- Kingsgate, south ---
+	# --- The Irongate, south ---
 	pieces.append(slab(o + Vector3(-30, 8, 178), Vector3(46, 16, 5), ZoneBuilder.STONE))
 	pieces.append(slab(o + Vector3(30, 8, 178), Vector3(46, 16, 5), ZoneBuilder.STONE))
 	pieces.append(slab(o + Vector3(0, 13, 178), Vector3(16, 6, 5), ZoneBuilder.STONE))
@@ -326,7 +326,7 @@ static func kingsmourn() -> Array:
 
 	# --- Records Quarter, west ---
 	pieces.append(slab(o + Vector3(-74, 0.1, -66), Vector3(74, 0.3, 70), MARBLE_DARK))
-	# The Hall of Records itself: a marble front with a stair and columns, the
+	# The Archive itself: a marble front with a stair and columns, the
 	# one building in the city that is not made of the town kit.
 	pieces.append(slab(o + Vector3(-74, 0.6, -44), Vector3(46, 1.2, 10), MARBLE))
 	pieces.append(slab(o + Vector3(-74, 9, -76), Vector3(50, 18, 34), MARBLE))
@@ -389,7 +389,7 @@ static func royal_crypt_interior() -> Array:
 	return pieces
 
 
-## The Hall of Records — dungeon three. A reading hall, a scriptorium where
+## The Archive — dungeon three. A reading hall, a scriptorium where
 ## Master Kell is, a vault stair, and the vault with the Bound Ledger and its
 ## four braziers.
 static func hall_of_records_interior() -> Array:
@@ -440,7 +440,7 @@ static func hall_of_records_interior() -> Array:
 	return pieces
 
 
-## The Throne of Kingsmourn — the raid. An antechamber, then the throne room:
+## The Broken Throne — the raid. An antechamber, then the throne room:
 ## the old king still lying in state, both claimants arrived at once, and the
 ## dais the raid has to stand on when the First King names someone.
 static func throne_interior() -> Array:

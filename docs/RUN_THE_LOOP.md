@@ -84,7 +84,7 @@ claude
 **4.** Paste this and press Enter:
 
 > Read CLAUDE.md, docs/BUILD_PLAN.md and docs/BUILD_PROGRESS.md. Continue the
-> Kingsmourn build from the current milestone. Do the next unchecked tasks in
+> Ironveil build from the current milestone. Do the next unchecked tasks in
 > order, without asking me anything — decide unspecified details yourself and
 > record them in BUILD_PROGRESS.md. Run the smoke test before each commit, commit
 > every completed task, and push when a milestone lands. Keep going until the
@@ -108,7 +108,7 @@ Blender running and **Connect to Claude** pressed — nothing else can reach it.
 
 Open Blender, connect it, then in the MyMMO folder run `claude` and paste:
 
-> Read CLAUDE.md and docs/kingsmourn-kit-spec.md. Blender is open and the
+> Read CLAUDE.md and docs/ironveil-kit-spec.md. Blender is open and the
 > Blender MCP server is connected. Build the modular kit, Phase 1 first, one
 > piece at a time in the listed order. For each piece: model it on a 1m grid in
 > Blender, UV unwrap simply, texture it flat then add painted shading, render a
@@ -120,7 +120,7 @@ Open Blender, connect it, then in the MyMMO folder run `claude` and paste:
 
 Phase 1 is five pieces: a stone wall section, a wall with a window, a wall with
 a door, a sloped slate roof plus corner, and a timber-frame upper storey. Those
-five are enough to build every house in Thornhollow Vale, which is currently
+five are enough to build every house in Thornfell, which is currently
 made of tinted boxes.
 
 ### Swapping art in

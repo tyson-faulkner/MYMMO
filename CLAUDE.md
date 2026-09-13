@@ -1,4 +1,4 @@
-# Kingsmourn (MyMMO)
+# Ironveil (MyMMO)
 
 > **Current priority (2026-09-11): characters before props.** See the banner at
 > the top of `docs/BUILD_PROGRESS.md`. Classes and enemies need to be modelled
@@ -11,7 +11,7 @@ standing orders) and `docs/BUILD_PROGRESS.md` (where the last pass stopped).
 ## What this is
 
 A small-scale MMO for 5-10 friends, built in Godot 4.7.2 with a Nakama backend
-and original art from Blender. `docs/kingsmourn-design.md` is the locked design
+and original art from Blender. `docs/ironveil-design.md` is the locked design
 document and is not to be re-litigated. `docs/reference/` holds the approved
 visual direction.
 
@@ -81,11 +81,11 @@ blue slate roofs, warm timber, gold heraldry, green farmland. Every placeholder
 is a scene whose `Mesh` node can be replaced by a `.glb` with no code change.
 
 When Blender is running with the Blender MCP addon (port 9876), work through
-`docs/kingsmourn-kit-spec.md`: one piece at a time, on a 1m grid, exported as
+`docs/ironveil-kit-spec.md`: one piece at a time, on a 1m grid, exported as
 `.glb` into `godot-project/assets/kit/`. Never redo an approved piece.
 
 ## Git
 
-Commit every completed task, message `Kingsmourn: <what>`. Push when a milestone
+Commit every completed task, message `Ironveil: <what>`. Push when a milestone
 lands — this machine has Tyson's GitHub credentials, so `git push` works here
 even though the cloud sandbox can't.

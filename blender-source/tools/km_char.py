@@ -1,4 +1,4 @@
-"""Kingsmourn character rig -- shared machinery for the people.
+"""Ironveil character rig -- shared machinery for the people.
 
 The kit is built out of boxes; bodies are built out of rings. Every limb and
 the torso are generalised cylinders: a list of cross-sections swept along a
@@ -12,7 +12,7 @@ cannot:
   * proportions driven by numbers, so "7 heads tall" is a constant rather
     than something eyeballed.
 
-Conventions (from docs/kingsmourn-character-spec.md):
+Conventions (from docs/ironveil-character-spec.md):
   * 1 unit = 1 metre, character ~1.8m, origin between the feet at z=0.
   * Blender Z-up, facing +Y. glTF export turns that into Godot's Y-up
     facing -Z, which is Godot's forward.

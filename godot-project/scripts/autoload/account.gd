@@ -1,6 +1,6 @@
 # Account — this machine's Nakama login, and the one place characters are saved.
 #
-# Nakama is what makes Kingsmourn an MMO rather than a session: without it,
+# Nakama is what makes Ironveil an MMO rather than a session: without it,
 # everything vanishes the moment the host closes the game.
 #
 # THE GAME MUST WORK WITHOUT IT. If Docker isn't running, or the backend is
@@ -63,7 +63,7 @@ func login() -> bool:
 	if result.is_exception():
 		session = null
 		last_error = str(result.get_exception().message)
-		push_warning("Kingsmourn: playing without saving — %s" % last_error)
+		push_warning("Ironveil: playing without saving — %s" % last_error)
 		login_changed.emit(false)
 		return false
 
@@ -107,7 +107,7 @@ func save_character(data: Dictionary) -> bool:
 	var result = await client.write_storage_objects_async(session, [write])
 	if result.is_exception():
 		last_error = str(result.get_exception().message)
-		push_warning("Kingsmourn: save failed — %s" % last_error)
+		push_warning("Ironveil: save failed — %s" % last_error)
 		return false
 	return true
 

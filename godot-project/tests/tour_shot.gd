@@ -42,23 +42,23 @@ func _ready() -> void:
 	_camera.current = true
 	await _frames(30)
 
-	# 1. Thornhollow Vale town square.
+	# 1. Thornfell town square.
 	await _place(Vector3(0, 1.5, 12))
 	await _shot("tour_1_thornhollow_town_square", Vector3(0, 24, 50), Vector3(0, 2, -4))
 
-	# 2. Marcher Road portal, east of the vale -> Sablemarch.
+	# 2. Marcher Road portal, east of the vale -> Greymarch.
 	if not await _through_portal("Marcher Road", Vector3(120, 1.5, 20), Vector3(475, 1.5, 120)):
 		return
 	await _place(Vector3(600, 1.5, 128))
 	await _shot("tour_2_sablemarch_field_camp", Vector3(600, 30, 176), Vector3(600, 2, 100))
 
-	# 3. King's Road portal, east of Sablemarch -> Kingsmourn.
+	# 3. King's Road portal, east of Greymarch -> Ironhold.
 	if not await _through_portal("King's Road", Vector3(735, 1.5, 120), Vector3(1200, 1.5, 168)):
 		return
 	await _place(Vector3(1200, 1.5, 128))
 	await _shot("tour_3_kingsmourn_market_ward", Vector3(1200, 24, 160), Vector3(1200, 3, 92))
 
-	# 4. Kingsmourn palace ward.
+	# 4. Ironhold palace ward.
 	await _place(Vector3(1200, 1.5, -134))
 	# Eye sits above and just inside the 12m ward wall (z -110), or it hides the floor.
 	await _shot("tour_4_kingsmourn_palace_ward", Vector3(1200, 34, -100), Vector3(1200, 6, -168))
