@@ -198,6 +198,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 
 ## Log
 
+### 2026-09-13 — Skin colour picker removed from the menu
+
+- **Changed:** the "Player Skin" row is gone from `main_menu_ui.tscn`; the menu's host/join signals no longer carry a skin, and `level.gd` passes an empty one to `Network`, which lands on its default. Appearance customisation is cut from v1 and the class models bring their own textures.
+- **Test:** smoke 175/175, new check: the menu scene has no `SkinInput`. Screenshot harnesses updated to the new `_on_host_pressed(nickname, class_id)`.
+- **Surprising:** nothing. `Network.player_info` still has a skin slot and `Character.SkinColor` still exists — dead but harmless, left for a later sweep rather than touching the wire format now.
+
 ### 2026-09-13 — Template hats and weapons removed
 
 - **Changed:** fedora, headphones, pirate/sheriff/wizard hats, sombrero, sword, big sword and axe are gone from `ItemDatabase`, `player.tscn` (nodes, ext_resources and 9 synced `visible` properties), the level's item spawner and `assets/items/`; 49 files deleted. The backpack stays for its four bag slots.

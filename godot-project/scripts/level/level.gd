@@ -131,8 +131,10 @@ func _on_player_connected(peer_id, player_info):
 	_refresh_player_list()
 
 
-func _on_host_pressed(nickname: String, skin: String, class_id: String):
-	var error = Network.start_host(nickname, skin, class_id)
+# Network still carries a skin slot in player_info; the menu no longer offers one,
+# so an empty string lands on its default.
+func _on_host_pressed(nickname: String, class_id: String):
+	var error = Network.start_host(nickname, "", class_id)
 	if error:
 		push_warning("Failed to host game. Error: " + str(error))
 		main_menu.show_menu()
@@ -142,8 +144,8 @@ func _on_host_pressed(nickname: String, skin: String, class_id: String):
 	_update_mouse_mode()
 
 
-func _on_join_pressed(nickname: String, skin: String, address: String, class_id: String):
-	var error = Network.join_game(nickname, skin, address, class_id)
+func _on_join_pressed(nickname: String, address: String, class_id: String):
+	var error = Network.join_game(nickname, "", address, class_id)
 	if error:
 		push_warning("Failed to join game. Error: " + str(error))
 		main_menu.show_menu()

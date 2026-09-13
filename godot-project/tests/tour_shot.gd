@@ -20,7 +20,7 @@ func _ready() -> void:
 	await _frames(10)
 
 	# The same call the main menu's Host button makes.
-	_level._on_host_pressed("Tourist", "blue", "valkyr")
+	_level._on_host_pressed("Tourist", "valkyr")
 	for i in range(120):
 		_player = _level.get_node_or_null("PlayersContainer/1") as CharacterBody3D
 		if _player:

@@ -33,7 +33,7 @@ func _ready() -> void:
 	_level = LEVEL_SCENE.instantiate()
 	add_child(_level)
 	await _frames(5)
-	_level._on_host_pressed("SaveCheck", "blue", "valkyr")
+	_level._on_host_pressed("SaveCheck", "valkyr")
 	if not await _wait_for_player() or not await _wait_for_login():
 		_finish(1)
 		return
