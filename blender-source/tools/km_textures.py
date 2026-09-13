@@ -497,6 +497,77 @@ def marsh_mud(size=SIZE, seed=251):
     return _rgba(_match_mean(rgb, MUD_BASE))
 
 
+# ------------------------------------------------------------------ props ---
+FOLIAGE = np.array([0.300, 0.520, 0.220])
+FOLIAGE_DEEP = np.array([0.130, 0.270, 0.110])
+FOLIAGE_SUN = np.array([0.620, 0.760, 0.330])
+WATER = np.array([0.280, 0.450, 0.580])
+WATER_DEEP = np.array([0.160, 0.290, 0.420])
+WATER_GLINT = np.array([0.760, 0.860, 0.930])
+
+
+def foliage(size=SIZE, seed=271):
+    """WoW-blob canopy: painted leaf clumps, dark in the gaps, lit on top.
+
+    Reads as a mass of leaves at a distance and as painted daubs up close,
+    which is exactly the kit's brief. No individual leaves -- those would
+    fight the low-poly sphere it is wrapped around.
+    """
+    clumps = fbm(size, 9, seed, octaves=4)
+    leaf = value_noise(size, 40, seed + 7)
+    fine = value_noise(size, 110, seed + 13)
+    top = _smooth(np.clip((clumps - 0.40) / 0.30, 0, 1))
+    value = 0.80 + (clumps - 0.5) * 0.36 + (leaf - 0.5) * 0.24 + (fine - 0.5) * 0.08
+    rgb = _tint(FOLIAGE, value)
+    gap = (1.0 - top)[:, :, None]
+    rgb = rgb * (1.0 - gap * 0.40) + FOLIAGE_DEEP[None, None, :] * gap * 0.40
+    lit = (np.clip((leaf - 0.60) / 0.22, 0, 1) * top)[:, :, None]
+    rgb = rgb * (1.0 - lit * 0.5) + FOLIAGE_SUN[None, None, :] * lit * 0.5
+    return _rgba(rgb)
+
+
+def water(size=SIZE, seed=281):
+    """Fountain water: painted ripples and a few sky glints, no transparency."""
+    u, v = _uv(size)
+    drift = fbm(size, 3, seed, octaves=3)
+    ring = np.sin((u * 5.0 + v * 3.0 + drift * 2.0) * np.pi * 2.0)
+    ring2 = np.sin((u * 2.0 - v * 6.0 + drift * 1.5) * np.pi * 2.0)
+    ripple = (ring * 0.6 + ring2 * 0.4)
+    value = 0.92 + ripple * 0.10 + (drift - 0.5) * 0.16
+    rgb = _tint(WATER, value)
+    deep = _smooth(np.clip((0.45 - drift) / 0.15, 0, 1))[:, :, None]
+    rgb = rgb * (1.0 - deep * 0.45) + WATER_DEEP[None, None, :] * deep * 0.45
+    glint = np.clip((ripple - 0.72) / 0.28, 0, 1)[:, :, None] * 0.55
+    rgb = rgb * (1.0 - glint) + WATER_GLINT[None, None, :] * glint
+    return _rgba(rgb)
+
+
+def stripes(a, b, count=8, seed=291, size=SIZE):
+    """Striped awning canvas: two cloth colours in vertical bands, with the
+    cloth generator's folds and hem wear laid over both."""
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    u, v = _uv(size)
+    band = np.floor(u * count).astype(int) % 2
+    base = np.where(band[:, :, None] == 0, a[None, None, :], b[None, None, :])
+    drape = np.sin(u * count * 2.0 * np.pi + (fbm(size, 3, seed + 5) - 0.5) * 6.0)
+    weave = (value_noise(size, 120, seed) - 0.5) * 0.09
+    mott = (fbm(size, 7, seed + 11, octaves=4) - 0.5) * 0.14
+    hem = 1.0 - 0.18 * _smooth(np.clip((v - 0.82) / 0.18, 0, 1))
+    shade = (1.0 + drape * 0.10 + weave + mott) * hem
+    return _rgba(base * shade[:, :, None])
+
+
+def lamp_glow(size=SIZE, seed=299):
+    """Warm lantern glass: bright amber, brightest at the centre. No emission
+    in the kit, so it simply sits far brighter than the iron around it."""
+    u, v = _uv(size)
+    d = np.sqrt((u - 0.5) ** 2 + (v - 0.5) ** 2)
+    core = 1.0 - _smooth(np.clip(d / 0.55, 0, 1)) * 0.35
+    flicker = (fbm(size, 5, seed, octaves=3) - 0.5) * 0.12
+    return _rgba(_tint(np.array([1.0, 0.82, 0.46]), core + flicker))
+
+
 SKIN = np.array([0.741, 0.545, 0.427])
 UNDERSUIT = np.array([0.212, 0.224, 0.259])
 
@@ -675,6 +746,9 @@ BUILDERS = {
     "iron": black_iron,
     "grass": grass,
     "mud": marsh_mud,
+    "foliage": foliage,
+    "water": water,
+    "lamp_glow": lamp_glow,
 }
 
 

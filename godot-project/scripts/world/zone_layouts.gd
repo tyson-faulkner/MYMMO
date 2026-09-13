@@ -126,8 +126,12 @@ static func tent(at: Vector3, width: float = 5.0) -> Array:
 	]
 
 
-## A market stall, for the capital's market ward.
-static func stall(at: Vector3, cloth: Color) -> Array:
+## A market stall, for the capital's market ward. The kit piece is 3.3 x 2.4 x
+## 2.8m with its counter on +Z; `rot` turns that towards the customers. Its
+## awning is the spec's red-and-gold, so `cloth` only tints the placeholder.
+static func stall(at: Vector3, cloth: Color, rot: float = 0.0) -> Array:
+	if ZoneBuilder.kit_has("stall"):
+		return [{"kit": "stall", "pos": at, "rot": rot, "collision": Vector3(3.0, 0.92, 2.0)}]
 	return [
 		slab(at + Vector3(0, 0.9, 0), Vector3(3.0, 1.8, 2.0), ZoneBuilder.TIMBER),
 		slab(at + Vector3(0, 2.2, 0), Vector3(3.6, 0.3, 2.6), cloth, false)
@@ -291,14 +295,16 @@ static func kingsmourn() -> Array:
 
 	# --- Market ward ---
 	pieces.append(slab(o + Vector3(0, 0.1, 110), Vector3(70, 0.3, 60), ZoneBuilder.COBBLE))
-	# Fountain, matching the vale's so the two read as one kingdom.
-	pieces.append(slab(o + Vector3(0, 0.5, 110), Vector3(9, 0.8, 9), ZoneBuilder.STONE_DARK))
-	pieces.append(slab(o + Vector3(0, 0.95, 110), Vector3(7.6, 0.3, 7.6), ZoneBuilder.WATER, false))
-	pieces.append(slab(o + Vector3(0, 2.2, 110), Vector3(1.4, 3.4, 1.4), ZoneBuilder.STONE))
+	# Fountain, matching the vale's so the two read as one kingdom — the same
+	# piece at 1.4x, for a capital. The market slab's top is at y=0.25.
+	pieces.append_array(ZoneBuilder.fountain(o + Vector3(0, 0.25, 110), 1.4))
+	for spot in [Vector3(-12, 0.25, 92), Vector3(12, 0.25, 92), Vector3(-12, 0.25, 128), Vector3(12, 0.25, 128)]:
+		pieces.append_array(ZoneBuilder.lamp(o + spot, atan2(-spot.x, -(spot.z - 110.0))))
+	# Stalls face the avenue: the counters on the west side look east, and so on.
 	for i in range(4):
 		var z := 92.0 + float(i) * 12.0
-		pieces.append_array(stall(o + Vector3(-22, 0, z), Color(0.66, 0.28, 0.26)))
-		pieces.append_array(stall(o + Vector3(22, 0, z), Color(0.30, 0.44, 0.62)))
+		pieces.append_array(stall(o + Vector3(-22, 0.25, z), Color(0.66, 0.28, 0.26), PI * 0.5))
+		pieces.append_array(stall(o + Vector3(22, 0.25, z), Color(0.30, 0.44, 0.62), -PI * 0.5))
 	for spot in [Vector3(-30, 0, 84), Vector3(30, 0, 84), Vector3(-30, 0, 136), Vector3(30, 0, 136)]:
 		pieces.append_array(ZoneBuilder.tree(o + spot, 0.9))
 	# Shops around the market edge.

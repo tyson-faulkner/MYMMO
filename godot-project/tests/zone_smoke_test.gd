@@ -64,6 +64,7 @@ func _ready() -> void:
 	_check_character_models()
 	_check_ground_textures(zone, sablemarch)
 	_check_template_cleanup()
+	_check_kit_props(zone, kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -1179,6 +1180,44 @@ func _check_character_models() -> void:
 					unresolved.append(str(property))
 		player_node.free()
 	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
+
+
+# Kit Phase 3: the props exist as real geometry and the layouts actually use
+# them. kit_has() already refuses a stub; this checks the placeholders were
+# replaced, and that a tree's collision is its trunk, not its canopy.
+func _check_kit_props(vale: Node3D, kingsmourn: Node3D) -> void:
+	print("")
+	print("-- kit props --")
+	var missing: Array[String] = []
+	for piece in ["lamp", "stall", "tree", "planter", "fountain"]:
+		if not ZoneBuilder.kit_has(piece):
+			missing.append(piece)
+	_report("Phase 3 props are real kit pieces", missing.is_empty(), ", ".join(missing))
+
+	var counts := {}
+	var trunk_only := true
+	for zone in [vale, kingsmourn]:
+		for body in zone.find_children("*", "StaticBody3D", true, false):
+			var model: Node = null
+			var shape: CollisionShape3D = null
+			for child in body.get_children():
+				if child is CollisionShape3D:
+					shape = child
+				elif child is Node3D and not (child as Node).scene_file_path.is_empty():
+					model = child
+			if model == null:
+				continue
+			var file := model.scene_file_path.get_file()
+			counts[file] = int(counts.get(file, 0)) + 1
+			if file == "tree_round.glb" and shape and shape.shape is BoxShape3D:
+				if (shape.shape as BoxShape3D).size.x > 1.5:
+					trunk_only = false
+	_report("the vale's fountain, lamps, planters and trees are kit pieces",
+		int(counts.get("fountain.glb", 0)) >= 2 and int(counts.get("lamp_iron.glb", 0)) >= 8
+		and int(counts.get("planter_box.glb", 0)) >= 2 and int(counts.get("tree_round.glb", 0)) >= 10,
+		"fountains=%d lamps=%d planters=%d trees=%d" % [counts.get("fountain.glb", 0), counts.get("lamp_iron.glb", 0), counts.get("planter_box.glb", 0), counts.get("tree_round.glb", 0)])
+	_report("Kingsmourn's market has kit stalls", int(counts.get("market_stall.glb", 0)) >= 8, "%d stalls" % counts.get("market_stall.glb", 0))
+	_report("trees collide at the trunk, not the canopy", trunk_only, "")
 
 
 # The template's demo hats and weapons, and its skin-colour picker, were cut.

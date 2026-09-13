@@ -55,6 +55,7 @@ const KIT := {
 	"lamp": "res://assets/kit/lamp_iron.glb",
 	"stall": "res://assets/kit/market_stall.glb",
 	"tree": "res://assets/kit/tree_round.glb",
+	"planter": "res://assets/kit/planter_box.glb",
 	"fountain": "res://assets/kit/fountain.glb"
 }
 
@@ -177,6 +178,9 @@ func _pave_thornhollow() -> void:
 # gets collision and you can stand on it. A piece may also carry {kit: "wall"},
 # in which case the real model is used when it exists and the box when it
 # doesn't, and {texture: "grass"}, which paints a GROUND_TEXTURES entry over it.
+# Kit pieces may add {scale: 1.4} and {collision: Vector3}: an explicit collision
+# box (in model units, standing on the origin) instead of one hugging the whole
+# model — a tree collides at its trunk, not its canopy.
 func _build_piece(piece: Dictionary) -> void:
 	var kit_name := str(piece.get("kit", ""))
 	if not kit_name.is_empty():
@@ -229,16 +233,26 @@ func _build_kit_piece(scene: PackedScene, piece: Dictionary) -> void:
 	body.collision_mask = 0
 	body.position = piece.get("pos", Vector3.ZERO)
 	body.rotation.y = float(piece.get("rot", 0.0))
+	body.scale = Vector3.ONE * float(piece.get("scale", 1.0))
 	body.add_child(model)
 
-	var bounds: AABB = _model_bounds(model)
-	if bounds.size.length() > 0.01:
+	if piece.has("collision"):
+		var size: Vector3 = piece["collision"]
 		var shape := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		box.size = bounds.size
+		box.size = size
 		shape.shape = box
-		shape.position = bounds.position + bounds.size * 0.5
+		shape.position = Vector3(0.0, size.y * 0.5, 0.0)
 		body.add_child(shape)
+	else:
+		var bounds: AABB = _model_bounds(model)
+		if bounds.size.length() > 0.01:
+			var shape := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			box.size = bounds.size
+			shape.shape = box
+			shape.position = bounds.position + bounds.size * 0.5
+			body.add_child(shape)
 	add_child(body)
 
 
@@ -507,8 +521,11 @@ static func _house_from_boxes(at: Vector3, width: float, depth: float, storeys: 
 	return pieces
 
 
-## A round-canopy tree, WoW-style: trunk plus a blob.
+## A round-canopy tree, WoW-style: trunk plus a blob. The kit piece measures
+## 3.7 x 2.9 x 6.0m; it collides at the trunk only, so you can walk under it.
 static func tree(at: Vector3, size: float = 1.0) -> Array:
+	if kit_has("tree"):
+		return [{"kit": "tree", "pos": at, "scale": size, "rot": fposmod(at.x * 0.37 + at.z * 0.11, TAU), "collision": Vector3(0.8, 3.4, 0.8)}]
 	return [
 		{"pos": at + Vector3(0, 1.6 * size, 0), "size": Vector3(0.55 * size, 3.2 * size, 0.55 * size), "color": TIMBER},
 		{
@@ -517,6 +534,38 @@ static func tree(at: Vector3, size: float = 1.0) -> Array:
 			"color": GRASS_DARK,
 			"solid": false
 		}
+	]
+
+
+## The square's fountain. The kit piece is 6.2m across and 3.2m tall; `scale`
+## lets a bigger square have a bigger one without a second export.
+static func fountain(at: Vector3, scale: float = 1.0) -> Array:
+	if kit_has("fountain"):
+		return [{"kit": "fountain", "pos": at, "scale": scale, "collision": Vector3(6.2, 0.85, 6.2)}]
+	return [
+		{"pos": at + Vector3(0, 0.4 * scale, 0), "size": Vector3(7.5, 0.8, 7.5) * scale, "color": STONE_DARK},
+		{"pos": at + Vector3(0, 0.85 * scale, 0), "size": Vector3(6.2, 0.3, 6.2) * scale, "color": WATER, "solid": false},
+		{"pos": at + Vector3(0, 1.7 * scale, 0), "size": Vector3(1.2, 2.6, 1.2) * scale, "color": STONE}
+	]
+
+
+## A street lamp: iron post, warm lantern. 3.0m tall on a 0.4m plinth.
+static func lamp(at: Vector3, rot: float = 0.0) -> Array:
+	if kit_has("lamp"):
+		return [{"kit": "lamp", "pos": at, "rot": rot, "collision": Vector3(0.4, 3.0, 0.4)}]
+	return [
+		{"pos": at + Vector3(0, 1.5, 0), "size": Vector3(0.14, 3.0, 0.14), "color": Color(0.16, 0.16, 0.15)},
+		{"pos": at + Vector3(0, 2.7, 0), "size": Vector3(0.34, 0.5, 0.34), "color": GOLD, "solid": false}
+	]
+
+
+## A 1m stone planter with a clump of foliage. Squares and doorsteps.
+static func planter(at: Vector3) -> Array:
+	if kit_has("planter"):
+		return [{"kit": "planter", "pos": at, "rot": fposmod(at.x * 0.53, TAU), "collision": Vector3(1.0, 0.5, 1.0)}]
+	return [
+		{"pos": at + Vector3(0, 0.25, 0), "size": Vector3(1.0, 0.5, 1.0), "color": STONE},
+		{"pos": at + Vector3(0, 0.75, 0), "size": Vector3(0.8, 0.5, 0.8), "color": GRASS_DARK, "solid": false}
 	]
 
 
@@ -547,10 +596,14 @@ static func thornhollow_vale() -> Array:
 
 	# --- The town square ---
 	pieces.append({"pos": Vector3(0, 0.1, 0), "size": Vector3(46, 0.3, 40), "color": COBBLE})
-	# Fountain in the middle, per the kit spec's Phase 3 centrepiece.
-	pieces.append({"pos": Vector3(0, 0.5, 0), "size": Vector3(7.5, 0.8, 7.5), "color": STONE_DARK})
-	pieces.append({"pos": Vector3(0, 0.95, 0), "size": Vector3(6.2, 0.3, 6.2), "color": WATER, "solid": false})
-	pieces.append({"pos": Vector3(0, 1.8, 0), "size": Vector3(1.2, 2.6, 1.2), "color": STONE})
+	# Fountain in the middle, per the kit spec's Phase 3 centrepiece. The slab's
+	# top is at y=0.25, so everything on the square stands there.
+	pieces.append_array(fountain(Vector3(0, 0.25, 0)))
+	# Lamps at the square's corners, planters flanking the fountain.
+	for corner in [Vector3(-10, 0.25, -15), Vector3(10, 0.25, -15), Vector3(-10, 0.25, 15), Vector3(10, 0.25, 15)]:
+		pieces.append_array(lamp(corner, atan2(-corner.x, -corner.z)))
+	for spot in [Vector3(-5.5, 0.25, 0), Vector3(5.5, 0.25, 0)]:
+		pieces.append_array(planter(spot))
 
 	# Buildings around the square.
 	for entry in [

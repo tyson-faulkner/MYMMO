@@ -198,6 +198,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 
 ## Log
 
+### 2026-09-13 — Kit Phase 3: lamp, market stall, tree, planter, fountain
+
+- **Changed:** five props built headlessly (`piece_09`–`piece_12`, plus `11b` planter), 144–488 tris each, with new painted textures (foliage, water, striped awning, lamp glow). ZoneBuilder swaps its placeholder boxes for them via `fountain()`, `lamp()`, `tree()`, `planter()` and `ZoneLayouts.stall()`; kit pieces gained `scale` (the capital's fountain is the same piece at 1.4x) and an explicit `collision` box, so trees collide at the trunk. Lamps and planters were added to the vale square and market ward.
+- **Test:** kit check 15/15; smoke 181/181 with 4 new checks (all five pieces real, 2 fountains/8 lamps/2 planters/14 trees/8 stalls placed, tree collision < 1.5m wide). Tour shots re-taken and looked at.
+- **Surprising:** the fountain had to sit at y=0.25, the square slab's top, not 0 — the placeholder boxes had been sunk into the slab and nobody noticed.
+
 ### 2026-09-13 — Mud tiling repeat fixed
 
 - **Changed:** ground plates now use `assets/shaders/ground.gdshader`, a world-space triplanar shader; ZoneBuilder gives every textured plate its own UV offset and rotation, seeded from the plate's position so all clients agree. Inside a plate the texture is also read a second time, rotated and rescaled, and blended in by ~20m noise blobs — the offset alone can't help a single 280m plate repeat against itself.
