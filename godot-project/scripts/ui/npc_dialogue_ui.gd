@@ -83,6 +83,25 @@ func _rebuild() -> void:
 			body_text = quest.offer_text
 			_add_option("Accept: %s" % quest.title, _on_accept.bind(String(quest_id)), false)
 
+	# Vendors: one line per thing they sell, priced in Sovereigns, greyed out
+	# when you can't afford it.
+	var data := NpcDatabase.get_npc(_npc.npc_id)
+	if data and not data.stock.is_empty():
+		for item_id in data.stock:
+			var item: Item = ItemDatabase.get_item(String(item_id))
+			if item == null:
+				continue
+			var affordable := _quest_log.currency >= item.value
+			var label := "Buy %s — %d Sovereigns" % [item.name, item.value]
+			if item.is_gear():
+				label += "   (A%d P%d S%d)" % [item.armor, item.power, item.stamina]
+			var button := Button.new()
+			button.text = label
+			button.custom_minimum_size = Vector2(0, 34)
+			button.disabled = not affordable
+			button.pressed.connect(_on_buy.bind(String(item_id)))
+			_options.add_child(button)
+
 	_body_label.text = body_text
 	if _options.get_child_count() == 0:
 		var nothing := Label.new()
@@ -129,6 +148,15 @@ func _on_turn_in(quest_id_text: String) -> void:
 		_npc.request_turn_in_quest(quest_id_text)
 	else:
 		_npc.request_turn_in_quest.rpc_id(1, quest_id_text)
+
+
+func _on_buy(item_id_text: String) -> void:
+	if _npc == null:
+		return
+	if multiplayer.is_server():
+		_npc.request_buy(item_id_text)
+	else:
+		_npc.request_buy.rpc_id(1, item_id_text)
 
 
 func _update_mouse_mode() -> void:

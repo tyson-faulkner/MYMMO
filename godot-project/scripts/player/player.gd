@@ -85,6 +85,16 @@ var fall_limit_y: float = -15.0
 ## that actually moves, so the value has to travel to them.
 var speed_multiplier: float = 1.0
 var _speed_modifier_remaining: float = 0.0
+
+## Riding. Kept apart from speed_multiplier because that one is a timed buff
+## that ticks itself away, and a mount has to stay until the rider gets off.
+var mount_speed_multiplier: float = 1.0
+
+## Being dead. A ghost moves faster than the living, which is the entire reason
+## a corpse run is tolerable — WoW's mistake was making the walk back cost the
+## same as the walk out. You cannot be mounted and dead at once, so this never
+## stacks with the mount in practice.
+var ghost_speed_multiplier: float = 1.0
 var _animation_sequence := 0
 var _last_applied_animation_sequence := 0
 var _last_requested_animation: StringName = &""
@@ -276,10 +286,14 @@ func request_melee_hit() -> void:
 	_last_melee_hit_msec = now
 	if not _pickup_area:
 		return
+	var own_power := 0
+	var attacker_stats := get_node_or_null("Stats") as Stats
+	if attacker_stats:
+		own_power = attacker_stats.total_power()
 	for body in _pickup_area.get_overlapping_bodies():
 		var target_stats := body.get_node_or_null("Stats") as Stats
 		if target_stats and not target_stats.is_dead:
-			target_stats.apply_damage(MELEE_DAMAGE, get_multiplayer_authority())
+			target_stats.apply_damage(MELEE_DAMAGE + own_power, get_multiplayer_authority())
 
 
 func _on_animation_finished(animation_name: StringName) -> void:
@@ -419,10 +433,22 @@ func _move() -> void:
 
 func _is_running() -> bool:
 	if Input.is_action_pressed("shift"):
-		_current_speed = SPRINT_SPEED * speed_multiplier
+		_current_speed = SPRINT_SPEED * speed_multiplier * mount_speed_multiplier * ghost_speed_multiplier
 		return true
-	_current_speed = NORMAL_SPEED * speed_multiplier
+	_current_speed = NORMAL_SPEED * speed_multiplier * mount_speed_multiplier * ghost_speed_multiplier
 	return false
+
+
+## Set by MountController when you get on or off. Separate from the timed
+## speed modifier so a snare and a mount can coexist without one clearing
+## the other.
+func set_mount_speed(multiplier: float) -> void:
+	mount_speed_multiplier = maxf(0.1, multiplier)
+
+
+## Set by DeathHandler when you become a ghost and when you come back.
+func set_ghost_speed(multiplier: float) -> void:
+	ghost_speed_multiplier = maxf(0.1, multiplier)
 
 
 # Called on the server by AbilityBar; relayed to whoever owns this body.
@@ -696,6 +722,68 @@ func request_unequip_item(item_type: Item.ItemType, destination_slot: int = -1) 
 		_sync_equipment_appearance()
 
 
+# --- Gear -------------------------------------------------------------------
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_equip_gear(from_slot: int) -> void:
+	if not multiplayer.is_server() or not _is_owner_request():
+		return
+	if not player_inventory or not player_inventory.is_slot_active(from_slot):
+		return
+	var stats := get_node_or_null("Stats") as Stats
+	var level := stats.level if stats else 1
+	# Class and level are checked inside, on the server, so a Bard cannot end
+	# up holding a spear and a level 3 cannot wear cap gear.
+	if player_inventory.equip_gear_from_slot(from_slot, class_id, level):
+		_sync_inventory_to_owner()
+		_refresh_gear_bonuses()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_learn_mount(from_slot: int) -> void:
+	if not multiplayer.is_server() or not _is_owner_request():
+		return
+	if not player_inventory or not player_inventory.is_slot_active(from_slot):
+		return
+	var slot := player_inventory.get_slot(from_slot)
+	if slot == null or slot.is_empty():
+		return
+	var item: Item = ItemDatabase.get_item(slot.item_id)
+	if item == null or item.item_type != Item.ItemType.MOUNT:
+		return
+	var mounts := get_node_or_null("MountController") as MountController
+	if mounts == null:
+		return
+	# Learning eats the item; failing to learn leaves it in the bag, so a
+	# duplicate drop is still worth picking up and selling.
+	if mounts.learn(item.mount_id):
+		player_inventory.remove_item(slot.item_id, 1)
+		_sync_inventory_to_owner()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_unequip_gear(key_text: String, destination_slot: int = -1) -> void:
+	if not multiplayer.is_server() or not _is_owner_request():
+		return
+	if not player_inventory:
+		return
+	if player_inventory.unequip_gear(StringName(key_text), destination_slot):
+		_sync_inventory_to_owner()
+		_refresh_gear_bonuses()
+
+
+## Total up everything worn and hand it to Stats. Server only.
+func _refresh_gear_bonuses() -> void:
+	if not multiplayer.is_server() or not player_inventory:
+		return
+	var stats := get_node_or_null("Stats") as Stats
+	if stats == null:
+		return
+	var totals: Dictionary = player_inventory.gear_totals()
+	stats.set_gear_bonuses(int(totals["armor"]), int(totals["power"]), int(totals["stamina"]))
+
+
 func _is_owner_request() -> bool:
 	var sender := multiplayer.get_remote_sender_id()
 	return sender == get_multiplayer_authority() or (sender == 0 and multiplayer.is_server())
@@ -842,6 +930,9 @@ func _get_mesh_top(mesh_instance: MeshInstance3D) -> float:
 	return visual_top
 
 
+# Everyone starts in the Levy set: the plain kit a new recruit is issued.
+# It goes straight onto the body, so a brand-new character has real numbers
+# from the first swing.
 func _add_starting_items():
 	if not player_inventory:
 		return
@@ -850,25 +941,23 @@ func _add_starting_items():
 	if backpack:
 		player_inventory.add_item(backpack, 1)
 
-	var starting_item_ids: Array[String] = [
-		"fedora",
-		"headphones",
-		"pirate_hat",
-		"sheriff_hat",
-		"sombrero",
-		"wizard_hat",
-		"sword",
-		"sword_big",
-		"axe",
-		"chicken_leg",
-		"bone",
-		"chalice"
+	var starter := Item.GearTier.STARTER
+	var starting_gear: Array[StringName] = [
+		GearDatabase.generated_id(starter, Item.GearSlot.CHEST),
+		GearDatabase.generated_id(starter, Item.GearSlot.LEGS),
+		GearDatabase.generated_id(starter, Item.GearSlot.FEET),
+		GearDatabase.generated_id(starter, Item.GearSlot.WEAPON, class_id)
 	]
-
-	for item_id in starting_item_ids:
-		var item = ItemDatabase.get_item(item_id)
-		if item:
-			player_inventory.add_item(item, 1)
+	for item_id in starting_gear:
+		var item := ItemDatabase.get_item(String(item_id))
+		if item == null:
+			continue
+		var key := PlayerInventory.gear_key_for(item)
+		var slot: InventorySlot = player_inventory.get_gear_slot(key)
+		if slot and slot.is_empty():
+			slot.item_id = item.id
+			slot.quantity = 1
+	call_deferred("_refresh_gear_bonuses")
 
 
 func pickup() -> void:

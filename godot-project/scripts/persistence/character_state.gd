@@ -47,6 +47,10 @@ static func capture(character: Node) -> Dictionary:
 	if runes:
 		data["runes"] = runes.to_dict()
 
+	var mounts := character.get_node_or_null("MountController") as MountController
+	if mounts:
+		data["mounts"] = mounts.to_dict()
+
 	var inventory = character.get_inventory() if character.has_method("get_inventory") else null
 	if inventory:
 		data["inventory"] = inventory.to_dict()
@@ -108,12 +112,19 @@ static func apply(character: Node, data: Dictionary) -> bool:
 	if runes and migrated.has("runes"):
 		runes.from_dict(migrated["runes"])
 
+	var mounts := character.get_node_or_null("MountController") as MountController
+	if mounts and migrated.has("mounts"):
+		mounts.from_dict(migrated["mounts"])
+
 	if migrated.has("inventory") and character.has_method("get_inventory"):
 		var inventory = character.get_inventory()
 		if inventory:
 			inventory.from_dict(migrated["inventory"])
 			if character.has_method("_sync_inventory_to_owner"):
 				character._sync_inventory_to_owner()
+			# Worn gear came back; its numbers have to come back with it.
+			if character.has_method("_refresh_gear_bonuses"):
+				character._refresh_gear_bonuses()
 
 	return true
 

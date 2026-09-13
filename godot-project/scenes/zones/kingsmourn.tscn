@@ -1,0 +1,635 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_container.gd" id="2_container"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" path="res://scripts/world/area_trigger.gd" id="4_trigger"]
+[ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
+[ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
+[ext_resource type="Script" path="res://scripts/world/graveyard.gd" id="7_grave"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_portal"]
+size = Vector3(7, 5, 3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_portal"]
+size = Vector3(7, 5, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_portal"]
+transparency = 1
+albedo_color = Color(0.35, 0.28, 0.5, 0.55)
+emission_enabled = true
+emission = Color(0.45, 0.36, 0.62, 1)
+emission_energy_multiplier = 0.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_records"]
+size = Vector3(74, 8, 70)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hallgate"]
+size = Vector3(22, 8, 12)
+
+[node name="Kingsmourn" type="Node3D"]
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "kingsmourn"
+
+[node name="RoyalCrypt" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "royal_crypt_interior"
+
+[node name="HallOfRecords" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "hall_of_records_interior"
+
+[node name="ThroneRoom" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "throne_interior"
+
+[node name="MobContainer" type="Node3D" parent="."]
+script = ExtResource("2_container")
+
+[node name="MobMultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../MobContainer")
+
+[node name="Spawners" type="Node3D" parent="."]
+
+[node name="AgitatorsWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1176, 1, 100)
+script = ExtResource("3_spawner")
+mob_id = &"street_agitator"
+count = 4
+scatter_radius = 8.0
+
+[node name="AgitatorsEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1224, 1, 122)
+script = ExtResource("3_spawner")
+mob_id = &"street_agitator"
+count = 4
+scatter_radius = 8.0
+
+[node name="AgitatorsGate" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 1, 150)
+script = ExtResource("3_spawner")
+mob_id = &"street_agitator"
+count = 3
+scatter_radius = 9.0
+
+[node name="StagRetainers" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1160, 1, 20)
+script = ExtResource("3_spawner")
+mob_id = &"stag_retainer"
+count = 5
+scatter_radius = 10.0
+
+[node name="StagRetainersSouth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1160, 1, -16)
+script = ExtResource("3_spawner")
+mob_id = &"stag_retainer"
+count = 4
+scatter_radius = 9.0
+
+[node name="SunburstRetainers" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1240, 1, 20)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_retainer"
+count = 5
+scatter_radius = 10.0
+
+[node name="SunburstRetainersSouth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1240, 1, -16)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_retainer"
+count = 4
+scatter_radius = 9.0
+
+[node name="HeraldsWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1092, 1, 54)
+script = ExtResource("3_spawner")
+mob_id = &"first_king_herald"
+count = 2
+scatter_radius = 9.0
+
+[node name="HeraldsEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1308, 1, 54)
+script = ExtResource("3_spawner")
+mob_id = &"first_king_herald"
+count = 2
+scatter_radius = 9.0
+
+[node name="HeraldsNorth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 1, -84)
+script = ExtResource("3_spawner")
+mob_id = &"first_king_herald"
+count = 2
+scatter_radius = 9.0
+
+[node name="StagPalaceGuard" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1174, 1, -140)
+script = ExtResource("3_spawner")
+mob_id = &"stag_guard"
+count = 6
+scatter_radius = 11.0
+
+[node name="SunburstPalaceGuard" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1226, 1, -140)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_guard"
+count = 6
+scatter_radius = 11.0
+
+[node name="CryptRisenGallery" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1199, -620)
+script = ExtResource("3_spawner")
+mob_id = &"crypt_risen"
+count = 5
+scatter_radius = 12.0
+
+[node name="CryptRisenDeep" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1199, -650)
+script = ExtResource("3_spawner")
+mob_id = &"crypt_risen"
+count = 5
+scatter_radius = 12.0
+
+[node name="CrownBinders" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1199, -706)
+script = ExtResource("3_spawner")
+mob_id = &"crown_binder"
+count = 6
+scatter_radius = 13.0
+
+[node name="RecordsPackNorth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1187, -1499, -578)
+script = ExtResource("3_spawner")
+mob_id = &"record_burner"
+count = 3
+scatter_radius = 7.0
+
+[node name="RecordsPackNorthStag" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1213, -1499, -578)
+script = ExtResource("3_spawner")
+mob_id = &"record_forger"
+count = 3
+scatter_radius = 7.0
+
+[node name="RecordsPackMid" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1187, -1499, -612)
+script = ExtResource("3_spawner")
+mob_id = &"record_forger"
+count = 3
+scatter_radius = 7.0
+
+[node name="RecordsPackMidSun" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1213, -1499, -612)
+script = ExtResource("3_spawner")
+mob_id = &"record_burner"
+count = 3
+scatter_radius = 7.0
+
+[node name="MasterKell" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1499, -692)
+script = ExtResource("3_spawner")
+mob_id = &"master_kell"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="TheBoundLedger" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1499, -752)
+script = ExtResource("3_spawner")
+mob_id = &"the_bound_ledger"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="ThroneGuardStag" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1186, -1999, -594)
+script = ExtResource("3_spawner")
+mob_id = &"stag_guard"
+count = 4
+scatter_radius = 7.0
+
+[node name="ThroneGuardSunburst" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1214, -1999, -594)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_guard"
+count = 4
+scatter_radius = 7.0
+
+[node name="LordAshcombe" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1186, -1999, -696)
+script = ExtResource("3_spawner")
+mob_id = &"lord_ashcombe"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="LadySeverin" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1214, -1999, -696)
+script = ExtResource("3_spawner")
+mob_id = &"lady_severin"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="TheFirstKingCrowned" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1999, -720)
+script = ExtResource("3_spawner")
+mob_id = &"first_king_crowned"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="NPCs" type="Node3D" parent="."]
+
+[node name="Orrin" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 0.25, 158)
+npc_id = &"npc_orrin"
+
+[node name="Gudrun" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1230, 0.25, 118)
+npc_id = &"npc_gudrun"
+
+[node name="Ilsa" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1170, 0.25, 96)
+npc_id = &"npc_ilsa"
+
+[node name="Tarrant" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1180, 0.25, -96)
+npc_id = &"npc_tarrant"
+
+[node name="Vell" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1220, 0.25, -96)
+npc_id = &"npc_vell"
+
+[node name="Pell" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1126, 0.25, -50)
+npc_id = &"npc_pell"
+
+[node name="SpiritHealerCityGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1168.5, 0.25, 150)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerMarketGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1248.5, 0.25, 96)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerGuildGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1144.5, 0.25, -4)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerPalaceGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1236.5, 0.25, -132)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerLowgateGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1098.5, 0.25, -116)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerEastwallGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1312.5, 0.25, -30)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerCryptGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1202.5, -1199.75, -580)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerHallGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1202.5, -1499.75, -570)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerThroneGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1202.5, -1999.75, -576)
+npc_id = &"npc_spirit_healer"
+
+[node name="Graveyards" type="Node3D" parent="."]
+
+[node name="CityGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1166, 0.3, 150)
+script = ExtResource("7_grave")
+display_name = "Kingsgate Rest"
+
+[node name="MarketGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1246, 0.3, 96)
+script = ExtResource("7_grave")
+display_name = "Market Rest"
+
+[node name="GuildGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1142, 0.3, -4)
+script = ExtResource("7_grave")
+display_name = "Guild Quarter Rest"
+
+[node name="PalaceGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1234, 0.3, -132)
+script = ExtResource("7_grave")
+display_name = "Palace Rest"
+
+[node name="LowgateGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1096, 0.3, -116)
+script = ExtResource("7_grave")
+display_name = "Lowgate Rest"
+
+[node name="EastwallGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1310, 0.3, -30)
+script = ExtResource("7_grave")
+display_name = "Eastwall Rest"
+
+[node name="CryptGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1199.7, -580)
+script = ExtResource("7_grave")
+display_name = "The Crypt Stair"
+
+[node name="HallGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1499.7, -570)
+script = ExtResource("7_grave")
+display_name = "The Hall Steps"
+
+[node name="ThroneGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1999.7, -576)
+script = ExtResource("7_grave")
+display_name = "The Antechamber"
+
+[node name="Triggers" type="Node3D" parent="."]
+
+[node name="RecordsQuarter" type="Area3D" parent="Triggers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1126, 3, -66)
+script = ExtResource("4_trigger")
+area_id = &"records_quarter"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Triggers/RecordsQuarter"]
+shape = SubResource("BoxShape3D_records")
+
+[node name="HallGate" type="Area3D" parent="Triggers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1126, 3, -52)
+script = ExtResource("4_trigger")
+area_id = &"hall_of_records_gate"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Triggers/HallGate"]
+shape = SubResource("BoxShape3D_hallgate")
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="CryptStairLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1194, -586)
+light_color = Color(0.70, 0.76, 0.86, 1)
+light_energy = 1.8
+omni_range = 36
+
+[node name="CryptGalleryLampNorth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1192, -614)
+light_color = Color(0.70, 0.76, 0.86, 1)
+light_energy = 2
+omni_range = 46
+
+[node name="CryptGalleryLampSouth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1192, -654)
+light_color = Color(0.70, 0.76, 0.86, 1)
+light_energy = 2
+omni_range = 46
+
+[node name="BinderChamberLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1192, -706)
+light_color = Color(0.68, 0.52, 0.80, 1)
+light_energy = 2.4
+omni_range = 48
+
+[node name="ReadingHallLampNorth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1488, -580)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.4
+omni_range = 56
+
+[node name="ReadingHallLampSouth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1488, -624)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.4
+omni_range = 56
+
+[node name="ScriptoriumLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1488, -690)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.6
+omni_range = 56
+
+[node name="VaultLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1487, -750)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.4
+omni_range = 58
+
+[node name="BrazierNW" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1178, -1497, -734)
+light_color = Color(1, 0.62, 0.24, 1)
+light_energy = 3
+omni_range = 18
+
+[node name="BrazierNE" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1222, -1497, -734)
+light_color = Color(1, 0.62, 0.24, 1)
+light_energy = 3
+omni_range = 18
+
+[node name="BrazierSW" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1178, -1497, -766)
+light_color = Color(1, 0.62, 0.24, 1)
+light_energy = 3
+omni_range = 18
+
+[node name="BrazierSE" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1222, -1497, -766)
+light_color = Color(1, 0.62, 0.24, 1)
+light_energy = 3
+omni_range = 18
+
+[node name="AntechamberLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1986, -594)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.4
+omni_range = 56
+
+[node name="ThroneRoomLampNorth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1982, -676)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.8
+omni_range = 80
+
+[node name="ThroneRoomLampSouth" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1982, -724)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 2.8
+omni_range = 80
+
+[node name="ThroneLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1991, -734)
+light_color = Color(1, 0.88, 0.60, 1)
+light_energy = 3.2
+omni_range = 30
+
+[node name="Portals" type="Node3D" parent="."]
+
+[node name="MarcherRoad" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 2.5, 194)
+script = ExtResource("5_portal")
+destination = Vector3(725, 1.5, 120)
+label_text = "The Marcher Road"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/MarcherRoad"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/MarcherRoad"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/MarcherRoad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Marcher Road"
+
+[node name="CryptEntrance" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1166, 2.5, -128)
+script = ExtResource("5_portal")
+destination = Vector3(1200, -1198.5, -596)
+destination_fall_limit = -1220
+label_text = "The Royal Crypt"
+required_level = 16
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/CryptEntrance"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/CryptEntrance"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/CryptEntrance"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Royal Crypt"
+
+[node name="CryptExit" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1198.5, -576)
+script = ExtResource("5_portal")
+destination = Vector3(1166, 1.5, -118)
+label_text = "Leave the Crypt"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/CryptExit"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/CryptExit"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/CryptExit"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "Leave the Crypt"
+
+[node name="HallEntrance" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1126, 2.5, -54)
+script = ExtResource("5_portal")
+destination = Vector3(1200, -1498.5, -586)
+destination_fall_limit = -1520
+label_text = "The Hall of Records"
+required_level = 18
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/HallEntrance"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/HallEntrance"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/HallEntrance"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Hall of Records"
+
+[node name="HallExit" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1498.5, -570)
+script = ExtResource("5_portal")
+destination = Vector3(1126, 1.5, -44)
+label_text = "Leave the Hall"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/HallExit"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/HallExit"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/HallExit"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "Leave the Hall"
+
+[node name="ThroneEntrance" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, 2.5, -158)
+script = ExtResource("5_portal")
+destination = Vector3(1200, -1998.5, -600)
+destination_fall_limit = -2020
+label_text = "The Throne of Kingsmourn"
+required_level = 20
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/ThroneEntrance"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/ThroneEntrance"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/ThroneEntrance"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Throne of Kingsmourn"
+
+[node name="ThroneExit" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1998.5, -576)
+script = ExtResource("5_portal")
+destination = Vector3(1200, 1.5, -148)
+label_text = "Leave the Throne Room"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/ThroneExit"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/ThroneExit"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/ThroneExit"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "Leave the Throne Room"

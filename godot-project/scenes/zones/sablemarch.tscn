@@ -1,0 +1,398 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_container.gd" id="2_container"]
+[ext_resource type="Script" path="res://scripts/enemies/mob_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" path="res://scripts/world/area_trigger.gd" id="4_trigger"]
+[ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
+[ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
+[ext_resource type="Script" path="res://scripts/world/graveyard.gd" id="7_grave"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_portal"]
+size = Vector3(7, 5, 3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_portal"]
+size = Vector3(7, 5, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_portal"]
+transparency = 1
+albedo_color = Color(0.35, 0.28, 0.5, 0.55)
+emission_enabled = true
+emission = Color(0.45, 0.36, 0.62, 1)
+emission_energy_multiplier = 0.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_approach"]
+size = Vector3(60, 8, 40)
+
+[node name="Sablemarch" type="Node3D"]
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "sablemarch"
+
+[node name="RedoubtInterior" type="Node3D" parent="."]
+script = ExtResource("1_zone")
+layout = "redoubt_interior"
+
+[node name="MobContainer" type="Node3D" parent="."]
+script = ExtResource("2_container")
+
+[node name="MobMultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../MobContainer")
+
+[node name="Spawners" type="Node3D" parent="."]
+
+[node name="StagPicketNorth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 522, 1, 44)
+script = ExtResource("3_spawner")
+mob_id = &"stag_picket"
+count = 4
+scatter_radius = 7.0
+
+[node name="StagPicketMid" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 522, 1, 0)
+script = ExtResource("3_spawner")
+mob_id = &"stag_picket"
+count = 4
+scatter_radius = 7.0
+
+[node name="StagPicketSouth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 522, 1, -44)
+script = ExtResource("3_spawner")
+mob_id = &"stag_picket"
+count = 3
+scatter_radius = 7.0
+
+[node name="SunburstPicketNorth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 678, 1, 44)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_picket"
+count = 4
+scatter_radius = 7.0
+
+[node name="SunburstPicketMid" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 678, 1, 0)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_picket"
+count = 4
+scatter_radius = 7.0
+
+[node name="SunburstPicketSouth" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 678, 1, -44)
+script = ExtResource("3_spawner")
+mob_id = &"sunburst_picket"
+count = 3
+scatter_radius = 7.0
+
+[node name="DrownedWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 1, -20)
+script = ExtResource("3_spawner")
+mob_id = &"drowned_levy"
+count = 5
+scatter_radius = 12.0
+
+[node name="DrownedEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 652, 1, -44)
+script = ExtResource("3_spawner")
+mob_id = &"drowned_levy"
+count = 5
+scatter_radius = 11.0
+
+[node name="DrownedCauseway" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 592, 1, -96)
+script = ExtResource("3_spawner")
+mob_id = &"drowned_levy"
+count = 4
+scatter_radius = 13.0
+
+[node name="BindersWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 578, 1, -66)
+script = ExtResource("3_spawner")
+mob_id = &"field_binder"
+count = 3
+scatter_radius = 8.0
+
+[node name="BindersEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 626, 1, -58)
+script = ExtResource("3_spawner")
+mob_id = &"field_binder"
+count = 3
+scatter_radius = 8.0
+
+[node name="MarchWightsWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 586, 1, -120)
+script = ExtResource("3_spawner")
+mob_id = &"march_wight"
+count = 4
+scatter_radius = 10.0
+
+[node name="MarchWightsEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 628, 1, -132)
+script = ExtResource("3_spawner")
+mob_id = &"march_wight"
+count = 4
+scatter_radius = 10.0
+
+[node name="FloodWardensWest" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 570, 1, -96)
+script = ExtResource("3_spawner")
+mob_id = &"flood_warden"
+count = 2
+scatter_radius = 6.0
+
+[node name="FloodWardensEast" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 630, 1, -96)
+script = ExtResource("3_spawner")
+mob_id = &"flood_warden"
+count = 2
+scatter_radius = 6.0
+
+[node name="CaptainDerrow" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 591, -999, -630)
+script = ExtResource("3_spawner")
+mob_id = &"captain_derrow"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="CaptainVance" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 609, -999, -630)
+script = ExtResource("3_spawner")
+mob_id = &"captain_vance"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="TheWeightOfThem" type="Node3D" parent="Spawners"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -999, -732)
+script = ExtResource("3_spawner")
+mob_id = &"the_weight_of_them"
+count = 1
+scatter_radius = 0.0
+is_boss_encounter = true
+
+[node name="NPCs" type="Node3D" parent="."]
+
+[node name="Wrenn" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 584, 0.25, 112)
+npc_id = &"npc_wrenn"
+
+[node name="Colm" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 616, 0.25, 112)
+npc_id = &"npc_colm"
+
+[node name="Aske" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 593, 0.25, 103)
+npc_id = &"npc_aske"
+
+[node name="Ilsa" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 607, 0.25, 103)
+npc_id = &"npc_ilsa"
+
+[node name="Ferryman" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 587, 0.25, -80)
+npc_id = &"npc_ferryman"
+
+[node name="SpiritHealerCampGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 578.5, 0.25, 118)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerFordsideGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 650.5, 0.25, 34)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerCausewayGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 588.5, 0.25, -74)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerRedoubtWatchGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 624.5, 0.25, -146)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerWestDitchGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 506.5, 0.25, 58)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerEastDitchGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 698.5, 0.25, -46)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerRedoubtGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 602.5, -999.75, -570)
+npc_id = &"npc_spirit_healer"
+
+[node name="Graveyards" type="Node3D" parent="."]
+
+[node name="CampGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 576, 0.3, 118)
+script = ExtResource("7_grave")
+display_name = "The Field Camp"
+
+[node name="FordsideGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 648, 0.3, 34)
+script = ExtResource("7_grave")
+display_name = "The Fordside"
+
+[node name="CausewayGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 586, 0.3, -74)
+script = ExtResource("7_grave")
+display_name = "Causeway Rest"
+
+[node name="RedoubtWatchGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 622, 0.3, -146)
+script = ExtResource("7_grave")
+display_name = "Redoubt Watch"
+
+[node name="WestDitchGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 504, 0.3, 58)
+script = ExtResource("7_grave")
+display_name = "The West Ditch"
+
+[node name="EastDitchGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 696, 0.3, -46)
+script = ExtResource("7_grave")
+display_name = "The East Ditch"
+
+[node name="RedoubtGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -999.7, -570)
+script = ExtResource("7_grave")
+display_name = "The Redoubt Causeway"
+
+[node name="Triggers" type="Node3D" parent="."]
+
+[node name="RedoubtApproach" type="Area3D" parent="Triggers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, 3, -150)
+script = ExtResource("4_trigger")
+area_id = &"redoubt_approach"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Triggers/RedoubtApproach"]
+shape = SubResource("BoxShape3D_approach")
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="CausewayLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -993, -582)
+light_color = Color(0.72, 0.84, 0.92, 1)
+light_energy = 2.2
+omni_range = 40
+
+[node name="CourtyardLampWest" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 586, -991, -630)
+light_color = Color(0.72, 0.84, 0.92, 1)
+light_energy = 2.4
+omni_range = 48
+
+[node name="CourtyardLampEast" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 614, -991, -630)
+light_color = Color(0.72, 0.84, 0.92, 1)
+light_energy = 2.4
+omni_range = 48
+
+[node name="CisternStairLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -993, -674)
+light_color = Color(0.66, 0.80, 0.90, 1)
+light_energy = 2
+omni_range = 36
+
+[node name="CisternLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -989, -720)
+light_color = Color(0.66, 0.80, 0.90, 1)
+light_energy = 2.6
+omni_range = 58
+
+[node name="Portals" type="Node3D" parent="."]
+
+[node name="ValeRoad" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 462, 2.5, 120)
+script = ExtResource("5_portal")
+destination = Vector3(110, 1.5, 20)
+label_text = "The Vale Road"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/ValeRoad"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/ValeRoad"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/ValeRoad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Vale Road"
+
+[node name="KingsRoad" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 735, 2.5, 120)
+script = ExtResource("5_portal")
+destination = Vector3(1200, 1.5, 168)
+label_text = "The King's Road"
+required_level = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/KingsRoad"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/KingsRoad"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/KingsRoad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The King's Road"
+
+[node name="RedoubtEntrance" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, 2.5, -166)
+script = ExtResource("5_portal")
+destination = Vector3(600, -998.5, -590)
+destination_fall_limit = -1020
+label_text = "The Drowned Redoubt"
+required_level = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/RedoubtEntrance"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/RedoubtEntrance"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/RedoubtEntrance"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Drowned Redoubt"
+
+[node name="RedoubtExit" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 600, -998.5, -570)
+script = ExtResource("5_portal")
+destination = Vector3(600, 1.5, -156)
+label_text = "Leave the Redoubt"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/RedoubtExit"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/RedoubtExit"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/RedoubtExit"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "Leave the Redoubt"

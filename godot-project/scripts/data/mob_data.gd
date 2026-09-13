@@ -49,6 +49,13 @@ extends Resource
 ## Shared currency (Sovereigns) dropped on death.
 @export var currency_reward: int = 0
 
+## True for anything that lives INSIDE a dungeon or raid — trash and bosses
+## alike. This is what the slot-ownership test keys on: dungeon enemies may
+## never drop rings, trinkets or cloaks. It is explicit rather than inferred
+## from tags, because a barrow wight patrolling the surface carries the barrow
+## tag and is still a world enemy.
+@export var is_dungeon: bool = false
+
 ## True for dungeon and raid bosses. Bosses scale with how many players are in
 ## the instance — one system, written once (see the design doc).
 @export var is_boss: bool = false

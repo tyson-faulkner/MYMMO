@@ -35,6 +35,13 @@ var mana: int
 var is_dead: bool = false
 var experience: int = 0
 
+## What you're wearing. Set by the character whenever equipment changes.
+## Armour comes off every hit, Power goes onto every hit and heal, Stamina is
+## health. Three numbers, so a drop is easy to judge.
+var bonus_armor: int = 0
+var bonus_power: int = 0
+var bonus_stamina: int = 0
+
 var _resource_label: String = "Mana"
 var _resource_builds_in_combat: bool = false
 var _resource_regen_per_second: float = 0.0
@@ -58,7 +65,7 @@ func apply_class(new_class: ClassData) -> void:
 	class_data = new_class
 	if not class_data:
 		return
-	max_health = class_data.base_health + class_data.health_per_level * (level - 1)
+	max_health = _health_for_level(level)
 	max_mana = class_data.max_resource
 	_resource_label = class_data.resource_label
 	_resource_builds_in_combat = class_data.resource_builds_in_combat
@@ -99,9 +106,10 @@ func apply_damage(amount: int, source_peer_id: int = 0) -> void:
 	if not multiplayer.is_server() or is_dead or amount <= 0:
 		return
 	var mitigated: int = amount
-	if class_data and class_data.base_armor > 0:
+	var armor := total_armor()
+	if armor > 0:
 		# Flat armour with a floor, so a big hit still hurts.
-		mitigated = maxi(1, amount - class_data.base_armor)
+		mitigated = maxi(1, amount - armor)
 	var new_health: int = maxi(0, health - mitigated)
 	_set_health(new_health, source_peer_id)
 	_set_health.rpc(new_health, source_peer_id)
@@ -141,6 +149,51 @@ func _set_health(value: int, killer_peer_id: int) -> void:
 		is_dead = false
 		if was_dead:
 			revived.emit()
+
+
+# --- Gear -------------------------------------------------------------------
+
+
+func total_armor() -> int:
+	var base := class_data.base_armor if class_data else 0
+	return base + bonus_armor
+
+
+func total_power() -> int:
+	return bonus_power
+
+
+func _health_for_level(at_level: int) -> int:
+	var base := 100
+	if class_data:
+		base = class_data.base_health + class_data.health_per_level * (at_level - 1)
+	return base + bonus_stamina * 5
+
+
+## Server only. Called by the character when equipment changes. Max health
+## moves with stamina; current health is kept as the same fraction so putting
+## on a chestpiece doesn't heal you and taking it off doesn't kill you.
+func set_gear_bonuses(armor: int, power: int, stamina: int) -> void:
+	if not multiplayer.is_server():
+		return
+	bonus_armor = maxi(0, armor)
+	bonus_power = maxi(0, power)
+	bonus_stamina = maxi(0, stamina)
+	var fraction := float(health) / float(maxi(1, max_health))
+	var new_max := _health_for_level(level)
+	var new_health := clampi(int(round(float(new_max) * fraction)), 1 if not is_dead else 0, new_max)
+	_set_gear.rpc(bonus_armor, bonus_power, bonus_stamina, new_max, new_health)
+	_set_gear(bonus_armor, bonus_power, bonus_stamina, new_max, new_health)
+
+
+@rpc("authority", "reliable")
+func _set_gear(armor: int, power: int, stamina: int, new_max: int, new_health: int) -> void:
+	bonus_armor = armor
+	bonus_power = power
+	bonus_stamina = stamina
+	max_health = new_max
+	health = clampi(new_health, 0, max_health)
+	health_changed.emit(health, max_health)
 
 
 # --- Class resource ---------------------------------------------------------
@@ -210,7 +263,7 @@ func _set_progression(new_level: int, new_experience: int) -> void:
 	experience = maxi(0, new_experience)
 	if gained_levels:
 		if class_data:
-			max_health = class_data.base_health + class_data.health_per_level * (level - 1)
+			max_health = _health_for_level(level)
 			health = max_health
 			health_changed.emit(health, max_health)
 		leveled_up.emit(level)

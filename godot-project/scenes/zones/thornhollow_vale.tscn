@@ -228,6 +228,34 @@ title = "Guard Captain"
 greeting = "Two houses want this road and neither one of them will say so out loud. Keep your head down."
 body_color = Color(0.5, 0.44, 0.5, 1)
 
+[node name="SpiritHealerValeGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.5, 0.25, 22)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerHedgerowGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35.5, 0.25, -46)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerBarrowWatchGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0.25, -108)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerBarrowGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, -499.75, -588)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerGatewatchGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.5, 0.25, 128)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerEastPastureGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94.5, 0.25, 36)
+npc_id = &"npc_spirit_healer"
+
+[node name="SpiritHealerWestPastureGraveyard" parent="NPCs" instance=ExtResource("6_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -89.5, 0.25, 36)
+npc_id = &"npc_spirit_healer"
+
 [node name="Graveyards" type="Node3D" parent="."]
 
 [node name="ValeGraveyard" type="Node3D" parent="Graveyards"]
@@ -239,6 +267,31 @@ display_name = "Thornhollow Rest"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -499, -588)
 script = ExtResource("7_grave")
 display_name = "The Barrow Threshold"
+
+[node name="HedgerowGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38, 0.3, -46)
+script = ExtResource("7_grave")
+display_name = "Hedgerow Rest"
+
+[node name="BarrowWatchGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.3, -108)
+script = ExtResource("7_grave")
+display_name = "Barrow Watch"
+
+[node name="GatewatchGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0.3, 128)
+script = ExtResource("7_grave")
+display_name = "Gatewatch Rest"
+
+[node name="EastPastureGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 92, 0.3, 36)
+script = ExtResource("7_grave")
+display_name = "East Pasture Rest"
+
+[node name="WestPastureGraveyard" type="Node3D" parent="Graveyards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -92, 0.3, 36)
+script = ExtResource("7_grave")
+display_name = "West Pasture Rest"
 
 [node name="Triggers" type="Node3D" parent="."]
 
@@ -258,7 +311,7 @@ script = ExtResource("5_portal")
 destination = Vector3(0, -498.5, -592)
 destination_fall_limit = -520.0
 label_text = "The Barrow of the First King"
-required_level = 10
+required_level = 8
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/BarrowEntrance"]
 shape = SubResource("BoxShape3D_portal")
@@ -299,3 +352,59 @@ font_size = 52
 outline_size = 18
 modulate = Color(0.82, 0.74, 1, 1)
 text = "Leave the Barrow"
+
+[node name="MarcherRoad" type="Area3D" parent="Portals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2.5, 20)
+script = ExtResource("5_portal")
+destination = Vector3(475, 1.5, 120)
+label_text = "The Marcher Road"
+required_level = 8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Portals/MarcherRoad"]
+shape = SubResource("BoxShape3D_portal")
+
+[node name="Veil" type="MeshInstance3D" parent="Portals/MarcherRoad"]
+mesh = SubResource("BoxMesh_portal")
+material_override = SubResource("Material_portal")
+
+[node name="Label" type="Label3D" parent="Portals/MarcherRoad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+pixel_size = 0.005
+billboard = 1
+no_depth_test = true
+font_size = 52
+outline_size = 18
+modulate = Color(0.82, 0.74, 1, 1)
+text = "The Marcher Road"
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="EntryHallLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -491.5, -600)
+light_color = Color(0.76, 0.80, 0.88, 1)
+light_energy = 2
+omni_range = 46
+
+[node name="ReyneCorridorLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -493.5, -636)
+light_color = Color(0.76, 0.80, 0.88, 1)
+light_energy = 1.8
+omni_range = 34
+
+[node name="ReyneHallLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -490.5, -672)
+light_color = Color(0.76, 0.80, 0.88, 1)
+light_energy = 2.4
+omni_range = 54
+
+[node name="DescentLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -493.5, -706)
+light_color = Color(0.70, 0.74, 0.84, 1)
+light_energy = 1.8
+omni_range = 34
+
+[node name="TombLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -489, -746)
+light_color = Color(0.82, 0.78, 0.66, 1)
+light_energy = 2.6
+omni_range = 62

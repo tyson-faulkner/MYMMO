@@ -1,0 +1,23 @@
+# The Kingsmourn game server: the same Godot build everyone plays, run
+# headless. Install with:
+#   sudo cp kingsmourn.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now kingsmourn
+[Unit]
+Description=Kingsmourn game server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=kingsmourn
+WorkingDirectory=/opt/kingsmourn
+ExecStart=/opt/kingsmourn/Kingsmourn.x86_64 --headless
+Restart=always
+RestartSec=5
+# Godot writes its user data here rather than into root's home.
+Environment=HOME=/opt/kingsmourn
+StandardOutput=append:/var/log/kingsmourn/server.log
+StandardError=append:/var/log/kingsmourn/server.log
+
+[Install]
+WantedBy=multi-user.target

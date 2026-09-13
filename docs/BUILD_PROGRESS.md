@@ -28,7 +28,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 - **Milestone:** M1-M7 done, parties and runes in. Next: gear slots and stats, then vendors, then content volume.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-11, `tests/zone_smoke_test.gd`, 121/121 checks passing
+- **Last verified playable:** 2026-09-12, `tests/zone_smoke_test.gd`, 164/164 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Not yet verified against a live backend
 
@@ -141,8 +141,48 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   approved sheet is crimson and gold with blue panels. `docs/reference/` is
   named as the approved visual direction, so the build follows it and carries
   the storm-blue on the coat panel, drum rune and collar.
+- 2026-09-12 — When the cloud package (`kingsmourn-pending.zip`) and the desktop
+  disagreed on `zone_builder.gd`, the **desktop's copy won** and the package's
+  additions were merged in by hand: the six `ZoneLayouts` cases and the widened
+  layout enum came from the package; the MultiMesh cobble paving and the kit
+  paths `stair_stone_2m.glb` / `wall_low_2m.glb` stayed as they were on disk,
+  because those are the files that actually exist in `assets/kit/` — the
+  package's older `stair_stone.glb` / `wall_low_2x1.glb` names point at nothing.
+  The extracted textures and `.import` files for those three pieces, which the
+  Blender session had left untracked, were committed alongside, per the
+  convention already recorded above.
 
 ## Log
+
+### 2026-09-12 — Cloud package applied: zones two and three, mounts, gear data, 23 graveyards, `deploy/`
+
+Everything written in the cloud while the desktop was unreachable is now in the
+repo, applied per `APPLY_THESE.md` (that file, `pending/`, the zip and the stale
+`_to_delete/` lock files are gone).
+
+- **World.** Sablemarch (x~600) and Kingsmourn (x~1200) with their four
+  interiors (redoubt, royal crypt, hall of records, throne), all as
+  `ZoneLayouts` data; the Marcher Road and King's Road portals link the three
+  regions, six portals lead underground, gated 8/14/16/18/20. The barrow finally
+  has lights.
+- **Data.** 34 quests, 36 enemies incl. the Hall of Records and raid bosses,
+  16 NPCs, 53 gear items across three tiers with five uniques; three new
+  autoloads (`GearDatabase`, `MountDatabase`, `NpcDatabase`), registered with
+  Gear/Mount ahead of `ItemDatabase` because it delegates to them.
+- **Mounts.** All ten from the mount spec exist and each has a source; a
+  `MountController` node now sits on the player next to `RuneLoadout`. Riding
+  is 1.5-1.8x, damage dismounts, no riding below y=-100.
+- **Death.** Ghosts at 1.5x; 23 graveyards each with a spirit healer; the
+  smoke test proves no surface point is more than ~15s of ghost-running away.
+- **Ops.** `deploy/` (compose file, systemd unit, setup/deploy/backup scripts).
+- **Verified:** class cache rebuilt, `--check-only` clean on the hand-merged
+  `zone_builder.gd`, smoke test **164/164, SMOKE TEST PASSED**, zero script
+  errors. The only stderr is the usual single-peer RPC noise.
+
+Still missing, per the package: the mount list UI and mount models, boss
+abilities from the endgame spec, the equipment paper-doll UI, wiring the
+`char_*.glb` models into `player.tscn`, Phase 3 kit props, and the Nakama
+persistence round-trip against a live Docker.
 
 ### 2026-09-11 — Characters: one body, one skeleton, four classes, eight clips
 

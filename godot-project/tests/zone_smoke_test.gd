@@ -11,12 +11,15 @@
 extends Node
 
 const ZONE_SCENE := preload("res://scenes/zones/thornhollow_vale.tscn")
+const SABLEMARCH_SCENE := preload("res://scenes/zones/sablemarch.tscn")
+const KINGSMOURN_SCENE := preload("res://scenes/zones/kingsmourn.tscn")
 const PLAYER_STATS := preload("res://scripts/combat/stats.gd")
 const PLAYER_QUEST_LOG := preload("res://scripts/quests/quest_log.gd")
 const PLAYER_TARGETING := preload("res://scripts/combat/targeting.gd")
 const PLAYER_ABILITY_BAR := preload("res://scripts/combat/ability_bar.gd")
 const PLAYER_DEATH := preload("res://scripts/combat/death_handler.gd")
 const PLAYER_RUNES := preload("res://scripts/combat/rune_loadout.gd")
+const PLAYER_MOUNTS := preload("res://scripts/combat/mount_controller.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -44,6 +47,20 @@ func _ready() -> void:
 	_check_persistence()
 	_check_parties()
 	_check_runes(zone)
+	_check_gear(zone)
+
+	# Zones two and three. Built last because they are the biggest, and the
+	# checks below only mean anything once all three are standing.
+	var sablemarch := SABLEMARCH_SCENE.instantiate()
+	add_child(sablemarch)
+	var kingsmourn := KINGSMOURN_SCENE.instantiate()
+	add_child(kingsmourn)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check_zone_two_and_three(zone, sablemarch, kingsmourn)
+	_check_mounts()
+	_check_graveyards(zone, sablemarch, kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -97,6 +114,10 @@ func _spawn_fake_player() -> void:
 	runes.set_script(PLAYER_RUNES)
 	runes.name = "RuneLoadout"
 	_fake_player.add_child(runes)
+	var mounts := Node.new()
+	mounts.set_script(PLAYER_MOUNTS)
+	mounts.name = "MountController"
+	_fake_player.add_child(mounts)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -185,6 +206,40 @@ func _check_databases() -> void:
 			if not droppable:
 				undroppable.append("%s wants %s, nothing drops it" % [quest_id, wanted])
 	_report("collect objectives are obtainable", undroppable.is_empty(), ", ".join(undroppable))
+
+	# THE GAP THIS CLOSES: quests name their giver by id, and until NpcDatabase
+	# existed nothing confirmed the giver was a real person standing somewhere.
+	# A typo, or a quest written for an NPC nobody ever placed, shipped silently
+	# and you only found out when a player walked to an empty field looking for
+	# a quest marker.
+	var missing_givers: Array[String] = []
+	for quest_id in QuestDatabase.get_all_ids():
+		var quest := QuestDatabase.get_quest(quest_id)
+		if not NpcDatabase.has_npc(quest.giver_id):
+			missing_givers.append("%s given by unknown %s" % [quest_id, quest.giver_id])
+		if quest.turn_in_id != &"" and not NpcDatabase.has_npc(quest.turn_in_id):
+			missing_givers.append("%s handed in to unknown %s" % [quest_id, quest.turn_in_id])
+	_report("every quest has a real giver", missing_givers.is_empty(), ", ".join(missing_givers))
+
+	# The same gap in the other direction: a "go and talk to X" objective that
+	# names somebody who does not exist is just as unfinishable.
+	var missing_talk: Array[String] = []
+	for quest_id in QuestDatabase.get_all_ids():
+		for objective in QuestDatabase.get_quest(quest_id).objectives:
+			if str(objective.get("type", "")) != "talk":
+				continue
+			var who := StringName(str(objective.get("target", "")))
+			if not NpcDatabase.has_npc(who):
+				missing_talk.append("%s -> %s" % [quest_id, who])
+	_report("talk objectives name real people", missing_talk.is_empty(), ", ".join(missing_talk))
+
+	# And every NPC should have somewhere to stand. An NPC in the database with
+	# no zone is one nobody can ever reach.
+	var homeless: Array[String] = []
+	for npc_id in NpcDatabase.get_all_ids():
+		if NpcDatabase.get_npc(npc_id).zones.is_empty():
+			homeless.append(String(npc_id))
+	_report("every NPC stands somewhere", homeless.is_empty(), ", ".join(homeless))
 
 
 func _check_quest_flow() -> void:
@@ -645,6 +700,400 @@ func _check_runes(zone: Node) -> void:
 	CharacterState.apply(_fake_player, saved)
 	_report("rune choices survive a save", loadout.rune_for_ability(&"necro_bolt") != null,
 		str(loadout.chosen))
+
+
+func _check_gear(zone: Node) -> void:
+	var ids: Array = GearDatabase.get_all_ids()
+	_report("gear database loaded", ids.size() >= 50, "%d items" % ids.size())
+
+	# Every slot, every tier, has something in it. An empty slot at a tier is a
+	# slot nobody can ever fill.
+	var gaps: Array[String] = []
+	for tier in [Item.GearTier.STARTER, Item.GearTier.MID, Item.GearTier.CAP]:
+		for slot in [Item.GearSlot.HEAD, Item.GearSlot.CHEST, Item.GearSlot.LEGS, Item.GearSlot.HANDS,
+				Item.GearSlot.FEET, Item.GearSlot.WEAPON, Item.GearSlot.OFFHAND, Item.GearSlot.RING,
+				Item.GearSlot.TRINKET, Item.GearSlot.CLOAK]:
+			if GearDatabase.items_for(slot, tier).is_empty():
+				gaps.append("%s tier %d" % [Item.slot_name(slot), tier])
+	_report("every slot has gear at every tier", gaps.is_empty(), ", ".join(gaps))
+
+	# THE DESIGN DOC'S RULE, enforced: rings, trinkets and cloaks are owned by
+	# the open world and are NEVER in a boss or dungeon loot table. This is what
+	# keeps questing worth doing — world gear cannot be outscaled because there
+	# is nothing to outscale it with.
+	var violations: Array[String] = []
+	for mob_id in MobDatabase.get_all_ids():
+		var mob := MobDatabase.get_mob(mob_id)
+		if not mob.is_dungeon:
+			continue
+		for item_id in mob.loot_table:
+			var item: Item = ItemDatabase.get_item(str(item_id))
+			if item and item.is_gear() and Item.slot_is_world_owned(item.gear_slot):
+				violations.append("%s drops %s" % [mob_id, item_id])
+	_report("dungeons never drop world-owned slots", violations.is_empty(), ", ".join(violations))
+
+	# And the mirror: dungeon-owned slots must come from dungeons, not quests.
+	var quest_violations: Array[String] = []
+	for quest_id in QuestDatabase.get_all_ids():
+		for item_id in QuestDatabase.get_quest(quest_id).item_rewards:
+			var item: Item = ItemDatabase.get_item(str(item_id))
+			if item and item.is_gear() and not Item.slot_is_world_owned(item.gear_slot):
+				quest_violations.append("%s rewards %s" % [quest_id, item_id])
+	_report("quests only reward world-owned slots", quest_violations.is_empty(), ", ".join(quest_violations))
+
+	# Every loot table entry and quest reward names something real.
+	var phantom: Array[String] = []
+	for mob_id in MobDatabase.get_all_ids():
+		for item_id in MobDatabase.get_mob(mob_id).loot_table:
+			if ItemDatabase.get_item(str(item_id)) == null:
+				phantom.append("%s -> %s" % [mob_id, item_id])
+	for quest_id in QuestDatabase.get_all_ids():
+		for item_id in QuestDatabase.get_quest(quest_id).item_rewards:
+			if ItemDatabase.get_item(str(item_id)) == null:
+				phantom.append("%s -> %s" % [quest_id, item_id])
+	for npc in NpcDatabase.vendors():
+		for item_id in npc.stock:
+			if ItemDatabase.get_item(String(item_id)) == null:
+				phantom.append("%s sells %s" % [npc.id, item_id])
+	_report("loot, rewards and stock all name real items", phantom.is_empty(), ", ".join(phantom))
+
+	_report("somebody sells something", NpcDatabase.vendors().size() >= 2, "%d vendors" % NpcDatabase.vendors().size())
+
+	# --- Equipping, for real ---
+	var stats := _fake_player.get_node("Stats") as Stats
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+	stats.set_gear_bonuses(0, 0, 0)
+	var inventory := PlayerInventory.new()
+
+	var chest: Item = ItemDatabase.get_item("gear_sovereign_chest")
+	_report("cap chest exists", chest != null, "")
+	inventory.add_item(chest, 1)
+	var chest_index := -1
+	for i in range(inventory.get_active_slot_count()):
+		if inventory.get_slot(i).item_id == chest.id:
+			chest_index = i
+	_report("chest lands in the bag", chest_index >= 0, "")
+	_report("chest equips", inventory.equip_gear_from_slot(chest_index, &"valkyr", 20), "")
+	_report("chest is worn", not inventory.get_gear_slot(&"chest").is_empty(), "")
+	_report("bag slot is empty again", inventory.get_slot(chest_index).is_empty(), "")
+
+	var totals: Dictionary = inventory.gear_totals()
+	_report("totals reflect the chest", int(totals["armor"]) == chest.armor and int(totals["stamina"]) == chest.stamina,
+		"A%d P%d S%d" % [totals["armor"], totals["power"], totals["stamina"]])
+
+	# Stats pick it up: armour mitigates more, stamina raises max health.
+	var base_max := stats.max_health
+	var base_armor := stats.total_armor()
+	stats.set_gear_bonuses(int(totals["armor"]), int(totals["power"]), int(totals["stamina"]))
+	_report("stamina raises max health", stats.max_health == base_max + chest.stamina * 5,
+		"%d -> %d" % [base_max, stats.max_health])
+	_report("armour adds up", stats.total_armor() == base_armor + chest.armor, "%d" % stats.total_armor())
+
+	# A Bard cannot pick up a spear; a level 3 cannot wear cap gear.
+	var spear: Item = ItemDatabase.get_item("gear_sovereign_weapon_valkyr")
+	inventory.add_item(spear, 1)
+	var spear_index := -1
+	for i in range(inventory.get_active_slot_count()):
+		if inventory.get_slot(i).item_id == spear.id:
+			spear_index = i
+	_report("wrong class refused", not inventory.equip_gear_from_slot(spear_index, &"bard", 20), "")
+	_report("too low a level refused", not inventory.equip_gear_from_slot(spear_index, &"valkyr", 3), "")
+	_report("right class and level accepted", inventory.equip_gear_from_slot(spear_index, &"valkyr", 20), "")
+
+	# Two rings, both wearable at once.
+	var ring: Item = ItemDatabase.get_item("gear_sovereign_ring")
+	inventory.add_item(ring, 1)
+	inventory.add_item(ring, 1)
+	var worn_rings := 0
+	for i in range(inventory.get_active_slot_count()):
+		if inventory.get_slot(i).item_id == ring.id:
+			inventory.equip_gear_from_slot(i, &"valkyr", 20)
+	if not inventory.get_gear_slot(&"ring1").is_empty(): worn_rings += 1
+	if not inventory.get_gear_slot(&"ring2").is_empty(): worn_rings += 1
+	_report("both ring slots fill", worn_rings == 2, "%d rings worn" % worn_rings)
+
+	# Unequip puts it back in the bag.
+	_report("unequip works", inventory.unequip_gear(&"chest"), "")
+	_report("chest is off", inventory.get_gear_slot(&"chest").is_empty(), "")
+
+	# Gear survives a save.
+	var saved := inventory.to_dict()
+	var restored := PlayerInventory.new()
+	restored.from_dict(saved)
+	_report("worn gear survives a save", not restored.get_gear_slot(&"weapon").is_empty()
+		and not restored.get_gear_slot(&"ring1").is_empty(), "")
+
+	# The uniques do what they say.
+	var unique: Item = ItemDatabase.get_item("wolfsbane_ring")
+	_report("uniques have effects", unique != null and unique.unique_effect == &"beast_slayer", "")
+	_report("uniques are world-owned", unique != null and unique.gear_source == Item.GearSource.WORLD, "")
+
+
+# THE GAP THIS CLOSES: content and geometry are written in different files, and
+# nothing tied them together. A mob defined in MobDatabase that no spawner ever
+# places, or a "go to X" objective naming an area nobody built, both ship
+# silently and are only found by a player standing in an empty field. The vale
+# had that bug once (q_supplies); these checks are so the marches and the
+# capital cannot have it three more times.
+func _check_zone_two_and_three(vale: Node3D, sablemarch: Node3D, kingsmourn: Node3D) -> void:
+	print("")
+	print("-- zones two and three --")
+
+	var zones: Array[Node3D] = [vale, sablemarch, kingsmourn]
+
+	# Both zones actually assembled something, rather than silently building an
+	# empty node because the layout name was misspelled.
+	for zone in [sablemarch, kingsmourn]:
+		var built := 0
+		for terrain in zone.get_children():
+			if terrain is Node3D and terrain.get_child_count() > 0:
+				built += terrain.get_child_count()
+		_report("%s assembled" % zone.name, built > 50, "%d pieces and nodes" % built)
+
+	# Every enemy in the database stands somewhere. An unplaced mob is a quest
+	# that cannot be finished.
+	var placed := {}
+	for zone in zones:
+		for spawner in _all_spawners(zone):
+			placed[spawner.mob_id] = true
+	var unplaced: Array[String] = []
+	for mob_id in MobDatabase.get_all_ids():
+		# Summons and pets are called up mid-fight, so nothing places them and
+		# nothing should.
+		if MobDatabase.get_mob(mob_id).tags.has(&"summon"):
+			continue
+		if not placed.has(mob_id):
+			unplaced.append(String(mob_id))
+	_report("every enemy is placed in a zone", unplaced.is_empty(), ", ".join(unplaced))
+
+	# Every "reach somewhere" objective names an AreaTrigger that exists.
+	var areas := {}
+	for zone in zones:
+		for trigger in _all_triggers(zone):
+			areas[trigger.area_id] = true
+	var missing_areas: Array[String] = []
+	for quest_id in QuestDatabase.get_all_ids():
+		for objective in QuestDatabase.get_quest(quest_id).objectives:
+			if str(objective.get("type", "")) != "reach":
+				continue
+			var wanted := StringName(str(objective.get("target", "")))
+			if not areas.has(wanted):
+				missing_areas.append("%s -> %s" % [quest_id, wanted])
+	_report("reach objectives name real places", missing_areas.is_empty(), ", ".join(missing_areas))
+
+	# Every NPC the database says lives in the marches or the capital is
+	# actually standing in that scene.
+	var standing := {}
+	for zone in zones:
+		for npc in _all_npcs(zone):
+			standing[npc.npc_id] = true
+	var absent: Array[String] = []
+	for npc_id in NpcDatabase.get_all_ids():
+		if not standing.has(npc_id):
+			absent.append(String(npc_id))
+	_report("every NPC is placed in a zone", absent.is_empty(), ", ".join(absent))
+
+	# A portal whose far side is inside another portal teleports you straight
+	# back, which reads as the game being broken. Ten metres is the vale's
+	# working clearance.
+	var portals: Array[DungeonPortal] = []
+	for zone in zones:
+		portals.append_array(_all_portals(zone))
+	var too_close: Array[String] = []
+	for portal in portals:
+		for other in portals:
+			if portal == other:
+				continue
+			if portal.destination.distance_to(other.global_position) < 6.0:
+				too_close.append("%s lands on %s" % [portal.name, other.name])
+	_report("portals do not land on each other", too_close.is_empty(), ", ".join(too_close))
+
+	# Every boss has somewhere to be reached from: a portal leading into its
+	# region. Checked by height, since each interior sits on its own level.
+	var boss_levels := {}
+	for zone in zones:
+		for spawner in _all_spawners(zone):
+			if spawner.is_boss_encounter:
+				boss_levels[int(round(spawner.global_position.y / 100.0))] = String(spawner.mob_id)
+	var reachable_levels := {}
+	for portal in portals:
+		reachable_levels[int(round(portal.destination.y / 100.0))] = true
+	var stranded: Array[String] = []
+	for level in boss_levels:
+		if not reachable_levels.has(level):
+			stranded.append(str(boss_levels[level]))
+	_report("every boss region has a way in", stranded.is_empty(), ", ".join(stranded))
+
+
+func _all_spawners(root: Node) -> Array[MobSpawner]:
+	var found: Array[MobSpawner] = []
+	for node in root.find_children("*", "Node3D", true, false):
+		if node is MobSpawner:
+			found.append(node)
+	return found
+
+
+func _all_triggers(root: Node) -> Array[AreaTrigger]:
+	var found: Array[AreaTrigger] = []
+	for node in root.find_children("*", "Area3D", true, false):
+		if node is AreaTrigger:
+			found.append(node)
+	return found
+
+
+func _all_portals(root: Node) -> Array[DungeonPortal]:
+	var found: Array[DungeonPortal] = []
+	for node in root.find_children("*", "Area3D", true, false):
+		if node is DungeonPortal:
+			found.append(node)
+	return found
+
+
+func _all_npcs(root: Node) -> Array:
+	var found: Array = []
+	for node in root.find_children("*", "Node3D", true, false):
+		if node.get("npc_id") != null and node.has_method("_apply_definition"):
+			found.append(node)
+	return found
+
+
+# Mounts are the reward layer, so the failure modes are all "the player earned
+# something and the game quietly kept it": a drop nobody can learn, a mount that
+# vanishes on logout, or one that works in a raid where it must not.
+func _check_mounts() -> void:
+	print("")
+	print("-- mounts --")
+
+	var mounts := _fake_player.get_node("MountController") as MountController
+	var stats := _fake_player.get_node("Stats") as Stats
+
+	_report("mount database loaded", MountDatabase.get_all_ids().size() == 10,
+		"%d mounts" % MountDatabase.get_all_ids().size())
+
+	# Every mount is reachable as an item, or its drop is a dead entry.
+	var unreachable: Array[String] = []
+	for mount_id in MountDatabase.get_all_ids():
+		var item: Item = ItemDatabase.get_item(String(mount_id))
+		if item == null or item.item_type != Item.ItemType.MOUNT or item.mount_id != mount_id:
+			unreachable.append(String(mount_id))
+	_report("every mount is a real item", unreachable.is_empty(), ", ".join(unreachable))
+
+	# Every mount has a way into a player's hands: a boss drops it, a vendor
+	# sells it, or a quest hands it over.
+	var obtainable := {}
+	for mob_id in MobDatabase.get_all_ids():
+		for item_id in MobDatabase.get_mob(mob_id).loot_table:
+			obtainable[StringName(item_id)] = true
+	for npc_id in NpcDatabase.get_all_ids():
+		for item_id in NpcDatabase.get_npc(npc_id).stock:
+			obtainable[StringName(item_id)] = true
+	for quest_id in QuestDatabase.get_all_ids():
+		for item_id in QuestDatabase.get_quest(quest_id).item_rewards:
+			obtainable[StringName(item_id)] = true
+	var unobtainable: Array[String] = []
+	for mount_id in MountDatabase.get_all_ids():
+		if not obtainable.has(mount_id):
+			unobtainable.append(String(mount_id))
+	_report("every mount has a source", unobtainable.is_empty(), ", ".join(unobtainable))
+
+	# Learning, and the level gate on riding.
+	stats.level = 20
+	_report("unknown mounts cannot be ridden", not mounts.mount_up(&"mount_veil_saber"), "")
+	_report("learning works", mounts.learn(&"mount_veil_saber"), "")
+	_report("learning twice is a no-op", not mounts.learn(&"mount_veil_saber"), "")
+	_report("known mount rides", mounts.mount_up(&"mount_veil_saber"), "")
+	_report("the mount is the one asked for", mounts.current == &"mount_veil_saber", String(mounts.current))
+	_report("riding is faster than running", MountDatabase.speed_of(mounts.current) > 1.0,
+		"%.2fx" % MountDatabase.speed_of(mounts.current))
+
+	# Getting hit throws you off — the rule that stops mounts being a combat
+	# ability.
+	stats.apply_damage(5, 1)
+	_report("damage dismounts", not mounts.is_mounted(), "")
+
+	# And a dungeon is off limits, decided by depth rather than a list of rooms
+	# somebody has to remember to update.
+	_fake_player.global_position = Vector3(1200, -1500, -600)
+	_report("no riding underground", not mounts.mount_up(&"mount_veil_saber"),
+		mounts.refusal_reason(&"mount_veil_saber"))
+	_fake_player.global_position = Vector3(0, 1, 10)
+	_report("riding works back on the surface", mounts.mount_up(&"mount_veil_saber"), "")
+	mounts.dismount()
+
+	# A mount you earned survives logging out.
+	var saved := CharacterState.capture(_fake_player)
+	var reloaded := MountController.new()
+	reloaded.from_dict(saved.get("mounts", {}))
+	_report("learned mounts survive a save", reloaded.knows(&"mount_veil_saber"), "")
+	reloaded.from_dict({"learned": ["mount_that_does_not_exist"]})
+	_report("a bad save does not create phantom mounts", reloaded.learned.is_empty(), "")
+	reloaded.free()
+
+
+# THE GAP THIS CLOSES: a corpse run is only tolerable if a graveyard is nearby
+# and the ghost moves faster than the living. Both are easy to get wrong and
+# neither shows up until somebody actually dies far from town, by which point
+# they are already annoyed.
+func _check_graveyards(vale: Node3D, sablemarch: Node3D, kingsmourn: Node3D) -> void:
+	print("")
+	print("-- death and graveyards --")
+
+	var zones: Array[Node3D] = [vale, sablemarch, kingsmourn]
+	var graveyards: Array[Node3D] = []
+	for zone in zones:
+		for node in zone.find_children("*", "Node3D", true, false):
+			if node is Graveyard:
+				graveyards.append(node)
+	_report("graveyards exist in every region", graveyards.size() >= 20,
+		"%d graveyards" % graveyards.size())
+
+	# Every graveyard has a spirit healer standing at it, so the shortcut is
+	# always offered and never only in the starting town.
+	var healers: Array[Vector3] = []
+	for zone in zones:
+		for npc in _all_npcs(zone):
+			if npc.npc_id == &"npc_spirit_healer":
+				healers.append(npc.global_position)
+	var unattended: Array[String] = []
+	for grave in graveyards:
+		var found := false
+		for spot in healers:
+			if grave.global_position.distance_to(spot) < 8.0:
+				found = true
+				break
+		if not found:
+			unattended.append(grave.display_name)
+	_report("every graveyard has a spirit healer", unattended.is_empty(), ", ".join(unattended))
+
+	# No corner of a surface zone should be a long walk from a graveyard. The
+	# bar is set in seconds, not metres: a ghost runs at 1.5x, so 6.0 * 1.5 =
+	# 9 m/s, and 140m is about fifteen seconds. That is a corpse run people
+	# will actually choose over the sickness.
+	var surface: Array[Vector3] = []
+	for grave in graveyards:
+		if grave.global_position.y > -100.0:
+			surface.append(grave.global_position)
+	var worst := 0.0
+	var worst_at := Vector3.ZERO
+	var zone_centres: Array[Vector3] = [Vector3(0, 0, 0), Vector3(600, 0, 0), Vector3(1200, 0, 0)]
+	for centre in zone_centres:
+		for gx in range(-4, 5):
+			for gz in range(-5, 6):
+				var probe: Vector3 = centre + Vector3(float(gx) * 28.0, 0, float(gz) * 30.0)
+				var nearest := INF
+				for spot in surface:
+					nearest = minf(nearest, probe.distance_to(spot))
+				if nearest > worst:
+					worst = nearest
+					worst_at = probe
+	_report("nowhere on the surface is far from a graveyard", worst < 140.0,
+		"worst %.0fm (~%.0fs ghost run), near %v" % [worst, worst / 9.0, worst_at])
+
+	# And the ghost actually moves faster, which is the whole reason the corpse
+	# run is the free option.
+	_report("ghosts run faster than the living", DeathHandler.GHOST_SPEED > 1.2,
+		"%.2fx" % DeathHandler.GHOST_SPEED)
 
 
 func _report(label: String, passed: bool, detail: String) -> void:

@@ -24,8 +24,11 @@ config/icon="res://icon.png"
 [autoload]
 
 Network="*res://scripts/autoload/network.gd"
+GearDatabase="*res://scripts/autoload/gear_database.gd"
+MountDatabase="*res://scripts/autoload/mount_database.gd"
 ItemDatabase="*res://scripts/autoload/item_database.gd"
 QuestDatabase="*res://scripts/autoload/quest_database.gd"
+NpcDatabase="*res://scripts/autoload/npc_database.gd"
 MobDatabase="*res://scripts/autoload/mob_database.gd"
 AbilityDatabase="*res://scripts/autoload/ability_database.gd"
 RuneDatabase="*res://scripts/autoload/rune_database.gd"

@@ -22,7 +22,15 @@ func _ready():
 
 
 func get_item(item_id: String) -> Item:
-	return items.get(item_id)
+	var found: Item = items.get(item_id)
+	if found:
+		return found
+	# Gear lives in its own database. Answering for it here means every
+	# existing lookup — loot, pickup, inventory, tooltips — just works.
+	var gear := GearDatabase.get_item(StringName(item_id))
+	if gear:
+		return gear
+	return MountDatabase.get_item(StringName(item_id))
 
 
 func get_all_items() -> Dictionary:

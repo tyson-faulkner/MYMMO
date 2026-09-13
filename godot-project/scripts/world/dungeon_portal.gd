@@ -47,6 +47,11 @@ func _on_body_entered(body: Node3D) -> void:
 	if stats and stats.level < required_level:
 		return
 	_cooldown_until_msec = Time.get_ticks_msec() + int(COOLDOWN_SECONDS * 1000.0)
+	# You do not ride into a dungeon. Dismounting here rather than on arrival
+	# means the rider never sees themselves mounted underground.
+	var mounts := body.get_node_or_null("MountController") as MountController
+	if mounts and mounts.is_mounted():
+		mounts.dismount()
 	body.global_position = destination
 	if body is CharacterBody3D:
 		(body as CharacterBody3D).velocity = Vector3.ZERO

@@ -9,6 +9,15 @@ var equipped_weapon: InventorySlot = InventorySlot.new()
 var equipped_hat: InventorySlot = InventorySlot.new()
 var equipped_backpack: InventorySlot = InventorySlot.new()
 
+## The eleven gear slots, keyed by name so two rings can coexist. The
+## template's weapon/hat/backpack above stay as cosmetic attachments; real
+## stats come from these.
+const GEAR_KEYS: Array[StringName] = [
+	&"head", &"chest", &"legs", &"hands", &"feet",
+	&"weapon", &"offhand", &"ring1", &"ring2", &"trinket", &"cloak"
+]
+var gear: Dictionary = {}
+
 
 func _init():
 	_initialize_slots()
@@ -18,6 +27,107 @@ func _initialize_slots():
 	slots.clear()
 	for i in range(MAX_INVENTORY_SIZE):
 		slots.append(InventorySlot.new())
+	gear.clear()
+	for key in GEAR_KEYS:
+		gear[key] = InventorySlot.new()
+
+
+# --- Gear -------------------------------------------------------------------
+
+
+## Which gear key an item goes in. Rings take the first empty ring, or ring1.
+static func gear_key_for(item: Item) -> StringName:
+	match item.gear_slot:
+		Item.GearSlot.HEAD: return &"head"
+		Item.GearSlot.CHEST: return &"chest"
+		Item.GearSlot.LEGS: return &"legs"
+		Item.GearSlot.HANDS: return &"hands"
+		Item.GearSlot.FEET: return &"feet"
+		Item.GearSlot.WEAPON: return &"weapon"
+		Item.GearSlot.OFFHAND: return &"offhand"
+		Item.GearSlot.RING: return &"ring1"
+		Item.GearSlot.TRINKET: return &"trinket"
+		Item.GearSlot.CLOAK: return &"cloak"
+		_: return &""
+
+
+func get_gear_slot(key: StringName) -> InventorySlot:
+	return gear.get(key, null)
+
+
+## Move a piece of gear from the bag onto the body, swapping out whatever was
+## there. `class_id` and `level` are checked so the server can refuse a Bard
+## picking up a spear or a level 3 wearing cap gear.
+func equip_gear_from_slot(index: int, class_id: StringName, level: int) -> bool:
+	if not is_slot_active(index):
+		return false
+	var bag_slot: InventorySlot = get_slot(index)
+	if bag_slot == null or bag_slot.is_empty():
+		return false
+	var item: Item = ItemDatabase.get_item(bag_slot.item_id)
+	if item == null or not item.is_gear():
+		return false
+	if item.class_restriction != &"" and item.class_restriction != class_id:
+		return false
+	if level < item.required_level:
+		return false
+
+	var key := gear_key_for(item)
+	if key == &"":
+		return false
+	# Rings: prefer an empty ring slot before swapping one out.
+	if key == &"ring1" and not gear[&"ring1"].is_empty() and gear[&"ring2"].is_empty():
+		key = &"ring2"
+
+	var target: InventorySlot = gear[key]
+	var incoming_id := bag_slot.item_id
+	bag_slot.item_id = target.item_id
+	bag_slot.quantity = target.quantity
+	if bag_slot.item_id.is_empty():
+		bag_slot.clear()
+	target.item_id = incoming_id
+	target.quantity = 1
+	return true
+
+
+func unequip_gear(key: StringName, destination_index: int = -1) -> bool:
+	var source: InventorySlot = gear.get(key, null)
+	if source == null or source.is_empty():
+		return false
+	if destination_index < 0:
+		destination_index = get_first_empty_slot()
+	if not is_slot_active(destination_index):
+		return false
+	var destination: InventorySlot = get_slot(destination_index)
+	if destination == null or not destination.is_empty():
+		return false
+	destination.item_id = source.item_id
+	destination.quantity = 1
+	source.clear()
+	return true
+
+
+## The three numbers everything you're wearing adds up to.
+## Returns {"armor": int, "power": int, "stamina": int, "effects": Array}.
+func gear_totals() -> Dictionary:
+	var totals := {"armor": 0, "power": 0, "stamina": 0, "effects": []}
+	for key in GEAR_KEYS:
+		var slot: InventorySlot = gear[key]
+		if slot.is_empty():
+			continue
+		var item: Item = ItemDatabase.get_item(slot.item_id)
+		if item == null or not item.is_gear():
+			continue
+		totals["armor"] += item.armor
+		totals["power"] += item.power
+		totals["stamina"] += item.stamina
+		if item.unique_effect != &"":
+			totals["effects"].append(item.unique_effect)
+	return totals
+
+
+func has_effect(effect: StringName) -> bool:
+	return gear_totals()["effects"].has(effect)
 
 
 func get_active_slot_count() -> int:
@@ -248,11 +358,15 @@ func to_dict() -> Dictionary:
 	var data = []
 	for slot in slots:
 		data.append(slot.to_dict())
+	var gear_data := {}
+	for key in GEAR_KEYS:
+		gear_data[String(key)] = gear[key].to_dict()
 	return {
 		"slots": data,
 		"equipped_weapon": equipped_weapon.to_dict(),
 		"equipped_hat": equipped_hat.to_dict(),
-		"equipped_backpack": equipped_backpack.to_dict()
+		"equipped_backpack": equipped_backpack.to_dict(),
+		"gear": gear_data
 	}
 
 
@@ -265,3 +379,6 @@ func from_dict(data: Dictionary) -> void:
 	equipped_weapon.from_dict(data.get("equipped_weapon", {}))
 	equipped_hat.from_dict(data.get("equipped_hat", {}))
 	equipped_backpack.from_dict(data.get("equipped_backpack", {}))
+	var gear_data: Dictionary = data.get("gear", {})
+	for key in GEAR_KEYS:
+		gear[key].from_dict(gear_data.get(String(key), {}))

@@ -33,7 +33,8 @@ var _players_in_range: Dictionary = {}
 
 
 func _ready() -> void:
-	_name_label.text = display_name if title.is_empty() else "%s\n<%s>" % [display_name, title]
+	_apply_definition()
+	_name_label.text = _base_name_text()
 	var mesh := get_node_or_null("Body/Mesh") as MeshInstance3D
 	if mesh and mesh.get_surface_override_material(0) == null:
 		var material := StandardMaterial3D.new()
@@ -69,6 +70,21 @@ func _process(_delta: float) -> void:
 			marker = "!"
 	_quest_marker.text = marker
 	_quest_marker.visible = marker != ""
+
+
+# The database is the source of truth, exactly as it is for enemies. A scene
+# places an NPC with a position and an id; name, title, greeting and colour all
+# come from NpcDatabase. That way a quest giver cannot quietly disagree with
+# itself depending on which zone you met them in.
+func _apply_definition() -> void:
+	var data := NpcDatabase.get_npc(npc_id)
+	if data == null:
+		push_warning("NPC '%s' is not in NpcDatabase - falling back to scene values." % npc_id)
+		return
+	display_name = data.display_name
+	title = data.title
+	greeting = data.greeting
+	body_color = data.body_color
 
 
 func _base_name_text() -> String:
@@ -153,6 +169,32 @@ func request_turn_in_quest(quest_id_text: String) -> void:
 	var quest_log := player.get_node_or_null("QuestLog") as QuestLog
 	if quest_log:
 		quest_log.turn_in(quest_id)
+
+
+## Buying. The server checks the NPC actually sells it, the player is actually
+## standing here, and they actually have the Sovereigns — then and only then
+## does anything change hands.
+@rpc("any_peer", "call_local", "reliable")
+func request_buy(item_id_text: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var player := _resolve_requesting_player()
+	if player == null or not is_player_in_range(player):
+		return
+	var data := NpcDatabase.get_npc(npc_id)
+	var item_id := StringName(item_id_text)
+	if data == null or not data.stock.has(item_id):
+		return
+	var item: Item = ItemDatabase.get_item(item_id_text)
+	if item == null:
+		return
+	var quest_log := player.get_node_or_null("QuestLog") as QuestLog
+	if quest_log == null or quest_log.currency < item.value:
+		return
+	if not player.has_method("request_add_item"):
+		return
+	quest_log.add_currency(-item.value)
+	player.request_add_item(item_id_text, 1)
 
 
 func _resolve_requesting_player() -> Node3D:

@@ -26,7 +26,16 @@ const WATER := Color(0.28, 0.45, 0.58)
 
 ## Which layout to build. Each one is a static function below returning a list
 ## of shape dictionaries.
-@export_enum("thornhollow_vale", "barrow_interior") var layout: String = "thornhollow_vale"
+@export_enum(
+	"thornhollow_vale",
+	"barrow_interior",
+	"sablemarch",
+	"redoubt_interior",
+	"kingsmourn",
+	"royal_crypt_interior",
+	"hall_of_records_interior",
+	"throne_interior"
+) var layout: String = "thornhollow_vale"
 
 ## Logical piece name -> the file the Blender kit exports for it. A piece that
 ## doesn't exist yet simply falls back to its tinted box, so the town upgrades
@@ -41,8 +50,8 @@ const KIT := {
 	"roof_ridge": "res://assets/kit/roof_slate_ridge_2m.glb",
 	"roof_corner": "res://assets/kit/roof_slate_corner.glb",
 	"street": "res://assets/kit/street_cobble_2x2.glb",
-	"stair": "res://assets/kit/stair_stone.glb",
-	"low_wall": "res://assets/kit/wall_low_2x1.glb",
+	"stair": "res://assets/kit/stair_stone_2m.glb",
+	"low_wall": "res://assets/kit/wall_low_2m.glb",
 	"lamp": "res://assets/kit/lamp_iron.glb",
 	"stall": "res://assets/kit/market_stall.glb",
 	"tree": "res://assets/kit/tree_round.glb",
@@ -110,8 +119,40 @@ func _ready() -> void:
 			pieces = thornhollow_vale()
 		"barrow_interior":
 			pieces = barrow_interior()
+		# Zones two and three, and their interiors, live in ZoneLayouts. Keeping
+		# them out of this file means the desktop's Blender work on the kit
+		# never collides with content work on the zones. They are listed by name
+		# rather than looked up dynamically because GDScript will not call a
+		# static function on a class by string.
+		"sablemarch":
+			pieces = ZoneLayouts.sablemarch()
+		"redoubt_interior":
+			pieces = ZoneLayouts.redoubt_interior()
+		"kingsmourn":
+			pieces = ZoneLayouts.kingsmourn()
+		"royal_crypt_interior":
+			pieces = ZoneLayouts.royal_crypt_interior()
+		"hall_of_records_interior":
+			pieces = ZoneLayouts.hall_of_records_interior()
+		"throne_interior":
+			pieces = ZoneLayouts.throne_interior()
+		_:
+			push_warning("ZoneBuilder: no layout named '%s'" % layout)
 	for piece in pieces:
 		_build_piece(piece)
+	if layout == "thornhollow_vale":
+		_pave_thornhollow()
+
+
+## The square and the two roads, paved once the cobble piece exists. The flat
+## slabs underneath stay: they are what you actually stand on.
+func _pave_thornhollow() -> void:
+	if not kit_has("street"):
+		return
+	_build_tiled_floor("street", Vector3(0, 0.25, 0), 46.0, 40.0)
+	_build_tiled_floor("street", Vector3(0, 0.16, 40), 9.0, 120.0)
+	_build_tiled_floor("street", Vector3(0, 0.16, -90), 7.0, 150.0)
+	_build_tiled_floor("street", Vector3(0, 0.16, -112), 16.0, 14.0)
 
 
 # A piece is {pos, size, color, solid, rot} — solid defaults to true, meaning it
@@ -197,6 +238,58 @@ func _model_bounds(model: Node3D) -> AABB:
 		else:
 			bounds = bounds.merge(piece_bounds)
 	return bounds
+
+
+## Cover a rectangle with a tiling kit piece.
+##
+## The square and the roads need around a thousand cobbles between them. A
+## thousand StaticBody3D nodes would be absurd for something you only ever walk
+## on, so this draws them as ONE MultiMesh — one node, one draw call, thousands
+## of copies — and leaves collision to the flat slab already underneath.
+func _build_tiled_floor(piece: String, centre: Vector3, size_x: float, size_z: float) -> void:
+	var scene := _kit_scene(piece)
+	if scene == null:
+		return
+	var sample := scene.instantiate() as Node3D
+	if sample == null:
+		return
+	var source: MeshInstance3D = null
+	for child in sample.find_children("*", "MeshInstance3D", true, false):
+		var candidate := child as MeshInstance3D
+		if candidate and candidate.mesh:
+			source = candidate
+			break
+	if source == null:
+		sample.queue_free()
+		return
+
+	var columns := maxi(1, int(ceil(size_x / SECTION_WIDTH)))
+	var rows := maxi(1, int(ceil(size_z / SECTION_WIDTH)))
+
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = source.mesh
+	multimesh.instance_count = columns * rows
+
+	var index := 0
+	for column in range(columns):
+		for row in range(rows):
+			var x := -size_x * 0.5 + SECTION_WIDTH * 0.5 + float(column) * SECTION_WIDTH
+			var z := -size_z * 0.5 + SECTION_WIDTH * 0.5 + float(row) * SECTION_WIDTH
+			# Quarter-turns break up the repeat without needing more art.
+			var spin := float((column * 7 + row * 3) % 4) * (PI * 0.5)
+			var basis := Basis(Vector3.UP, spin)
+			multimesh.set_instance_transform(index, Transform3D(basis, Vector3(x, 0.0, z)))
+			index += 1
+
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
+	instance.position = centre
+	var material := source.get_active_material(0)
+	if material:
+		instance.material_override = material
+	add_child(instance)
+	sample.queue_free()
 
 
 func _material_for(color: Color) -> StandardMaterial3D:

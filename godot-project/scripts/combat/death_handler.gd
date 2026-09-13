@@ -21,6 +21,11 @@ signal sickness_changed(seconds_remaining: float)
 const CORPSE_RECLAIM_RANGE := 5.0
 const SICKNESS_SECONDS := 300.0
 
+## A ghost runs at this multiple of living speed. The corpse run is the free
+## option, so it has to be quick enough that people actually take it; spirit
+## healers are spread through every zone for the same reason.
+const GHOST_SPEED := 1.5
+
 ## Grave-Chill: everything you do lands for 75% while it lasts. Enough to
 ## notice, not enough to stop you playing.
 const SICKNESS_PENALTY := 0.75
@@ -78,6 +83,7 @@ func enter_ghost(where: Vector3) -> void:
 	is_ghost = true
 	corpse_position = where
 	_set_ghost_visuals(true)
+	_set_ghost_speed(GHOST_SPEED)
 	died_at.emit(where)
 
 
@@ -85,7 +91,14 @@ func enter_ghost(where: Vector3) -> void:
 func leave_ghost() -> void:
 	is_ghost = false
 	_set_ghost_visuals(false)
+	_set_ghost_speed(1.0)
 	resurrected.emit()
+
+
+func _set_ghost_speed(multiplier: float) -> void:
+	var body := get_parent()
+	if body and body.has_method("set_ghost_speed"):
+		body.set_ghost_speed(multiplier)
 
 
 # A ghost is see-through and cannot be hit. Mobs already ignore anything whose
@@ -151,8 +164,14 @@ func _resurrect(where: Vector3, with_sickness: bool) -> void:
 	leave_ghost()
 	leave_ghost.rpc()
 	if with_sickness:
-		apply_sickness(SICKNESS_SECONDS)
-		apply_sickness.rpc(SICKNESS_SECONDS)
+		var seconds := SICKNESS_SECONDS
+		# The Ferryman's Coin: he knows the way back.
+		if body.has_method("get_inventory"):
+			var inventory = body.get_inventory()
+			if inventory and inventory.has_effect(&"short_grave_chill"):
+				seconds *= 0.5
+		apply_sickness(seconds)
+		apply_sickness.rpc(seconds)
 
 
 @rpc("authority", "call_local", "reliable")

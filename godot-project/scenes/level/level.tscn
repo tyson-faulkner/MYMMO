@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://d0dgljwwl463n" path="res://scripts/level/level.gd" id="1_e1sh7"]
 [ext_resource type="PackedScene" uid="uid://cffjduipbb3s5" path="res://scenes/level/player.tscn" id="1_uvcbi"]
 [ext_resource type="PackedScene" path="res://scenes/zones/thornhollow_vale.tscn" id="2_zone"]
+[ext_resource type="PackedScene" path="res://scenes/zones/sablemarch.tscn" id="2_sablemarch"]
+[ext_resource type="PackedScene" path="res://scenes/zones/kingsmourn.tscn" id="2_kingsmourn"]
 [ext_resource type="PackedScene" path="res://scenes/ui/npc_dialogue_ui.tscn" id="11_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_hud.tscn" id="12_hud"]
 [ext_resource type="PackedScene" uid="uid://bclq8vh1x2goy" path="res://scenes/ui/inventory_ui.tscn" id="4_x8g2h"]
@@ -74,6 +76,10 @@ shadow_blur = 0.5
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, -2, 10)
 
 [node name="ThornhollowVale" parent="." instance=ExtResource("2_zone")]
+
+[node name="Sablemarch" parent="." instance=ExtResource("2_sablemarch")]
+
+[node name="Kingsmourn" parent="." instance=ExtResource("2_kingsmourn")]
 
 [node name="PlayersContainer" type="Node3D" parent="." unique_id=1732952398 groups=["Players"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6891646, 0)

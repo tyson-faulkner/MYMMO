@@ -1,0 +1,61 @@
+# Kingsmourn backend: Nakama (accounts, characters, saves) on CockroachDB.
+#
+# Runs on the VPS. The game server itself is NOT here — it is a systemd
+# service (kingsmourn.service) so it can be restarted without touching the
+# database.
+#
+#   docker compose up -d      start
+#   docker compose logs -f     watch
+#   docker compose down        stop (data survives in the volume)
+services:
+  cockroachdb:
+    image: cockroachdb/cockroach:latest-v23.1
+    command: start-single-node --insecure --store=attrs=ssd,path=/var/lib/cockroach/
+    restart: unless-stopped
+    volumes:
+      - kingsmourn-db:/var/lib/cockroach
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Bound to localhost: the database is never reachable from the internet.
+    ports:
+      - "127.0.0.1:26257:26257"
+      - "127.0.0.1:8081:8080"
+
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.21.1
+    restart: unless-stopped
+    depends_on:
+      cockroachdb:
+        condition: service_healthy
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
+        exec /nakama/nakama
+        --name kingsmourn
+        --database.address root@cockroachdb:26257
+        --logger.level INFO
+        --session.token_expiry_sec 7200
+        --socket.server_key "$${NAKAMA_SERVER_KEY:?set NAKAMA_SERVER_KEY in .env}"
+        --console.username "$${NAKAMA_CONSOLE_USER:-admin}"
+        --console.password "$${NAKAMA_CONSOLE_PASSWORD:?set NAKAMA_CONSOLE_PASSWORD in .env}"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      # 7350 is the game client API — this one is public.
+      - "7350:7350"
+      # 7351 is the admin console — localhost only. Reach it with:
+      #   ssh -L 7351:localhost:7351 user@your-server
+      # then open http://localhost:7351 in your own browser.
+      - "127.0.0.1:7351:7351"
+
+volumes:
+  kingsmourn-db:

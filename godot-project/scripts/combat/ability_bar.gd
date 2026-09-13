@@ -267,6 +267,15 @@ func _execute(
 		power = int(round(float(ability.power) * (0.5 + float(spent_resource) / 50.0)))
 	if output != 1.0:
 		power = maxi(1, int(round(float(power) * output)))
+	# Gear. Flat, so a level-8 ring is still worth exactly what it says at 20.
+	var caster_stats := caster.get_node_or_null("Stats") as Stats
+	if caster_stats:
+		power += caster_stats.total_power()
+	# The slayer rings: a fifth again against the kind of thing they hate.
+	if target is Mob and caster.has_method("get_inventory"):
+		var inventory = caster.get_inventory()
+		if inventory:
+			power = _apply_slayer(power, inventory, target as Mob)
 
 	match effect:
 		AbilityData.Effect.DAMAGE:
@@ -325,6 +334,21 @@ func _execute(
 			if ability.speed_multiplier < 1.0:
 				_damage(target, power, caster_peer)
 			_apply_speed(target if target else caster, ability.speed_multiplier, duration)
+
+
+## The world-owned uniques: rings that do something no raid drop does.
+func _apply_slayer(power: int, inventory, mob: Mob) -> int:
+	if mob == null or mob.mob_data == null:
+		return power
+	var tags: Array = mob.mob_data.tags
+	var bonus := 1.0
+	if inventory.has_effect(&"beast_slayer") and tags.has(&"beast"):
+		bonus = 1.2
+	elif inventory.has_effect(&"soldier_slayer") and tags.has(&"soldier"):
+		bonus = 1.2
+	elif inventory.has_effect(&"undead_slayer") and (tags.has(&"undead") or tags.has(&"risen")):
+		bonus = 1.2
+	return int(round(float(power) * bonus))
 
 
 func _damage(target: Node3D, amount: int, caster_peer: int) -> void:
