@@ -38,6 +38,17 @@ var lifetime_seconds: float = -1.0
 ## Temporary speed change from a snare or a march buff.
 var speed_multiplier: float = 1.0
 
+## The rigged model this mob wears, if its MobData names one. It replaces the
+## tinted placeholder capsule; the capsule stays for enemies with no art yet.
+const MODEL_NODE := "Model"
+const LOOPING_CLIPS: Array[StringName] = [&"Idle", &"Run"]
+## Faster than this across the ground and the model runs rather than stands.
+const RUN_SPEED_THRESHOLD := 0.5
+
+var _model_player: AnimationPlayer = null
+var _clip: StringName = &""
+var _last_ground_position: Vector3 = Vector3.ZERO
+
 var _stats: Stats = null
 var _attack_timer: float = 0.0
 var _respawn_timer: float = 0.0
@@ -74,6 +85,58 @@ func _apply_mob_data() -> void:
 		_mesh.set_surface_override_material(0, material)
 	if mob_data.scale_multiplier != 1.0:
 		$Body.scale = Vector3.ONE * mob_data.scale_multiplier
+	_wear_model()
+
+
+## Put the real model on, if there is one, and hide the placeholder under it.
+## Models are exported facing -Z, which is where look_at() points a mob, so
+## no turn is needed — unlike the player, whose template faced the other way.
+func _wear_model() -> void:
+	if mob_data == null or mob_data.model_path.is_empty() or not ResourceLoader.exists(mob_data.model_path):
+		return
+	var scene := load(mob_data.model_path) as PackedScene
+	if scene == null:
+		return
+	var model := scene.instantiate() as Node3D
+	if model == null:
+		return
+	model.name = MODEL_NODE
+	var body := $Body as Node3D
+	body.add_child(model)
+	for placeholder in ["Mesh", "Head", "Shoulders"]:
+		var node := body.get_node_or_null(placeholder) as Node3D
+		if node:
+			node.visible = false
+	_model_player = model.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	if _model_player:
+		for clip in LOOPING_CLIPS:
+			if _model_player.has_animation(clip):
+				_model_player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+		_play_clip(&"Idle")
+	_last_ground_position = global_position
+
+
+func _play_clip(clip: StringName) -> void:
+	if _model_player == null or not _model_player.has_animation(clip):
+		return
+	if _clip == clip and _model_player.is_playing():
+		return
+	_clip = clip
+	_model_player.play(clip)
+
+
+## Every peer picks Idle or Run from the movement it can see. Clients never
+## run the AI, but they do see the synchronised position change, which is all
+## a run cycle needs to know.
+func _process(delta: float) -> void:
+	if _model_player == null or delta <= 0.0:
+		return
+	var moved := global_position - _last_ground_position
+	moved.y = 0.0
+	_last_ground_position = global_position
+	if _clip == &"Attack1" and _model_player.is_playing() and _model_player.current_animation == "Attack1":
+		return
+	_play_clip(&"Run" if moved.length() / delta > RUN_SPEED_THRESHOLD else &"Idle")
 
 
 # Bosses get more health the more people are fighting them. This is the ONLY
@@ -203,8 +266,11 @@ func _tick_attacking() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func play_attack() -> void:
-	# A visual hook. Real art will play a swing animation here; for now the
-	# placeholder body gives a small lunge so hits are readable.
+	# A modelled enemy swings; the placeholder capsule lunges so hits still read.
+	if _model_player and _model_player.has_animation(&"Attack1"):
+		_clip = &"Attack1"
+		_model_player.play(&"Attack1")
+		return
 	var body := get_node_or_null("Body") as Node3D
 	if not body:
 		return

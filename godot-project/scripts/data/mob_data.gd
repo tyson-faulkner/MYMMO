@@ -43,6 +43,10 @@ extends Resource
 ## Roughly how tall, in metres. Gives silhouette variety before real art.
 @export var scale_multiplier: float = 1.0
 
+## The rigged .glb this enemy wears, or "" to stay a tinted placeholder. Every
+## human is the shared body re-textured; the wolf is its own quadruped.
+@export var model_path: String = ""
+
 ## Item ids that can drop, each with a 0..1 chance.
 @export var loot_table: Dictionary = {}
 

@@ -128,6 +128,27 @@ func _ready() -> void:
 	await _shot("ground_vale_wide", Vector3(0, 30, 80), Vector3(0, 0, -30))
 	await _shot("ground_sablemarch_mud", Vector3(560, 5, 150), Vector3(580, 0, 100))
 
+	# Enemies, as the spawners placed them.
+	_camera.fov = 45
+	var wanted := ["vale_wolf", "hedge_bandit", "risen_levy", "sunburst_serjeant", "barrow_guardian", "the_first_king"]
+	for mob_id in wanted:
+		var mob: Node3D = null
+		for node in get_tree().get_nodes_in_group("Hostiles"):
+			if node.get("mob_data") != null and str(node.mob_data.id) == mob_id:
+				mob = node
+				break
+		if mob == null:
+			print("enemy: no %s spawned" % mob_id)
+			continue
+		# In front of it: look_at() points a mob's -Z at its target.
+		var front: Vector3 = -mob.global_basis.z.normalized()
+		var eye_height: float = 1.0 * (mob.get_node("Body") as Node3D).scale.y
+		var centre: Vector3 = mob.global_position + Vector3(0, eye_height, 0)
+		await _shot("enemy_%s" % mob_id, centre + front * 3.2 + Vector3(0.9, 0.6, 0), centre)
+		var model := mob.get_node_or_null("Body/Model")
+		var player: AnimationPlayer = model.get_node_or_null("AnimationPlayer") if model else null
+		print("enemy: %s model=%s clip=%s" % [mob_id, model != null, player.current_animation if player else "-"])
+
 	print("SHOTS COMPLETE")
 	get_tree().quit(0)
 

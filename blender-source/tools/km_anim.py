@@ -72,16 +72,22 @@ def _key(arm_obj, frame):
         pb.keyframe_insert("rotation_quaternion", frame=frame)
 
 
-def make_action(arm_obj, name, keys, loop=True):
+def make_action(arm_obj, name, keys, loop=True, rest=None):
     """Build one action from a list of (frame, pose entries) and stash it on
-    its own NLA track, which is how the glTF exporter names a clip."""
+    its own NLA track, which is how the glTF exporter names a clip.
+
+    `rest` is the pose every key starts from -- the hanging arms for the
+    shared humanoid skeleton. A rig without those bones (the wolf) passes
+    its own, or an empty list.
+    """
     action = bpy.data.actions.new(name)
     arm_obj.animation_data_create()
     arm_obj.animation_data.action = action
+    base = REST_ARMS if rest is None else rest
 
     for frame, entries in keys:
         clear_pose(arm_obj)
-        apply_pose(arm_obj, REST_ARMS + entries)
+        apply_pose(arm_obj, base + entries)
         _key(arm_obj, frame)
 
     clear_pose(arm_obj)

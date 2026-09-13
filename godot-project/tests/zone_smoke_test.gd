@@ -66,6 +66,7 @@ func _ready() -> void:
 	_check_template_cleanup()
 	_check_kit_props(zone, kingsmourn)
 	_check_class_weapons()
+	_check_enemy_models(zone)
 
 	print("")
 	if _failures == 0:
@@ -1181,6 +1182,72 @@ func _check_character_models() -> void:
 					unresolved.append(str(property))
 		player_node.free()
 	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
+
+
+# THE GAP THIS CLOSES: an enemy with a model that never loads, or loads with
+# no rig, silently stays a capsule. Every human must wear the shared body, the
+# wolf must be its own beast, and the spawned mobs must actually be dressed.
+func _check_enemy_models(vale: Node3D) -> void:
+	print("")
+	print("-- enemy models --")
+	var missing: Array[String] = []
+	var unrigged: Array[String] = []
+	var distinct := {}
+	for mob_id in MobDatabase.MODELS:
+		var data := MobDatabase.get_mob(mob_id)
+		var path := data.model_path if data else ""
+		if path.is_empty() or not ResourceLoader.exists(path):
+			missing.append(mob_id)
+			continue
+		if distinct.has(path):
+			continue
+		distinct[path] = true
+		var probe := (load(path) as PackedScene).instantiate()
+		var players := probe.find_children("*", "AnimationPlayer", true, false)
+		var skeletons := probe.find_children("*", "Skeleton3D", true, false)
+		if players.is_empty() or skeletons.is_empty():
+			unrigged.append("%s: no rig" % path.get_file())
+		else:
+			for clip in [&"Idle", &"Run", &"Attack1"]:
+				if not (players[0] as AnimationPlayer).has_animation(clip):
+					unrigged.append("%s: no %s" % [path.get_file(), clip])
+		probe.free()
+	_report("every modelled enemy's file exists", missing.is_empty(), ", ".join(missing))
+	_report("every enemy model is rigged with Idle, Run and Attack1", unrigged.is_empty(), "; ".join(unrigged))
+	_report("the roster shares eleven models", distinct.size() == 11, "%d distinct" % distinct.size())
+
+	var bare: Array[String] = []
+	for mob_id in MobDatabase.get_all_ids():
+		var data := MobDatabase.get_mob(mob_id)
+		if data and data.tags.has(&"human") and data.model_path.is_empty():
+			bare.append(mob_id)
+	_report("every human enemy wears the shared body", bare.is_empty(), ", ".join(bare))
+
+	var wolf := MobDatabase.get_mob(&"vale_wolf")
+	var wolf_ok := false
+	if wolf and ResourceLoader.exists(wolf.model_path):
+		var probe := (load(wolf.model_path) as PackedScene).instantiate()
+		var skeletons := probe.find_children("*", "Skeleton3D", true, false)
+		if not skeletons.is_empty():
+			var skeleton := skeletons[0] as Skeleton3D
+			wolf_ok = skeleton.find_bone("FrontLeftUpper") >= 0 and skeleton.find_bone("LeftUpperArm") < 0
+		probe.free()
+	_report("the wolf has its own quadruped skeleton", wolf_ok, "")
+
+	var container := vale.get_node_or_null("MobContainer")
+	var dressed := 0
+	var capsules := 0
+	if container:
+		for child in container.get_children():
+			var mob := child as Mob
+			if mob == null or mob.mob_data == null or mob.mob_data.model_path.is_empty():
+				continue
+			var placeholder := mob.get_node_or_null("Body/Mesh") as Node3D
+			if mob.get_node_or_null("Body/" + Mob.MODEL_NODE) != null and placeholder and not placeholder.visible:
+				dressed += 1
+			else:
+				capsules += 1
+	_report("spawned enemies wear their models, not the capsule", dressed > 0 and capsules == 0, "%d dressed, %d capsules" % [dressed, capsules])
 
 
 # THE GAP THIS CLOSES: at distance, weapon shape is half of how you tell the

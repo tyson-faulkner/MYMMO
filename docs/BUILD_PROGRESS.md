@@ -30,12 +30,16 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   items across three tiers, five uniques), **mounts** (all ten from the mount
   spec, each with a way to get it), **zones two and three** (Sablemarch and
   Kingsmourn, with their four interiors, linked by the Marcher Road and King's
-  Road portals), **23 graveyards**, each with a spirit healer, and the **four
-  class models** worn by the player, with painted grass and marsh-mud ground.
-- **Next:** the mount list UI and mount models, boss abilities per the endgame
-  spec, the equipment paper-doll UI, and Phase 3 kit props.
+  Road portals), **23 graveyards**, each with a spirit healer, the **four
+  class models** worn by the player with their weapons on the sockets, painted
+  grass and marsh-mud ground, the Phase 3 props (fountain, stalls, lamps,
+  trees, planters), and **every enemy modelled**: ten textured variants of the
+  shared body plus the vale wolf, worn by all 36 mob types.
+- **Next:** ability effect types and enemy cast bars, the boss mechanics
+  engine, grudge bosses and seasons, the combat recorder, specs and rune
+  moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 171/171 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 189/189 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -196,6 +200,11 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Enemy models live in `MobDatabase.MODELS`, not per mob
+  entry.** One table says which of the eleven models each of the 36 mob ids
+  wears, so a zone-three retainer reusing the Stag Outrider is one line, and
+  a mob with no line stays a tinted capsule rather than failing. Constructs
+  (turret, the Ledger) deliberately have no line.
 - 2026-09-13 — **Weapon visuals key on class, not item id.** Every tier of a
   class's weapon is the same model until tiers get their own art, so
   `player.gd` maps the worn gear's `class_restriction` to one node per slot.
@@ -206,6 +215,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Enemy models: ten body variants and the vale wolf
+
+- **Changed:** `blender-source/tools/km_enemies.py` builds the spec's ten human enemies as textures plus one silhouette tell each on the shared body and skeleton (so the class clips play unchanged); `km_wolf.py` is the one quadruped, with its own 14-bone rig and its own Idle/Run/Attack1. All eleven export to `assets/enemies/`. `MobDatabase.MODELS` maps all 36 mob ids onto them (zones two and three reuse by house and kind); `Mob` instantiates the model under `Body`, hides the capsule, loops Idle/Run from observed movement and plays Attack1 on a swing. `km_anim.make_action` takes a `rest` pose so non-human rigs can use it.
+- **Test:** smoke 189/189 with 6 new checks (files exist, every model rigged with the three clips, eleven distinct models, every human mob dressed, wolf has a quadruped skeleton, 70 spawned mobs dressed / 0 capsules). In-game shots of six enemies looked at: models face the player, Idle plays.
+- **Surprising:** the wolf's fur texture reads as wood grain at distance; it needs a real clumped-fur generator later. Also `--check-only`-style parse errors ("cannot infer type") in the screenshot script quietly become a 10-minute idle window, not a crash: watch the `.err` log, not the exit code.
 
 ### 2026-09-13 — Class weapons on the sockets
 

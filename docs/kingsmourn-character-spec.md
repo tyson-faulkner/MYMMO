@@ -55,6 +55,23 @@ Plus four attachment bones the game already expects, matching the template's
 existing sockets: **HeadAttach**, **LeftHandAttach**, **RightHandAttach**,
 **BackAttach**.
 
+**Trap, measured on the shipped rig (`km_rig.py`): the bones named "Left" sit
+on the character's anatomical RIGHT, and "Right" on the anatomical left.** The
+names follow the template's sockets, not the body. Consequences that are
+already built in and must stay consistent:
+
+- `Attack1` swings the "Right\*" arm, so main-hand weapons go on
+  **RightHandAttach** and off-hands (shield, focus) on **LeftHandAttach**.
+- Any new animation or attachment job should pick bones by measuring the
+  socket's world position, never by the name. `tests/character_shot.gd` prints
+  every socket's origin and axes for exactly this reason.
+- Do not "fix" the names: every clip, socket and weapon transform in
+  `player.tscn` is measured against them.
+
+Also: the sockets' hand bases at Idle are ~25° off any axis, and Godot's
+`Transform3D(...)` in a `.tscn` is written row-major. Copy the measured
+transforms from `player.tscn` rather than deriving new ones.
+
 ### Animations needed, in priority order
 
 The game already drives these state names, so match them exactly:

@@ -587,6 +587,50 @@ const DEFINITIONS := {
 	}
 }
 
+## Which model each enemy wears, from assets/enemies/. Ten human variants and
+## the wolf cover the vale (docs/kingsmourn-enemy-weapon-spec.md); zones two
+## and three reuse them by house and by kind, per the spec's "reuse
+## ruthlessly". Constructs (the turret, the Ledger) stay placeholders: they are
+## props, not people. Add a line here when a new variant is modelled.
+const MODELS := {
+	&"vale_wolf": "vale_wolf",
+	&"hedge_bandit": "enemy_hedge_bandit",
+	&"bandit_cutthroat": "enemy_bandit_cutthroat",
+	&"risen_levy": "enemy_risen_levy",
+	&"stag_outrider": "enemy_stag_outrider",
+	&"sunburst_serjeant": "enemy_sunburst_serjeant",
+	&"grave_binder": "enemy_grave_binder",
+	&"barrow_wight": "enemy_barrow_wight",
+	&"barrow_guardian": "enemy_barrow_guardian",
+	&"captain_reyne": "enemy_captain_reyne",
+	&"the_first_king": "enemy_the_first_king",
+	# Sablemarch
+	&"stag_picket": "enemy_stag_outrider",
+	&"sunburst_picket": "enemy_sunburst_serjeant",
+	&"drowned_levy": "enemy_risen_levy",
+	&"field_binder": "enemy_grave_binder",
+	&"march_wight": "enemy_barrow_wight",
+	&"flood_warden": "enemy_barrow_guardian",
+	&"captain_derrow": "enemy_stag_outrider",
+	&"captain_vance": "enemy_sunburst_serjeant",
+	&"the_weight_of_them": "enemy_barrow_wight",
+	# Kingsmourn
+	&"street_agitator": "enemy_hedge_bandit",
+	&"stag_retainer": "enemy_stag_outrider",
+	&"sunburst_retainer": "enemy_sunburst_serjeant",
+	&"crypt_risen": "enemy_risen_levy",
+	&"crown_binder": "enemy_grave_binder",
+	&"first_king_herald": "enemy_barrow_guardian",
+	&"stag_guard": "enemy_stag_outrider",
+	&"sunburst_guard": "enemy_sunburst_serjeant",
+	&"record_burner": "enemy_sunburst_serjeant",
+	&"record_forger": "enemy_stag_outrider",
+	&"master_kell": "enemy_grave_binder",
+	&"lord_ashcombe": "enemy_stag_outrider",
+	&"lady_severin": "enemy_sunburst_serjeant",
+	&"first_king_crowned": "enemy_the_first_king"
+}
+
 var _cache: Dictionary = {}
 
 
@@ -618,6 +662,9 @@ func _build(mob_id: StringName, entry: Dictionary) -> MobData:
 	data.currency_reward = int(entry.get("currency", 0))
 	data.placeholder_color = entry.get("color", Color(0.5, 0.45, 0.4))
 	data.scale_multiplier = float(entry.get("scale", 1.0))
+	var model := str(MODELS.get(mob_id, ""))
+	if not model.is_empty():
+		data.model_path = "res://assets/enemies/%s.glb" % model
 	data.loot_table = entry.get("loot", {})
 	data.is_boss = bool(entry.get("boss", false))
 	data.is_dungeon = bool(entry.get("dungeon", false)) or data.is_boss
