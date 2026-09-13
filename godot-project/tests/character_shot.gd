@@ -204,6 +204,21 @@ func _ready() -> void:
 		var centre := _player.global_position
 		await _shot("boss_ink_pool", centre + Vector3(7.0, 5.0, 9.0), centre + Vector3(0, 0.5, 0))
 		print("pool: made=%s pools=%d ledger_casting=%s" % [made, GroundEffect.all_in(get_tree()).size(), ledger.is_casting])
+		# The meter while the fight is on, then the recap when it ends.
+		var ledger_stats := ledger.get_node("Stats") as Stats
+		var bar: AbilityBar = _player.get_node("AbilityBar")
+		_player.get_node("Targeting").set_target(ledger)
+		for i in range(4):
+			bar.request_cast("tinker_shot", ledger.get_path())
+			await get_tree().create_timer(0.3).timeout
+		CombatRecorder._publish_live()
+		await _frames(4)
+		await _save("meter_live")
+		print("meter: live=%s" % str(CombatRecorder.live))
+		ledger_stats.apply_damage(999999, 1)
+		await _frames(6)
+		await _save("recap_panel")
+		print("recap: boss=%s seconds=%.1f awards=%d parse=%s" % [CombatRecorder.last_recap.get("boss_name", "?"), float(CombatRecorder.last_recap.get("seconds", 0.0)), CombatRecorder.last_recap.get("awards", {}).size(), str(CombatRecorder.last_recap.get("parses", {}).get(1, {}).get("score", "?"))])
 		ledger.state = Mob.State.IDLE
 		ledger.target = null
 		ledger._attack_timer = 0.0

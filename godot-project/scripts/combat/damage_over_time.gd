@@ -10,12 +10,14 @@ var damage_per_tick: int = 0
 var tick_seconds: float = 1.0
 var remaining_seconds: float = 0.0
 var source_peer_id: int = 0
+## Which ability this is, so its ticks are recorded under that name.
+var ability_id: StringName = &""
 
 var _accumulated: float = 0.0
 
 
 static func apply(
-	target: Node, amount: int, duration: float, interval: float, caster_peer_id: int
+	target: Node, amount: int, duration: float, interval: float, caster_peer_id: int, from_ability: StringName = &""
 ) -> DamageOverTime:
 	if target == null or amount <= 0 or duration <= 0.0:
 		return null
@@ -25,6 +27,7 @@ static func apply(
 	effect.tick_seconds = maxf(0.25, interval)
 	effect.remaining_seconds = duration
 	effect.source_peer_id = caster_peer_id
+	effect.ability_id = from_ability
 	target.add_child(effect)
 	return effect
 
@@ -41,7 +44,7 @@ func _process(delta: float) -> void:
 	_accumulated += delta
 	while _accumulated >= tick_seconds:
 		_accumulated -= tick_seconds
-		stats.apply_damage(damage_per_tick, source_peer_id)
+		stats.apply_damage(damage_per_tick, source_peer_id, ability_id)
 		if stats.is_dead:
 			queue_free()
 			return

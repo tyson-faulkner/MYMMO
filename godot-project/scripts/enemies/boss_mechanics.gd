@@ -217,21 +217,22 @@ func land(entry: Dictionary, target: Node3D, index: int = -1) -> void:
 	var mechanic_name := str(entry.get("name", ""))
 	var power := int(entry.get("power", 0))
 	var duration := float(entry.get("duration", 4.0))
+	var avoidable := bool(entry.get("avoidable", false))
 	match str(entry.get("effect", "damage")):
 		"damage":
-			_hit(target, power)
+			_hit(target, power, avoidable, mechanic_name)
 		"heal":
 			var stats := mob.get_node_or_null("Stats") as Stats
 			if stats:
-				stats.heal(power)
+				stats.heal(power, 0, StringName(mechanic_name))
 		"slow":
 			if target and target.has_method("apply_speed_modifier"):
 				target.apply_speed_modifier(float(entry.get("slow", 0.1)), duration)
-			_hit(target, power)
+			_hit(target, power, avoidable, mechanic_name)
 		"stun":
 			if target and target.has_method("apply_stun"):
 				target.apply_stun(duration)
-			_hit(target, power)
+			_hit(target, power, avoidable, mechanic_name)
 		"pool":
 			if target == null:
 				return
@@ -252,7 +253,7 @@ func land(entry: Dictionary, target: Node3D, index: int = -1) -> void:
 				if pool.owner_name != mob.name:
 					continue
 				var nearest := _nearest_player_to(pool.global_position, float(entry.get("range", 60.0)))
-				_hit(nearest, power)
+				_hit(nearest, power, avoidable, mechanic_name)
 		"line":
 			if target == null:
 				return
@@ -272,7 +273,7 @@ func land(entry: Dictionary, target: Node3D, index: int = -1) -> void:
 					continue
 				var across := (offset - direction * along).length()
 				if across <= half_width:
-					_hit(character, power)
+					_hit(character, power, avoidable, mechanic_name)
 		"charge":
 			if target == null:
 				return
@@ -284,7 +285,7 @@ func land(entry: Dictionary, target: Node3D, index: int = -1) -> void:
 			mob.global_position = target.global_position - toward * 1.6
 			mob.velocity = Vector3.ZERO
 			mob.target = target
-			_hit(target, power)
+			_hit(target, power, avoidable, mechanic_name)
 			if target.has_method("apply_knockback"):
 				target.apply_knockback(toward * float(entry.get("knockback", 12.0)) + Vector3(0, 4.0, 0))
 		"named":
@@ -358,19 +359,19 @@ func on_damaged(amount: int, _source_peer_id: int) -> void:
 		return
 	var stats := mob.get_node_or_null("Stats") as Stats
 	if stats:
-		stats.heal(maxi(1, int(round(float(amount) * float(_named_entry.get("heal_share", 0.5))))))
+		stats.heal(maxi(1, int(round(float(amount) * float(_named_entry.get("heal_share", 0.5))))), 0, StringName(str(_named_entry.get("name", "The Crown"))))
 
 
 func is_naming(player: Node3D) -> bool:
 	return named_player == player and Time.get_ticks_msec() < _named_until_msec
 
 
-func _hit(target: Node3D, power: int) -> void:
+func _hit(target: Node3D, power: int, avoidable: bool = false, mechanic_name: String = "") -> void:
 	if target == null or power <= 0:
 		return
 	var stats := target.get_node_or_null("Stats") as Stats
 	if stats and not stats.is_dead:
-		stats.apply_damage(int(round(float(power) * damage_multiplier())), 0)
+		stats.apply_damage(int(round(float(power) * damage_multiplier())), 0, StringName(mechanic_name), avoidable)
 
 
 func _nearest_player_to(point: Vector3, reach: float) -> Node3D:

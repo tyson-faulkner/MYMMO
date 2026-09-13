@@ -104,7 +104,7 @@ func _process(delta: float) -> void:
 
 # Server only. `source_peer_id` is who dealt it, so the killing blow can be
 # credited to a player's quests and XP.
-func apply_damage(amount: int, source_peer_id: int = 0) -> void:
+func apply_damage(amount: int, source_peer_id: int = 0, ability_id: StringName = &"", avoidable: bool = false) -> void:
 	if not multiplayer.is_server() or is_dead or amount <= 0:
 		return
 	var mitigated: int = amount
@@ -120,17 +120,24 @@ func apply_damage(amount: int, source_peer_id: int = 0) -> void:
 	_set_health(new_health, source_peer_id)
 	_set_health.rpc(new_health, source_peer_id)
 	damaged.emit(mitigated, source_peer_id)
+	# The one place every hit in the game passes through, so the one place it
+	# gets written down.
+	CombatRecorder.record_damage(get_parent(), source_peer_id, mitigated, ability_id, avoidable, new_health == 0)
 	# Taking a hit builds a tank's resource.
 	if _resource_builds_in_combat:
 		restore_resource(int(ceil(mitigated * 0.35)))
 
 
-func heal(amount: int) -> void:
+func heal(amount: int, source_peer_id: int = 0, ability_id: StringName = &"") -> void:
 	if not multiplayer.is_server() or is_dead or amount <= 0:
 		return
 	var new_health: int = mini(max_health, health + amount)
+	var effective := new_health - health
 	_set_health(new_health, 0)
 	_set_health.rpc(new_health, 0)
+	# Overhealing is not healing. The recorder gets what actually landed.
+	if effective > 0:
+		CombatRecorder.record_heal(get_parent(), source_peer_id, effective, ability_id)
 
 
 # Server only. Restore to full and clear death.

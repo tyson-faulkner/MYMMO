@@ -37,6 +37,20 @@ var _slot_cooldowns: Array[Label] = []
 var _target_cast: ProgressBar = null
 var _target_cast_text: Label = null
 
+## The meter: one bar per fighter, three switchable columns, fed by the
+## server's recorder. And the recap that replaces it for 20s when a boss dies.
+const METER_COLUMNS := ["damage", "healing", "taken"]
+const METER_TITLES := {"damage": "Damage", "healing": "Healing", "taken": "Damage Taken"}
+var _meter: PanelContainer = null
+var _meter_title: Button = null
+var _meter_rows: VBoxContainer = null
+var _meter_column: int = 0
+var _recap: PanelContainer = null
+var _recap_rows: VBoxContainer = null
+var _coach: PanelContainer = null
+var _coach_rows: VBoxContainer = null
+var _recap_timer: float = 0.0
+
 @onready var _action_bar: HBoxContainer = $ActionBar/Slots
 @onready var _tracker: VBoxContainer = $QuestTracker/Rows
 @onready var _quest_panel: PanelContainer = $QuestLogPanel
@@ -51,6 +65,10 @@ var _target_cast_text: Label = null
 func _ready() -> void:
 	_build_action_bar()
 	_build_target_cast_bar()
+	_build_meter()
+	_build_recap()
+	CombatRecorder.meter_updated.connect(_on_meter_updated)
+	CombatRecorder.fight_ended.connect(_on_fight_ended)
 	_target_frame.visible = false
 	_quest_panel.visible = false
 	_toast.visible = false
@@ -61,7 +79,7 @@ func _ready() -> void:
 	set_process(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# The local character doesn't exist until you've joined, and it's replaced
 	# on every reconnect, so the HUD keeps checking rather than assuming.
 	if _player == null or not is_instance_valid(_player):
@@ -71,6 +89,230 @@ func _process(_delta: float) -> void:
 	_refresh_target_frame()
 	_refresh_cooldowns()
 	_refresh_death_panel()
+	if _recap_timer > 0.0:
+		_recap_timer -= delta
+		if _recap_timer <= 0.0 and _recap and not _coach.visible:
+			_recap.visible = false
+
+
+# --- The meter, the recap, the coach -----------------------------------------
+
+
+func _build_meter() -> void:
+	_meter = PanelContainer.new()
+	_meter.name = "Meter"
+	_meter.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_meter.anchor_left = 1.0
+	_meter.anchor_right = 1.0
+	_meter.anchor_top = 0.5
+	_meter.anchor_bottom = 0.5
+	_meter.offset_left = -290
+	_meter.offset_right = -16
+	_meter.offset_top = -60
+	_meter.offset_bottom = 60
+	_meter.visible = false
+	add_child(_meter)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	_meter.add_child(margin)
+	var rows := VBoxContainer.new()
+	margin.add_child(rows)
+	_meter_title = Button.new()
+	_meter_title.flat = true
+	_meter_title.text = "Damage   ⇄"
+	_meter_title.tooltip_text = "Click to switch column"
+	_meter_title.pressed.connect(func() -> void:
+		_meter_column = (_meter_column + 1) % METER_COLUMNS.size()
+		_refresh_meter(CombatRecorder.live))
+	rows.add_child(_meter_title)
+	_meter_rows = VBoxContainer.new()
+	rows.add_child(_meter_rows)
+
+
+func _on_meter_updated(live: Dictionary) -> void:
+	_refresh_meter(live)
+
+
+func _refresh_meter(live: Dictionary) -> void:
+	if _meter == null:
+		return
+	for child in _meter_rows.get_children():
+		child.queue_free()
+	if live.is_empty():
+		_meter.visible = false
+		return
+	_meter.visible = true
+	var column: String = METER_COLUMNS[_meter_column]
+	_meter_title.text = "%s   ⇄" % METER_TITLES[column]
+	var peers := live.keys()
+	peers.sort_custom(func(a, b) -> bool: return int(live[a][column]) > int(live[b][column]))
+	var top := 1
+	for peer_id in peers:
+		top = maxi(top, int(live[peer_id][column]))
+	var local_id := multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+	for peer_id in peers:
+		var entry: Dictionary = live[peer_id]
+		var row := Button.new()
+		row.flat = true
+		row.custom_minimum_size = Vector2(0, 22)
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var bar := ProgressBar.new()
+		bar.max_value = top
+		bar.value = int(entry[column])
+		bar.show_percentage = false
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bar.modulate = CombatRecorder.CLASS_COLOURS.get(StringName(str(entry.get("class", ""))), Color.WHITE)
+		bar.modulate.a = 0.55
+		row.add_child(bar)
+		row.text = "  %s   %d" % [entry.get("name", "?"), int(entry[column])]
+		if int(peer_id) == local_id:
+			row.tooltip_text = "Click for your abilities and the coach"
+			row.pressed.connect(_show_coach)
+		_meter_rows.add_child(row)
+
+
+func _build_recap() -> void:
+	_recap = PanelContainer.new()
+	_recap.name = "Recap"
+	_recap.set_anchors_preset(Control.PRESET_CENTER)
+	_recap.offset_left = -240
+	_recap.offset_right = 240
+	_recap.offset_top = -200
+	_recap.offset_bottom = 200
+	_recap.visible = false
+	add_child(_recap)
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 12)
+	_recap.add_child(margin)
+	var scroll := ScrollContainer.new()
+	margin.add_child(scroll)
+	_recap_rows = VBoxContainer.new()
+	_recap_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_recap_rows)
+
+	_coach = PanelContainer.new()
+	_coach.name = "Coach"
+	_coach.set_anchors_preset(Control.PRESET_CENTER)
+	_coach.offset_left = -240
+	_coach.offset_right = 240
+	_coach.offset_top = -180
+	_coach.offset_bottom = 180
+	_coach.visible = false
+	add_child(_coach)
+	var coach_margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		coach_margin.add_theme_constant_override("margin_" + side, 12)
+	_coach.add_child(coach_margin)
+	_coach_rows = VBoxContainer.new()
+	coach_margin.add_child(_coach_rows)
+
+
+func _on_fight_ended(recap: Dictionary) -> void:
+	_show_recap(recap)
+
+
+func _show_recap(recap: Dictionary) -> void:
+	if _recap == null:
+		return
+	for child in _recap_rows.get_children():
+		child.queue_free()
+	var local_id := multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+	var tier := int(recap.get("tier", 0))
+	var title := "%s%s — %s" % [
+		recap.get("boss_name", "?"),
+		"  ⟨%s⟩" % GrudgeLedger.roman(tier) if tier > 0 else "",
+		"wiped" if bool(recap.get("wiped", false)) else CombatRecorder.format_seconds(float(recap.get("seconds", 0.0)))
+	]
+	var best := float(recap.get("best_seconds", 0.0))
+	if best > 0.0 and not bool(recap.get("wiped", false)):
+		title += "   (best %s)" % CombatRecorder.format_seconds(best)
+	_recap_line(title, Color(1, 0.85, 0.45), 18)
+	var names: Dictionary = recap.get("names", {})
+	for column in METER_COLUMNS:
+		var totals: Dictionary = recap.get("columns", {}).get(column, {})
+		var parts := []
+		var peers := totals.keys()
+		peers.sort_custom(func(a, b) -> bool: return int(totals[a]) > int(totals[b]))
+		for peer_id in peers:
+			if int(totals[peer_id]) > 0:
+				parts.append("%s %d" % [names.get(peer_id, "?"), int(totals[peer_id])])
+		if not parts.is_empty():
+			_recap_line("%s:  %s" % [METER_TITLES[column], "  ·  ".join(parts)], Color(0.9, 0.88, 0.8))
+	var awards: Dictionary = recap.get("awards", {})
+	if not awards.is_empty():
+		_recap_line("Awards", Color(1, 0.85, 0.45), 15)
+		for award in awards:
+			_recap_line("   %s — %s" % [award, awards[award].get("name", "")], Color(0.85, 0.9, 0.75))
+	var parse: Dictionary = recap.get("parses", {}).get(local_id, {})
+	if not parse.is_empty():
+		_recap_line("Your parse: %d  (%s)" % [int(parse.get("score", 0)), str(parse.get("colour", ""))], CombatRecorder.colour_for(int(parse.get("score", 0))), 17)
+		_recap_line("   uptime %d/30 · rotation %d/25 · mechanics %d/25 · output %d/20" % [
+			int(parse.get("uptime", 0)), int(parse.get("rotation", 0)), int(parse.get("mechanics", 0)), int(parse.get("output", 0))], Color(0.8, 0.78, 0.7))
+	for line in recap.get("new_records", []):
+		_recap_line("★ %s" % line, Color(1, 0.9, 0.5))
+	var buttons := HBoxContainer.new()
+	var coach_button := Button.new()
+	coach_button.text = "Coach"
+	coach_button.pressed.connect(_show_coach)
+	buttons.add_child(coach_button)
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func() -> void:
+		_recap.visible = false
+		_coach.visible = false)
+	buttons.add_child(close)
+	_recap_rows.add_child(buttons)
+	_recap.visible = true
+	_recap_timer = 20.0
+
+
+func _recap_line(text: String, colour: Color, size: int = 13) -> void:
+	var label := Label.new()
+	label.text = text
+	label.modulate = colour
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", size)
+	_recap_rows.add_child(label)
+
+
+## Your abilities ranked, and three sentences about what to change.
+func _show_coach() -> void:
+	var recap: Dictionary = CombatRecorder.last_recap
+	if recap.is_empty() or _coach == null:
+		_show_toast("No boss fight recorded yet")
+		return
+	for child in _coach_rows.get_children():
+		child.queue_free()
+	var local_id := multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+	var title := Label.new()
+	title.text = "The coach — %s" % recap.get("boss_name", "")
+	title.modulate = Color(1, 0.85, 0.45)
+	title.add_theme_font_size_override("font_size", 17)
+	_coach_rows.add_child(title)
+	for row in recap.get("abilities", {}).get(local_id, []):
+		var line := Label.new()
+		line.text = "%s   %d total · %d casts · avg %d · best %d" % [row.get("name", ""), int(row.get("total", 0)), int(row.get("casts", 0)), int(row.get("average", 0)), int(row.get("biggest", 0))]
+		line.modulate = Color(0.9, 0.88, 0.8)
+		_coach_rows.add_child(line)
+	var gap := Label.new()
+	gap.text = ""
+	_coach_rows.add_child(gap)
+	for sentence in recap.get("coach", {}).get(local_id, []):
+		var line := Label.new()
+		line.text = "• " + str(sentence)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.modulate = Color(0.85, 0.9, 0.75)
+		_coach_rows.add_child(line)
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func() -> void: _coach.visible = false)
+	_coach_rows.add_child(close)
+	_coach.visible = true
 
 
 # --- Death --------------------------------------------------------------

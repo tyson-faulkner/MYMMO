@@ -21,6 +21,7 @@ const PLAYER_DEATH := preload("res://scripts/combat/death_handler.gd")
 const PLAYER_RUNES := preload("res://scripts/combat/rune_loadout.gd")
 const PLAYER_MOUNTS := preload("res://scripts/combat/mount_controller.gd")
 const PLAYER_GRUDGE := preload("res://scripts/progression/grudge_ledger.gd")
+const PLAYER_RECORDS := preload("res://scripts/progression/record_book.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -71,6 +72,7 @@ func _ready() -> void:
 	_check_enemy_models(zone)
 	await _check_boss_mechanics(kingsmourn)
 	await _check_grudge_and_seasons(kingsmourn)
+	await _check_combat_recorder(kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -132,6 +134,10 @@ func _spawn_fake_player() -> void:
 	grudge.set_script(PLAYER_GRUDGE)
 	grudge.name = "GrudgeLedger"
 	_fake_player.add_child(grudge)
+	var records := Node.new()
+	records.set_script(PLAYER_RECORDS)
+	records.name = "RecordBook"
+	_fake_player.add_child(records)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -1669,6 +1675,126 @@ func _check_grudge_and_seasons(kingsmourn: Node3D) -> void:
 	SeasonDatabase.forced_index = -1
 	kell.grudge_tier = 0
 	kell.set_grudge_tier(0)
+	stats.revive()
+	_fake_player.global_position = Vector3(0, 1, 10)
+
+
+# THE GAP THIS CLOSES: the meter, the recap, the coach and the parse all read
+# one record of every combat event. If a hit or a heal went unrecorded the
+# numbers would be quietly wrong for everyone, so a real boss fight is played
+# through here and every derived number is checked.
+func _check_combat_recorder(kingsmourn: Node3D) -> void:
+	print("")
+	print("-- combat recorder, meter, parse --")
+	var stats := _fake_player.get_node("Stats") as Stats
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var targeting := _fake_player.get_node("Targeting") as Targeting
+	var book := _fake_player.get_node("RecordBook") as RecordBook
+	CombatRecorder._fight.clear()
+	CombatRecorder._events.clear()
+	CombatRecorder.live.clear()
+	CombatRecorder.last_recap.clear()
+
+	var container := kingsmourn.get_node_or_null("MobContainer")
+	var boss: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and mob.mob_data and mob.mob_data.id == &"lady_severin":
+			boss = mob
+			break
+	if boss == null:
+		_report("found Lady Severin", false, "")
+		return
+	var boss_stats := boss.get_node("Stats") as Stats
+	boss_stats.revive()
+	boss._attack_timer = 999.0
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+	stats.revive()
+	_fake_player.global_position = boss.global_position + Vector3(0, 0, 3.0)
+	targeting.set_target(boss)
+	boss.target = _fake_player
+	boss.state = Mob.State.ATTACKING
+
+	# Hitting a boss starts the fight and the record.
+	bar.request_cast("valkyr_strike", boss.get_path())
+	_report("hitting a boss starts a fight", CombatRecorder.in_fight() and CombatRecorder.current_boss_id() == &"lady_severin", str(CombatRecorder.current_boss_id()))
+	var fired := {"boss": &""}
+	bar.request_cast("valkyr_strike", boss.get_path())
+	await get_tree().create_timer(0.4).timeout
+	bar.request_cast("valkyr_strike", boss.get_path())
+
+	# An interruptible boss cast, stopped: both sides of "interrupts landed vs available".
+	boss.start_cast_entry({"name": "Test Verse", "cast": 3.0, "effect": "damage", "power": 5, "target": "current", "interruptible": true}, true)
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats.level = 20
+	bar.request_cast("bard_silence", boss.get_path())
+	# An avoidable hit, and a heal that lands.
+	var engine: BossMechanics = boss.get_node("BossMechanics")
+	engine.land({"name": "Sun Flare", "effect": "damage", "power": 30, "avoidable": true}, _fake_player)
+	bar.request_cast("bard_mend", _fake_player.get_path())
+	CombatRecorder._publish_live()
+	var mine: Dictionary = CombatRecorder.live.get(1, {})
+	_report("the live meter counts damage, healing and damage taken",
+		int(mine.get("damage", 0)) > 0 and int(mine.get("healing", 0)) > 0 and int(mine.get("taken", 0)) > 0,
+		"dmg %d heal %d taken %d" % [int(mine.get("damage", 0)), int(mine.get("healing", 0)), int(mine.get("taken", 0))])
+	_report("the meter knows who and what class", str(mine.get("class", "")) == "bard" and not str(mine.get("name", "")).is_empty(), str(mine.get("name", "")))
+
+	# The kill ends the fight and produces the recap for everyone.
+	boss_stats.apply_damage(999999, 1)
+	var recap: Dictionary = CombatRecorder.last_recap
+	_report("the boss dying ends the fight with a recap", not CombatRecorder.in_fight() and str(recap.get("boss_id", "")) == "lady_severin", "")
+	if recap.is_empty():
+		return
+	_report("time to kill is measured", float(recap.get("seconds", 0.0)) >= 0.4, "%.1fs" % float(recap.get("seconds", 0.0)))
+	var awards: Dictionary = recap.get("awards", {})
+	_report("awards name the killing blow, most damage and most interrupts",
+		int(awards.get("Killing Blow", {}).get("peer", 0)) == 1 and int(awards.get("Most Damage", {}).get("peer", 0)) == 1 and int(awards.get("Most Interrupts", {}).get("peer", 0)) == 1,
+		", ".join(awards.keys()))
+	_report("the tank's award is named for taking damage", awards.has("Most Damage Taken"), "")
+	var parse: Dictionary = recap.get("parses", {}).get(1, {})
+	_report("a parse is scored 0-100 in four parts",
+		parse.has("score") and int(parse["score"]) >= 0 and int(parse["score"]) <= 100 and int(parse["uptime"]) + int(parse["rotation"]) + int(parse["mechanics"]) + int(parse["output"]) == int(parse["score"]),
+		"%d = %d+%d+%d+%d" % [int(parse.get("score", -1)), int(parse.get("uptime", 0)), int(parse.get("rotation", 0)), int(parse.get("mechanics", 0)), int(parse.get("output", 0))])
+	_report("the avoidable hit cost mechanics points", int(parse.get("mechanics", 25)) < 25, "%d/25" % int(parse.get("mechanics", 25)))
+	_report("a healer is scored on healing", bool(parse.get("healer", false)) and float(parse.get("per_second", 0.0)) > 0.0, "%.1f hps" % float(parse.get("per_second", 0.0)))
+	var coach: Array = recap.get("coach", {}).get(1, [])
+	_report("the coach writes three sentences", coach.size() == 3, "\n      ".join(coach))
+	var abilities: Array = recap.get("abilities", {}).get(1, [])
+	_report("your abilities are ranked with casts and biggest hit", abilities.size() >= 2 and int(abilities[0]["total"]) >= int(abilities[1]["total"]) and int(abilities[0]["biggest"]) > 0, "%s first" % str(abilities[0]["name"]) if not abilities.is_empty() else "none")
+	_report("the recap is kept in the log", CombatRecorder.history.size() >= 1, "%d recaps" % CombatRecorder.history.size())
+
+	# Records.
+	_report("the kill is your personal best", book.best_seconds(&"lady_severin") > 0.0 and book.best_parse(&"lady_severin") == int(parse.get("score", -1)), "%.1fs, parse %d" % [book.best_seconds(&"lady_severin"), book.best_parse(&"lady_severin")])
+	_report("the host holds the group record", book.record_seconds(&"lady_severin") > 0.0, "")
+	var announced := book.note_best(&"lady_severin", "Lady Severin", 0.5, 1)
+	_report("a faster kill is announced as a personal best", announced.size() == 1 and str(announced[0]).begins_with("personal best"), str(announced))
+	var saved := CharacterState.capture(_fake_player)
+	book.bests.clear()
+	CharacterState.apply(_fake_player, saved)
+	_report("records are saved with the character", book.best_seconds(&"lady_severin") > 0.0, "")
+
+	# The parse's colours, and the pure recap on hand-built events: two players,
+	# one who never stopped casting and one who pressed a key once.
+	_report("parse colours follow the known scale", CombatRecorder.colour_name(10) == "grey" and CombatRecorder.colour_name(60) == "blue" and CombatRecorder.colour_name(80) == "purple" and CombatRecorder.colour_name(100) == "gold", "")
+	var t0 := 1000
+	var events := []
+	for i in range(30):
+		events.append({"t": t0 + i * 2000, "kind": "cast", "src": 1, "tgt": 0, "tgt_boss": false, "ability": "necro_bolt", "amount": 0})
+		events.append({"t": t0 + i * 2000, "kind": "damage", "src": 1, "tgt": 0, "tgt_boss": true, "ability": "necro_bolt", "amount": 50})
+	events.append({"t": t0 + 5000, "kind": "cast", "src": 2, "tgt": 0, "tgt_boss": false, "ability": "tinker_shot", "amount": 0})
+	events.append({"t": t0 + 5000, "kind": "damage", "src": 2, "tgt": 0, "tgt_boss": true, "ability": "tinker_shot", "amount": 20})
+	events.append({"t": t0 + 59000, "kind": "death", "src": 1, "tgt": 0, "tgt_boss": true, "ability": "necro_bolt", "amount": 0})
+	var pure := CombatRecorder.build_recap({"boss_id": "test", "boss_name": "Test", "started": t0, "max_health": 1500}, events, false)
+	var one: Dictionary = pure["parses"][1]
+	var two: Dictionary = pure["parses"][2]
+	_report("uptime rewards the player who kept casting", int(one["uptime"]) > int(two["uptime"]) and int(one["uptime"]) >= 27, "%d vs %d" % [int(one["uptime"]), int(two["uptime"])])
+	_report("awards go to the right people on a hand-built fight", int(pure["awards"]["Most Damage"]["peer"]) == 1 and int(pure["awards"]["Killing Blow"]["peer"]) == 1, "")
+
+	boss.state = Mob.State.IDLE
+	boss.target = null
+	boss._attack_timer = 0.0
+	CombatRecorder.live.clear()
 	stats.revive()
 	_fake_player.global_position = Vector3(0, 1, 10)
 

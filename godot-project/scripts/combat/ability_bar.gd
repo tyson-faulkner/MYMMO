@@ -20,6 +20,10 @@ var _local_ready_at: Dictionary = {}
 
 var _dot_hosts: Dictionary = {}
 
+## The ability being executed right now, so every hit and heal it causes is
+## recorded under its name.
+var _current_ability: StringName = &""
+
 
 func _get_body() -> Node3D:
 	return get_parent() as Node3D
@@ -204,6 +208,7 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 	if cooldown > 0.0:
 		_server_ready_at[slot] = Time.get_ticks_msec() + int(cooldown * 1000.0)
 
+	CombatRecorder.record_cast(body.get_multiplayer_authority(), ability.id)
 	_execute(ability, body, target, spent, rune)
 	confirm_cast.rpc_id(body.get_multiplayer_authority(), String(ability.id), slot)
 
@@ -223,6 +228,7 @@ func _execute(
 	ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int, rune: RuneData = null
 ) -> void:
 	var caster_peer := caster.get_multiplayer_authority()
+	_current_ability = ability.id
 	var power := ability.power
 	var effect := ability.effect
 	var radius := ability.aoe_radius
@@ -306,13 +312,13 @@ func _execute(
 			for friend in _friendlies_near(caster.global_position, radius):
 				_heal(friend, power)
 		AbilityData.Effect.DOT:
-			DamageOverTime.apply(target, power, duration, ability.tick_seconds, caster_peer)
+			DamageOverTime.apply(target, power, duration, ability.tick_seconds, caster_peer, ability.id)
 			if radius > 0.0 and target:
 				# A spreading rune takes hold of everything around the target.
 				for victim in _hostiles_near(target.global_position, radius):
 					if victim != target:
 						DamageOverTime.apply(
-							victim, int(round(float(power) * falloff)), duration, ability.tick_seconds, caster_peer
+							victim, int(round(float(power) * falloff)), duration, ability.tick_seconds, caster_peer, ability.id
 						)
 		AbilityData.Effect.DRAIN:
 			_damage(target, power, caster_peer)
@@ -341,7 +347,9 @@ func _execute(
 			# The damage is a consolation; the cast stopping is the ability.
 			_damage(target, power, caster_peer)
 			if target and target.has_method("interrupt_cast"):
-				target.interrupt_cast(caster_peer)
+				var stopped := str(target.cast_name) if target.get("cast_name") != null else ""
+				if target.interrupt_cast(caster_peer):
+					CombatRecorder.record_interrupt(caster_peer, stopped)
 		AbilityData.Effect.DAMAGE_REDUCTION:
 			var shielded: Node3D = target if target else caster
 			StatusEffect.apply(shielded, StatusEffect.Kind.DAMAGE_REDUCTION, ability.id, ability.reduction, duration)
@@ -395,7 +403,7 @@ func _damage(target: Node3D, amount: int, caster_peer: int) -> void:
 		return
 	var stats := target.get_node_or_null("Stats") as Stats
 	if stats and not stats.is_dead:
-		stats.apply_damage(amount, caster_peer)
+		stats.apply_damage(amount, caster_peer, _current_ability)
 
 
 func _heal(target: Node3D, amount: int) -> void:
@@ -403,7 +411,8 @@ func _heal(target: Node3D, amount: int) -> void:
 		return
 	var stats := target.get_node_or_null("Stats") as Stats
 	if stats and not stats.is_dead:
-		stats.heal(amount)
+		var body := _get_body()
+		stats.heal(amount, body.get_multiplayer_authority() if body else 0, _current_ability)
 
 
 func _hostiles_near(centre: Vector3, radius: float) -> Array[Node3D]:

@@ -129,11 +129,11 @@ func _process(delta: float) -> void:
 		_accumulated -= tick_seconds
 		match kind:
 			Kind.STACK:
-				stats.apply_damage(maxi(1, int(round(value * float(stacks)))), source_peer_id)
+				stats.apply_damage(maxi(1, int(round(value * float(stacks)))), source_peer_id, effect_id)
 				if stats.is_dead:
 					queue_free()
 					return
 			Kind.HOT:
-				stats.heal(maxi(1, int(round(value))))
+				stats.heal(maxi(1, int(round(value))), source_peer_id, effect_id)
 	if remaining_seconds <= 0.0:
 		queue_free()

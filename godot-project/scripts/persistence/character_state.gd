@@ -55,6 +55,10 @@ static func capture(character: Node) -> Dictionary:
 	if grudge:
 		data["grudge"] = grudge.to_dict()
 
+	var records := character.get_node_or_null("RecordBook") as RecordBook
+	if records:
+		data["records"] = records.to_dict()
+
 	var inventory = character.get_inventory() if character.has_method("get_inventory") else null
 	if inventory:
 		data["inventory"] = inventory.to_dict()
@@ -123,6 +127,10 @@ static func apply(character: Node, data: Dictionary) -> bool:
 	var grudge := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
 	if grudge and migrated.has("grudge"):
 		grudge.from_dict(migrated["grudge"])
+
+	var records := character.get_node_or_null("RecordBook") as RecordBook
+	if records and migrated.has("records"):
+		records.from_dict(migrated["records"])
 
 	if migrated.has("inventory") and character.has_method("get_inventory"):
 		var inventory = character.get_inventory()

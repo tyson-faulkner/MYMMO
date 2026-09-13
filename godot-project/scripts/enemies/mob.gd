@@ -382,7 +382,7 @@ func _tick_attacking() -> void:
 	_attack_timer = mob_data.attack_cooldown if mob_data else 1.8
 	var target_stats := target.get_node_or_null("Stats") as Stats
 	if target_stats and not target_stats.is_dead:
-		target_stats.apply_damage(_scaled_damage(), 0)
+		target_stats.apply_damage(_scaled_damage(), 0, &"melee")
 		play_attack.rpc()
 
 
@@ -461,6 +461,9 @@ func start_cast_entry(entry: Dictionary, ignore_cooldowns: bool = false) -> bool
 		_face(chosen.global_position)
 	begin_cast(str(entry.get("name", "Cast")), _cast_remaining, bool(entry.get("interruptible", true)))
 	begin_cast.rpc(cast_name, _cast_remaining, cast_interruptible)
+	# "Interrupts available" for the parse: only a boss's count.
+	if mob_data.is_boss:
+		CombatRecorder.record_boss_cast(self, cast_interruptible)
 	return true
 
 
@@ -519,12 +522,12 @@ func _land_cast() -> void:
 		power = int(round(float(power) * (1.0 + 0.12 * float(maxi(1, _count_players()) - 1))))
 	match str(entry.get("effect", "damage")):
 		"heal":
-			_stats.heal(power)
+			_stats.heal(power, 0, StringName(landed_name))
 		"damage":
 			if victim and is_instance_valid(victim):
 				var victim_stats := victim.get_node_or_null("Stats") as Stats
 				if victim_stats and not victim_stats.is_dead:
-					victim_stats.apply_damage(power, 0)
+					victim_stats.apply_damage(power, 0, StringName(landed_name), bool(entry.get("avoidable", false)))
 		_:
 			# A boss mechanic with a wind-up: the engine knows what lands.
 			if _mechanics:

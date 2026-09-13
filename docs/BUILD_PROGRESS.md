@@ -39,7 +39,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   engine, grudge bosses and seasons, the combat recorder, specs and rune
   moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 257/257 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 277/277 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +200,13 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Group records live in the host's save, not in shared Nakama
+  storage.** Personal bests go with each character; the record table is the
+  host's RecordBook. If a different friend hosts, they keep their own. This
+  avoids a public-storage read path the client-writes trust model would have
+  to bolt on; it moves to a server module when saves do.
+- 2026-09-13 — **There is no crit, so the coach shows "biggest hit".** The
+  spec's "crit rate" column has nothing to measure until crits exist.
 - 2026-09-13 — **"Present" for grudge means within 60m of the boss when it
   dies, not "in the party".** The spec says present; a place is simpler to
   reason about than a roster and matches what people mean.
@@ -232,6 +239,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Combat recorder, the meter and recap, the parse
+
+- **Changed:** `scripts/autoload/combat_recorder.gd` (new autoload) records every hit, heal, death, cast, interrupt and interruptible boss cast on the server; `Stats.apply_damage/heal` now carry an ability id and an `avoidable` flag, and every caller passes them (abilities, DoTs, HoTs, bleeds, pools, mechanics, melee). A fight starts when a boss takes damage and ends on its death or a wipe; a boss walking home discards it. Once a second every peer gets the live totals (the meter: damage / healing / taken, class-coloured, in `game_hud.gd`); on a kill everyone gets the recap: time to kill with the group's best, the three columns, eight awards, each player's four-part parse in WoW's colours, and three coach sentences (idle share, what fell off, the laziest cooldown). Output is scored against a class baseline scaled by gear score, so Levy and Sovereign each get judged against their own gear. `scripts/progression/record_book.gd` on the player keeps personal bests (saved) and, on the host, the group records.
+- **Test:** smoke 277/277 with 20 new checks (fight boundaries, live columns, awards, parse arithmetic, avoidable hit costs mechanics, healer scored on healing, coach, ranked abilities, history, bests and records, save round-trip, colour scale, pure recap on hand-built events). In-game shots of the live meter and the recap panel looked at.
+- **Surprising:** one untyped `var x := a in [...]` took the whole autoload down and cascaded into twelve unrelated failures — the first line of the `.err` log is the one that matters. Avoidable damage is scaled by the victim's health bar, not the boss's: against an 11,000-health boss a 16-point hit rounded to nothing.
 
 ### 2026-09-13 — Grudge bosses and seasons
 

@@ -305,7 +305,7 @@ func request_melee_hit() -> void:
 	for body in _pickup_area.get_overlapping_bodies():
 		var target_stats := body.get_node_or_null("Stats") as Stats
 		if target_stats and not target_stats.is_dead:
-			target_stats.apply_damage(MELEE_DAMAGE + own_power, get_multiplayer_authority())
+			target_stats.apply_damage(MELEE_DAMAGE + own_power, get_multiplayer_authority(), &"melee")
 
 
 func _on_animation_finished(animation_name: StringName) -> void:
