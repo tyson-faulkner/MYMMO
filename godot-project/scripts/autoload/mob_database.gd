@@ -690,7 +690,7 @@ const DEFINITIONS := {
 		"mechanics": [
 			{"name": "The Crown", "every": 25.0, "first": 15.0, "effect": "named", "target": "random", "range": 60.0, "duration": 8.0, "heal_share": 0.5, "dais": "throne_dais"},
 			{"name": "Heralds", "at": [75, 50, 25], "effect": "spawn", "spawn": [{"id": "first_king_herald", "count": 2}], "alive_bonus": 0.10},
-			{"name": "Ironhold", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10},
+			{"name": "The King's Mourning", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10},
 			{"name": "Grave Wind", "every": 18.0, "first": 12.0, "cast": 1.5, "effect": "line", "target": "tank", "width": 3.0, "length": 50.0, "power": 100, "interruptible": false, "avoidable": true},
 			{"name": "The Weight of the Crown", "every": 22.0, "first": 16.0, "effect": "slow", "target": "random", "range": 60.0, "slow": 0.2, "duration": 5.0, "power": 60}
 		]

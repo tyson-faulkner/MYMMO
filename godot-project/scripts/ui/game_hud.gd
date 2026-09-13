@@ -651,7 +651,7 @@ func _attach_to_local_player() -> void:
 		return
 
 
-## The name, and the title worn after it: "Tyson, Kingsmourner".
+## The name, and the title worn after it: "Tyson, Mournbound".
 func _refresh_title() -> void:
 	if _player == null:
 		return
