@@ -48,6 +48,13 @@ func login() -> bool:
 		return false
 
 	client = Nakama.create_client(SERVER_KEY, SERVER_HOST, SERVER_PORT, SERVER_SCHEME)
+	# No threads. A threaded HTTPRequest reads its socket in blocking mode on a
+	# worker thread, and its timeout cancels by joining that thread — so a server
+	# that accepts the connection but never answers (hung, paused, half-dead)
+	# freezes the whole main thread for good. That broke the "a dead server can't
+	# hang the game" promise above, at quit and mid-session alike. Unthreaded,
+	# the request is polled each frame and a timeout simply stops polling.
+	Nakama.get_client_adapter().use_threads = false
 	# Device authentication: no passwords for anyone to forget, and a returning
 	# player lands on the same account automatically.
 	var device_id: String = Nakama.get_device_id()

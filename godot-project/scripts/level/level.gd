@@ -4,6 +4,12 @@ const MAX_CHAT_MESSAGE_LENGTH := 160
 const MIN_NICKNAME_HEIGHT := 2.0
 const MAX_NICKNAME_HEIGHT := 8.0
 
+## How long quitting waits for the last save. Plenty for a healthy Nakama, short
+## enough that a dead one can't hold the window open.
+const QUIT_SAVE_TIMEOUT_SECONDS := 3.0
+
+signal _quit_save_finished
+
 @export var player_scene: PackedScene
 
 var chat_visible := false
@@ -13,6 +19,7 @@ var player_list_visible := false
 var _player_nickname_heights: Dictionary = {}
 var _nickname_heights_requested := false
 var _nickname_height_requesters: Dictionary = {}
+var _quitting := false
 
 @onready var players_container: Node3D = $PlayersContainer
 @onready var main_menu: MainMenuUI = $MainMenuUI
@@ -23,6 +30,10 @@ var _nickname_height_requesters: Dictionary = {}
 
 
 func _ready():
+	# Closing the window must not end the process before the last save is
+	# written. With auto-accept off, the close arrives as a notification and
+	# save_and_quit() decides when to actually go.
+	get_tree().set_auto_accept_quit(false)
 	after_ready()
 
 	if DisplayServer.get_name() == "headless":
@@ -182,8 +193,59 @@ func _remove_player(id):
 
 
 func _on_quit_pressed() -> void:
+	save_and_quit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_and_quit()
+
+
+## The one way out of the game. Closing the window and both Quit buttons come
+## here, so none of them can skip the last save. Waits for Nakama to answer, but
+## never longer than QUIT_SAVE_TIMEOUT_SECONDS.
+func save_and_quit() -> void:
+	if _quitting:
+		return
+	_quitting = true
+	var started := Time.get_ticks_msec()
+	var outcome := [""]
+	var finish := func(result: String) -> void:
+		if outcome[0] != "":
+			return
+		outcome[0] = result
+		_quit_save_finished.emit()
+	get_tree().create_timer(QUIT_SAVE_TIMEOUT_SECONDS).timeout.connect(finish.bind("timed out"))
+	_save_before_quit(finish)
+	# The save may already have finished without ever yielding (nobody logged
+	# in, no character), in which case the signal has been and gone.
+	if outcome[0] == "":
+		await _quit_save_finished
+	print("Kingsmourn: quit save %s after %d ms" % [outcome[0], Time.get_ticks_msec() - started])
 	Network.leave_game()
 	get_tree().quit()
+
+
+func _save_before_quit(finish: Callable) -> void:
+	# Hosting: hand every other player their numbers so they can write their own
+	# saves. Best effort — we can't wait on their round trips.
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		for child in players_container.get_children():
+			if str(child.name).to_int() == multiplayer.get_unique_id():
+				continue
+			var other := child.get_node_or_null("PersistenceManager") as PersistenceManager
+			if other:
+				other.request_save()
+
+	var player := _get_local_player()
+	var persistence: PersistenceManager = null
+	if player:
+		persistence = player.get_node_or_null("PersistenceManager") as PersistenceManager
+	if persistence == null:
+		finish.call("skipped (no character)")
+		return
+	var written: bool = await persistence.save_now()
+	finish.call("written" if written else "skipped (not saved)")
 
 
 func toggle_chat():
@@ -521,8 +583,7 @@ func _on_pause_main_menu_pressed() -> void:
 
 
 func _on_pause_quit_pressed() -> void:
-	Network.leave_game()
-	get_tree().quit()
+	save_and_quit()
 
 
 func update_local_inventory_display():

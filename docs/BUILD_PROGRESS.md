@@ -30,14 +30,22 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 - **Loop status:** running
 - **Last verified playable:** 2026-09-12, `tests/zone_smoke_test.gd`, 164/164 checks passing (on Tyson's PC, Godot 4.7.2)
 
-## Not yet verified against a live backend
+## Verified against a live backend (2026-09-12)
 
-The persistence save format, its validation and its offline behaviour are all
-covered by the smoke test. What is NOT verified from the cloud sandbox is the
-round trip against a running Nakama: Docker is on Tyson's machine and the
-sandbox can't reach it. Someone running the loop locally should host a game with
-`docker compose up` running, level up, quit, rejoin, and confirm the character
-comes back.
+The save format, its validation and its offline behaviour are covered by the
+smoke test. The live round trip is covered by `tests/save_quit_check.tscn`, run
+on Tyson's PC against the real Docker Nakama, one windowed process per phase:
+
+- `-- --phase=write` hosts, changes the character, closes the window the way
+  the OS does. `-- --phase=verify` logs back in and checks it came back, then
+  restores whatever save existed before.
+- `-- --phase=dead --flag-dir=<dir>` closes the window while Nakama is paused
+  from outside (`docker pause nakama-server-nakama-1`) and must still exit
+  inside the 3-second quit cap.
+
+Last run: character came back (level, XP, position); dead-server quit exited
+in 3.0s. Needs Nakama up and a desktop session, so it is not part of the smoke
+test.
 
 ## Waiting on Tyson (nothing here blocks the loop)
 
@@ -151,8 +159,43 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   The extracted textures and `.import` files for those three pieces, which the
   Blender session had left untracked, were committed alongside, per the
   convention already recorded above.
+- 2026-09-12 — **Nakama HTTP requests run unthreaded** (`use_threads = false`
+  on the client adapter, set in `account.gd`, not by editing the addon). A
+  threaded `HTTPRequest` reads in blocking mode on a worker thread and its
+  timeout cancels by joining that thread, so a server that accepts the
+  connection but never answers froze the entire game — found by pausing the
+  Nakama container during a save. Unthreaded requests are polled each frame
+  and time out cleanly. The cost is a little main-thread polling on a handful
+  of small requests.
+- 2026-09-12 — **Quitting is owned by `level.gd`** (`save_and_quit()`), not by
+  each `PersistenceManager`. Closing the window and both Quit buttons all route
+  through it; the Quit buttons previously called `get_tree().quit()` directly,
+  which never raises a close request, so they skipped the save entirely.
 
 ## Log
+
+### 2026-09-12 — Saving on quit actually saves, and a dead server can't freeze the game
+
+Quitting logged a script error in `persistence_manager.gd` and, it turned out,
+never saved at all.
+
+- **Why it failed.** The save hung off `NOTIFICATION_PREDELETE`, which fires
+  after the node has left the tree, so `multiplayer` was null. And even from
+  `WM_CLOSE_REQUEST`, the Nakama write was an `await` nobody waited for: the
+  process exited mid-request. The menu Quit buttons skipped it entirely.
+- **Fix.** `level.gd` turns off auto-accept quit. Closing the window or either
+  Quit button calls `save_and_quit()`, which awaits
+  `PersistenceManager.save_now()` against a 3-second cap, then quits. The
+  PREDELETE/close hooks in `PersistenceManager` are gone.
+- **Found on the way.** With Nakama paused, the quit hung forever — not at the
+  cap, forever, and the rest of the game with it. Threaded `HTTPRequest`
+  deadlocks on a server that never replies (see decisions). Fixed by running
+  the Nakama adapter unthreaded, which also removes the same freeze from
+  autosaves mid-session.
+- **Verified** with the new `tests/save_quit_check.tscn` (see "Verified
+  against a live backend"): quit save written in ~200ms; level 13 / 777 XP /
+  field-camp position all came back on relog; dead-server quit exited after
+  3004ms. Smoke test 164/164.
 
 ### 2026-09-12 — Cloud package applied: zones two and three, mounts, gear data, 23 graveyards, `deploy/`
 

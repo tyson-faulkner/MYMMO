@@ -7,6 +7,11 @@
 # Saving happens on a timer, on level-up, on quest hand-in, and on quit —
 # level-ups and hand-ins because those are the moments a player would be most
 # annoyed to lose.
+#
+# Quit is driven from level.gd, which awaits `save_now()` before letting the
+# process exit. It is not driven from here: by the time a node is being freed it
+# has already left the tree, so it has no multiplayer to save through, and
+# nothing would wait for the Nakama round trip anyway.
 class_name PersistenceManager
 extends Node
 
@@ -37,11 +42,6 @@ func _process(delta: float) -> void:
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_SECONDS:
 		_autosave_timer = 0.0
-		request_save()
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
 		request_save()
 
 
@@ -85,7 +85,7 @@ func submit_saved_character(saved: Dictionary) -> void:
 
 ## Server-side: read the live character and hand it to whoever owns it.
 func request_save() -> void:
-	if not multiplayer.has_multiplayer_peer() or not multiplayer.is_server():
+	if not is_inside_tree() or not multiplayer.has_multiplayer_peer() or not multiplayer.is_server():
 		return
 	var body := get_parent()
 	var data := CharacterState.capture(body)
@@ -98,12 +98,30 @@ func request_save() -> void:
 		receive_save.rpc_id(owner_id, data)
 
 
+## Save our own character now and wait for Nakama to answer. For quitting, where
+## the process must not exit mid-write. True only if the write actually landed;
+## the caller owns any timeout.
+func save_now() -> bool:
+	if not is_inside_tree() or not multiplayer.has_multiplayer_peer():
+		return false
+	var body := get_parent()
+	if not body.is_multiplayer_authority():
+		return false
+	# On the host this is the server's own numbers. On a client it is the copy
+	# the server keeps in step, written to the client's own account — the same
+	# trust model as every other save (see account.gd).
+	var data := CharacterState.capture(body)
+	if data.is_empty():
+		return false
+	return await _write(data)
+
+
 @rpc("authority", "reliable")
 func receive_save(data: Dictionary) -> void:
 	_write(data)
 
 
-func _write(data: Dictionary) -> void:
+func _write(data: Dictionary) -> bool:
 	if not Account.is_logged_in():
-		return
-	await Account.save_character(data)
+		return false
+	return await Account.save_character(data)
