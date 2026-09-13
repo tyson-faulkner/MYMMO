@@ -182,7 +182,16 @@ const DEFINITIONS := {
 		"loot": {"gear_levy_chest": 0.5, "gear_levy_head": 0.5, "gear_levy_weapon_valkyr": 0.25, "gear_levy_weapon_bard": 0.25, "gear_levy_weapon_necromancer": 0.25, "gear_levy_weapon_tinker": 0.25},
 		"currency": 45,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		# In grudge order: the first two are the fight; each tier adds one.
+		"mechanics": [
+			{"name": "Cutthroat Rush", "every": 14.0, "first": 8.0, "effect": "charge", "target": "furthest", "range": 30.0, "power": 40, "knockback": 8.0, "avoidable": true},
+			{"name": "Bandit's Whistle", "at": [50], "effect": "spawn", "spawn": [{"id": "hedge_bandit", "count": 2}]},
+			{"name": "Low Blow", "every": 10.0, "first": 5.0, "cast": 1.2, "effect": "damage", "power": 60, "target": "random", "range": 20.0, "avoidable": true},
+			{"name": "Dirty Sand", "every": 18.0, "first": 12.0, "effect": "stun", "target": "tank", "duration": 2.0, "power": 10},
+			{"name": "Second Wind", "every": 30.0, "first": 25.0, "cast": 2.0, "effect": "heal", "target": "self", "power": 90},
+			{"name": "No Quarter", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	},
 	&"the_first_king":
 	{
@@ -199,7 +208,15 @@ const DEFINITIONS := {
 		"loot": {"gear_levy_legs": 0.6, "gear_levy_chest": 0.4, "gear_levy_offhand_valkyr": 0.3, "gear_levy_offhand_bard": 0.3, "gear_levy_offhand_necromancer": 0.3, "gear_levy_offhand_tinker": 0.3, "mount_veil_saber": 0.15},
 		"currency": 90,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"mechanics": [
+			{"name": "Grave Cold", "every": 12.0, "first": 6.0, "effect": "slow", "target": "random", "range": 24.0, "slow": 0.4, "duration": 5.0, "power": 30},
+			{"name": "Rise", "at": [60, 30], "effect": "spawn", "spawn": [{"id": "risen_levy", "count": 2}]},
+			{"name": "Barrow Wind", "every": 20.0, "first": 12.0, "cast": 1.5, "effect": "line", "target": "tank", "width": 3.0, "length": 30.0, "power": 70, "interruptible": false, "avoidable": true},
+			{"name": "Old Grudge", "every": 16.0, "first": 10.0, "cast": 1.5, "effect": "damage", "power": 80, "target": "random", "range": 24.0, "avoidable": true},
+			{"name": "Dust", "every": 14.0, "first": 9.0, "effect": "pool", "target": "random", "range": 24.0, "radius": 2.5, "slow": 0.6, "power": 12, "tick": 1.0, "persist": false, "seconds": 10.0, "avoidable": true},
+			{"name": "The Crown Remembers", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	},
 	# --- Sablemarch, levels 9-14 ---------------------------------------------
 	&"stag_picket":
@@ -311,7 +328,16 @@ const DEFINITIONS := {
 		"loot": {"gear_marcher_chest": 0.5, "gear_marcher_hands": 0.5, "gear_marcher_weapon_valkyr": 0.25, "gear_marcher_weapon_bard": 0.25},
 		"currency": 70,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"feud": &"sunburst",
+		"mechanics": [
+			{"name": "Stag Charge", "every": 15.0, "first": 9.0, "effect": "charge", "target": "furthest", "range": 40.0, "power": 50, "knockback": 10.0, "avoidable": true},
+			{"name": "Rally the Drowned", "at": [50], "effect": "spawn", "spawn": [{"id": "drowned_levy", "count": 2}]},
+			{"name": "Antler Sweep", "every": 12.0, "first": 7.0, "cast": 1.0, "effect": "line", "target": "tank", "width": 3.0, "length": 30.0, "power": 65, "interruptible": false, "avoidable": true},
+			{"name": "Mud Under Foot", "every": 18.0, "first": 11.0, "effect": "slow", "target": "tank", "slow": 0.2, "duration": 4.0, "power": 20},
+			{"name": "The Stag Stands", "every": 28.0, "first": 22.0, "cast": 2.0, "effect": "heal", "target": "self", "power": 140},
+			{"name": "Last Charge", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	},
 	&"captain_vance":
 	{
@@ -328,7 +354,16 @@ const DEFINITIONS := {
 		"loot": {"gear_marcher_legs": 0.5, "gear_marcher_feet": 0.5, "gear_marcher_weapon_necromancer": 0.25, "gear_marcher_weapon_tinker": 0.25},
 		"currency": 70,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"feud": &"stag",
+		"mechanics": [
+			{"name": "Sun Volley", "every": 10.0, "first": 6.0, "cast": 1.5, "effect": "damage", "power": 90, "target": "random", "range": 30.0, "avoidable": true},
+			{"name": "Rally the Drowned", "at": [50], "effect": "spawn", "spawn": [{"id": "drowned_levy", "count": 2}]},
+			{"name": "Shield Wall", "every": 25.0, "first": 18.0, "cast": 2.0, "effect": "heal", "target": "self", "power": 120},
+			{"name": "Sunburst", "every": 16.0, "first": 12.0, "cast": 1.2, "effect": "stun", "target": "random", "range": 30.0, "duration": 2.0, "power": 30},
+			{"name": "Salt Water", "every": 14.0, "first": 8.0, "effect": "pool", "target": "random", "range": 30.0, "radius": 3.0, "slow": 0.5, "power": 14, "tick": 1.0, "persist": false, "seconds": 12.0, "avoidable": true},
+			{"name": "Hold the Line", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	},
 	&"the_weight_of_them":
 	{
@@ -345,7 +380,15 @@ const DEFINITIONS := {
 		"loot": {"gear_marcher_head": 0.6, "gear_marcher_chest": 0.4, "gear_marcher_offhand_valkyr": 0.3, "gear_marcher_offhand_bard": 0.3, "gear_marcher_offhand_necromancer": 0.3, "gear_marcher_offhand_tinker": 0.3, "mount_risen_brute": 0.15},
 		"currency": 130,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"mechanics": [
+			{"name": "Undertow", "every": 8.0, "first": 5.0, "effect": "pool", "target": "random", "range": 40.0, "radius": 3.0, "slow": 0.5, "power": 15, "tick": 1.0, "persist": false, "seconds": 14.0, "avoidable": true},
+			{"name": "Drag Down", "every": 20.0, "first": 12.0, "effect": "slow", "target": "tank", "slow": 0.1, "duration": 4.0, "power": 40},
+			{"name": "The Flood Rises", "at": [50, 25], "effect": "spawn", "spawn": [{"id": "drowned_levy", "count": 3}]},
+			{"name": "Crush", "every": 14.0, "first": 9.0, "cast": 1.5, "effect": "damage", "target": "tank", "power": 110, "avoidable": true},
+			{"name": "Weight of Water", "every": 22.0, "first": 16.0, "cast": 1.5, "effect": "line", "target": "tank", "width": 4.0, "length": 30.0, "power": 75, "interruptible": false, "avoidable": true},
+			{"name": "Every One of Them", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	},
 	# --- Kingsmourn (14-20) ----------------------------------------------------
 	&"street_agitator":
@@ -524,8 +567,13 @@ const DEFINITIONS := {
 		# Tinker's interrupt; the Bind is what the Bard will cleanse.
 		"mechanics": [
 			{"name": "Burn the Page", "every": 12.0, "first": 6.0, "cast": 2.0, "effect": "damage", "power": 150, "target": "random", "range": 30.0, "avoidable": true},
+			{"name": "Call the Shelves", "at": [70, 35], "effect": "spawn", "spawn": [{"id": "record_burner", "count": 2}, {"id": "record_forger", "count": 2}]},
+			# Grudge tiers 1-5, one each. The Bind is the first thing grudge adds.
 			{"name": "Bind", "every": 20.0, "first": 9.0, "effect": "slow", "target": "tank", "slow": 0.05, "duration": 4.0},
-			{"name": "Call the Shelves", "at": [70, 35], "effect": "spawn", "spawn": [{"id": "record_burner", "count": 2}, {"id": "record_forger", "count": 2}]}
+			{"name": "Ink Splash", "every": 14.0, "first": 8.0, "effect": "pool", "target": "random", "range": 30.0, "radius": 2.5, "slow": 0.5, "power": 15, "tick": 1.0, "persist": false, "seconds": 12.0, "avoidable": true},
+			{"name": "Forbidden Word", "every": 22.0, "first": 14.0, "cast": 1.5, "effect": "stun", "target": "random", "range": 30.0, "duration": 2.5, "power": 40},
+			{"name": "Second Reading", "every": 40.0, "first": 30.0, "cast": 2.5, "effect": "heal", "target": "self", "power": 200},
+			{"name": "Close the Book", "at": [20], "every": 6.0, "effect": "stat", "damage_bonus": 0.10}
 		]
 	},
 	&"the_bound_ledger":
@@ -547,7 +595,12 @@ const DEFINITIONS := {
 		# Boss 2. Pools persist; the braziers in the vault are what clear them.
 		"mechanics": [
 			{"name": "Ink Pool", "every": 8.0, "first": 5.0, "effect": "pool", "target": "random", "range": 40.0, "radius": 3.0, "slow": 0.5, "power": 20, "tick": 1.0, "persist": true, "avoidable": true},
-			{"name": "Turn the Page", "every": 30.0, "first": 30.0, "cast": 1.5, "effect": "pools_fire", "power": 60, "range": 60.0, "target": "self", "interruptible": false}
+			{"name": "Turn the Page", "every": 30.0, "first": 30.0, "cast": 1.5, "effect": "pools_fire", "power": 60, "range": 60.0, "target": "self", "interruptible": false},
+			{"name": "Paper Cut", "every": 9.0, "first": 4.0, "effect": "damage", "target": "tank", "power": 90},
+			{"name": "Marginalia", "at": [60, 30], "effect": "spawn", "spawn": [{"id": "record_burner", "count": 1}, {"id": "record_forger", "count": 1}]},
+			{"name": "Blot", "every": 20.0, "first": 12.0, "cast": 1.0, "effect": "slow", "target": "random", "range": 40.0, "slow": 0.3, "duration": 4.0},
+			{"name": "Ledger Line", "every": 16.0, "first": 10.0, "cast": 1.2, "effect": "line", "target": "tank", "width": 3.0, "length": 40.0, "power": 90, "interruptible": false, "avoidable": true},
+			{"name": "Final Entry", "at": [10], "every": 5.0, "effect": "stat", "damage_bonus": 0.15}
 		]
 	},
 	# --- The Throne of Kingsmourn (raid, level 20) ------------------------------
@@ -570,7 +623,10 @@ const DEFINITIONS := {
 		"feud": &"sunburst",
 		"mechanics": [
 			{"name": "Charge", "every": 15.0, "first": 10.0, "effect": "charge", "target": "furthest", "range": 60.0, "power": 70, "knockback": 14.0, "avoidable": true},
-			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "stag_guard", "count": 3}]}
+			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "stag_guard", "count": 3}]},
+			{"name": "Antler Sweep", "every": 12.0, "first": 7.0, "cast": 1.0, "effect": "line", "target": "tank", "width": 3.0, "length": 40.0, "power": 70, "interruptible": false, "avoidable": true},
+			{"name": "Stag's Pride", "at": [60], "effect": "heal", "target": "self", "power": 300},
+			{"name": "Trample", "every": 24.0, "first": 18.0, "effect": "pool", "target": "tank", "range": 40.0, "radius": 4.0, "slow": 0.5, "power": 25, "tick": 1.0, "persist": false, "seconds": 8.0, "avoidable": true}
 		]
 	},
 	&"lady_severin":
@@ -592,7 +648,10 @@ const DEFINITIONS := {
 		"feud": &"stag",
 		"mechanics": [
 			{"name": "Sun Lance", "every": 10.0, "first": 8.0, "cast": 1.2, "effect": "line", "target": "tank", "width": 3.0, "length": 40.0, "power": 80, "interruptible": false, "avoidable": true},
-			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "sunburst_guard", "count": 3}]}
+			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "sunburst_guard", "count": 3}]},
+			{"name": "Sun Flare", "every": 14.0, "first": 9.0, "cast": 1.5, "effect": "damage", "power": 120, "target": "random", "range": 40.0, "avoidable": true},
+			{"name": "Radiance", "at": [60], "effect": "spawn", "spawn": [{"id": "sunburst_guard", "count": 1}]},
+			{"name": "Blinding", "every": 26.0, "first": 20.0, "cast": 1.2, "effect": "stun", "target": "random", "range": 40.0, "duration": 2.0, "power": 30}
 		]
 	},
 	&"first_king_crowned":
@@ -614,7 +673,9 @@ const DEFINITIONS := {
 		"mechanics": [
 			{"name": "The Crown", "every": 25.0, "first": 15.0, "effect": "named", "target": "random", "range": 60.0, "duration": 8.0, "heal_share": 0.5, "dais": "throne_dais"},
 			{"name": "Heralds", "at": [75, 50, 25], "effect": "spawn", "spawn": [{"id": "first_king_herald", "count": 2}], "alive_bonus": 0.10},
-			{"name": "Kingsmourn", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10}
+			{"name": "Kingsmourn", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10},
+			{"name": "Grave Wind", "every": 18.0, "first": 12.0, "cast": 1.5, "effect": "line", "target": "tank", "width": 3.0, "length": 50.0, "power": 100, "interruptible": false, "avoidable": true},
+			{"name": "The Weight of the Crown", "every": 22.0, "first": 16.0, "effect": "slow", "target": "random", "range": 60.0, "slow": 0.2, "duration": 5.0, "power": 60}
 		]
 	}
 }

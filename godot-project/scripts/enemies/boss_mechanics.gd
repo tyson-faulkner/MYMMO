@@ -47,6 +47,14 @@ var _damage_bonus: float = 0.0
 var _pool_count: int = 0
 var _in_combat: bool = false
 
+## Grudge: the tier this pull is fought at (the lowest among everyone present
+## when it started) and how many mechanics that turns on. The list itself is
+## the season's, which is usually the boss's own.
+var active_tier: int = 0
+var enabled_count: int = GrudgeLedger.BASE_MECHANICS
+## How far from the boss "present" reaches when the pull starts.
+const PRESENCE_RANGE := 60.0
+
 ## The Crown: who is named and until when. Read by the HUD-facing label too.
 var named_player: Node3D = null
 var _named_until_msec: int = 0
@@ -61,7 +69,7 @@ func setup(owner_mob: Mob) -> void:
 func _physics_process(_delta: float) -> void:
 	if mob == null or not multiplayer.has_multiplayer_peer() or not multiplayer.is_server():
 		return
-	if mob.mob_data == null or mob.mob_data.mechanics.is_empty():
+	if mob.mob_data == null or mechanics_list().is_empty():
 		return
 	var fighting := mob.state == Mob.State.CHASING or mob.state == Mob.State.ATTACKING
 	if not fighting:
@@ -69,8 +77,7 @@ func _physics_process(_delta: float) -> void:
 			reset()
 		return
 	if not _in_combat:
-		_in_combat = true
-		_next_fire_msec.clear()
+		_begin_combat()
 	var now := Time.get_ticks_msec()
 	if named_player and now >= _named_until_msec:
 		named_player = null
@@ -78,8 +85,9 @@ func _physics_process(_delta: float) -> void:
 	var health_pct := 100.0
 	if stats and stats.max_health > 0:
 		health_pct = 100.0 * float(stats.health) / float(stats.max_health)
-	for index in range(mob.mob_data.mechanics.size()):
-		var entry: Dictionary = mob.mob_data.mechanics[index]
+	var list := mechanics_list()
+	for index in range(mini(list.size(), enabled_count)):
+		var entry: Dictionary = list[index]
 		if entry.has("at"):
 			var thresholds: Array = entry["at"]
 			if not _fired_thresholds.has(index):
@@ -120,6 +128,45 @@ func reset() -> void:
 	named_player = null
 
 
+## This season's list for this boss, in grudge order.
+func mechanics_list() -> Array:
+	if mob == null or mob.mob_data == null:
+		return []
+	return SeasonDatabase.mechanics_for(mob.mob_data.id, mob.mob_data.mechanics)
+
+
+## The pull starts: settle the grudge tier from whoever is here, and tell every
+## peer so the name carries it.
+func _begin_combat() -> void:
+	_in_combat = true
+	_next_fire_msec.clear()
+	active_tier = lowest_present_tier()
+	enabled_count = GrudgeLedger.mechanics_enabled(active_tier)
+	mob.set_grudge_tier(active_tier)
+	mob.set_grudge_tier.rpc(active_tier)
+
+
+## The group fights at the LOWEST member's tier. Someone with no ledger at
+## all (a test double) counts as tier zero, which is the safe direction.
+func lowest_present_tier() -> int:
+	var lowest := -1
+	for character in mob._players_within(PRESENCE_RANGE):
+		var ledger := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
+		var tier := ledger.tier_for(mob.mob_data.id) if ledger else 0
+		if lowest < 0 or tier < lowest:
+			lowest = tier
+	return maxi(0, lowest)
+
+
+## True when the current tier has turned this mechanic on.
+func is_enabled(mechanic_name: String) -> bool:
+	var list := mechanics_list()
+	for index in range(mini(list.size(), enabled_count)):
+		if str(list[index].get("name", "")) == mechanic_name:
+			return true
+	return false
+
+
 ## Server. Runs one mechanic now. Returns false when it had nothing to aim at.
 func fire(entry: Dictionary, index: int = -1) -> bool:
 	if mob == null:
@@ -140,10 +187,9 @@ func fire(entry: Dictionary, index: int = -1) -> bool:
 
 ## Server. Runs a mechanic by name — what tests and scripted fights use.
 func fire_by_name(mechanic_name: String) -> bool:
-	if mob == null or mob.mob_data == null:
-		return false
-	for index in range(mob.mob_data.mechanics.size()):
-		var entry: Dictionary = mob.mob_data.mechanics[index]
+	var list := mechanics_list()
+	for index in range(list.size()):
+		var entry: Dictionary = list[index]
 		if str(entry.get("name", "")) == mechanic_name:
 			return fire(entry, index)
 	return false
@@ -291,8 +337,9 @@ func _spawn_adds(entry: Dictionary, index: int) -> void:
 func damage_multiplier() -> float:
 	var multiplier := 1.0 + _damage_bonus
 	if mob and mob.mob_data:
+		var list := mechanics_list()
 		for index in _spawned:
-			var entry: Dictionary = mob.mob_data.mechanics[index] if index < mob.mob_data.mechanics.size() else {}
+			var entry: Dictionary = list[index] if index >= 0 and index < list.size() else {}
 			var bonus := float(entry.get("alive_bonus", 0.0))
 			if bonus <= 0.0:
 				continue

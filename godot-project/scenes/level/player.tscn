@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/persistence/persistence_manager.gd" id="95_persist"]
 [ext_resource type="Script" path="res://scripts/combat/rune_loadout.gd" id="96_runes"]
 [ext_resource type="Script" path="res://scripts/combat/mount_controller.gd" id="97_mount"]
+[ext_resource type="Script" path="res://scripts/progression/grudge_ledger.gd" id="98_grudge"]
 [ext_resource type="Script" uid="uid://v8j54rbc0ik" path="res://scripts/player/3d_godot_robot.gd" id="2_mexc5"]
 [ext_resource type="Script" uid="uid://bj7yrijm7bppq" path="res://scripts/player/spring_arm_offset.gd" id="4_ygggd"]
 [ext_resource type="FontFile" uid="uid://diapabmalpcrj" path="res://assets/fonts/Kurland.ttf" id="16_xgf8p"]
@@ -228,3 +229,6 @@ script = ExtResource("96_runes")
 
 [node name="MountController" type="Node" parent="."]
 script = ExtResource("97_mount")
+
+[node name="GrudgeLedger" type="Node" parent="."]
+script = ExtResource("98_grudge")

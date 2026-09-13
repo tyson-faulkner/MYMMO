@@ -51,6 +51,10 @@ static func capture(character: Node) -> Dictionary:
 	if mounts:
 		data["mounts"] = mounts.to_dict()
 
+	var grudge := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
+	if grudge:
+		data["grudge"] = grudge.to_dict()
+
 	var inventory = character.get_inventory() if character.has_method("get_inventory") else null
 	if inventory:
 		data["inventory"] = inventory.to_dict()
@@ -115,6 +119,10 @@ static func apply(character: Node, data: Dictionary) -> bool:
 	var mounts := character.get_node_or_null("MountController") as MountController
 	if mounts and migrated.has("mounts"):
 		mounts.from_dict(migrated["mounts"])
+
+	var grudge := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
+	if grudge and migrated.has("grudge"):
+		grudge.from_dict(migrated["grudge"])
 
 	if migrated.has("inventory") and character.has_method("get_inventory"):
 		var inventory = character.get_inventory()

@@ -173,6 +173,13 @@ func _ready() -> void:
 		_player.apply_stun(1.0)
 		print("stun: player stunned=%s" % _player.is_stunned())
 		_camera.current = true
+		# The grudge mark in the name, up close, to prove the font draws it.
+		binder.interrupt_cast(0, true)
+		binder.set_grudge_tier(4)
+		var label_spot := binder.global_position + Vector3(0, 2.3, 0)
+		await _shot("grudge_label", label_spot + Vector3(0, 0.3, 3.2), label_spot)
+		print("grudge: label=%s" % binder.get_node("NameLabel").text)
+		binder.set_grudge_tier(0)
 
 	# The Ledger's vault: an ink pool under the player, a brazier beside it.
 	var ledger: Mob = null

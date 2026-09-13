@@ -39,7 +39,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   engine, grudge bosses and seasons, the combat recorder, specs and rune
   moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 236/236 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 257/257 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +200,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **"Present" for grudge means within 60m of the boss when it
+  dies, not "in the party".** The spec says present; a place is simpler to
+  reason about than a roster and matches what people mean.
+- 2026-09-13 — **Seasons are picked by the calendar, not a server flag.**
+  A dated list in `season_database.gd`; the last season on the list runs
+  until someone writes the next one. Tests pin one with `forced_index`.
 - 2026-09-13 — **Pools are not replicated nodes.** A boss RPCs the recipe
   (name, spot, size, lifetime) and every peer draws its own; only the
   server's copy damages. Someone joining mid-fight will not see pools laid
@@ -226,6 +232,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Grudge bosses and seasons
+
+- **Changed:** `scripts/progression/grudge_ledger.gd` is a per-character, per-boss counter (saved in `CharacterState`, pushed to the owner). A pull is fought at the lowest present player's tier; tier N turns on the first 2+N of the boss's ordered mechanics; the name reads *Master Kell ⟨III⟩*; each kill raises everyone present by one, capped at 5 (dungeon) or 3 (raid); loot chance climbs 15% per tier and mounts are guaranteed at the cap. Every one of the ten bosses now has a 5–7 mechanic ladder in `mob_database.gd`. `scripts/autoload/season_database.gd` (new autoload) picks the season from the calendar; a season can swap any boss's whole mechanic list and skin, and names its cosmetic rewards. Season one is the base game; season two, "The Drowned Court", is written (three bosses re-listed, two re-skinned) so the swap is proven, not promised.
+- **Test:** smoke 257/257 with 21 new checks (caps, gating, name mark, lowest-member rule, loot bump, guaranteed mount, kill raises and caps, save round-trip, season data well formed, list and skin swap, engine reads the season). In-game shot of the tier mark looked at.
+- **Surprising:** a boss never leaves combat while a player stands in its aggro range, so the "second pull" in the test had to reset the engine by hand, the way walking home does. Kell's list was reordered so Call the Shelves is base and the Bind is the first grudge reward. Chronicle lines for tiers and season turnover are signals/strings waiting for unit 12.
 
 ### 2026-09-13 — Boss mechanics engine: the Hall and the Throne fight back
 

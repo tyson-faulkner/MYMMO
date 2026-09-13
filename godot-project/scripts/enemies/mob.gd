@@ -82,6 +82,13 @@ var _announce_until_msec: int = 0
 ## Server only, bosses only: the thing that runs their mechanics.
 var _mechanics: BossMechanics = null
 
+## The grudge tier this pull is fought at. Every peer has it: it is in the name.
+var grudge_tier: int = 0
+
+## Fired on the server when a boss dies, with the tier it fell at. The
+## chronicle listens for "the first time each tier falls".
+signal boss_fell(boss_id: StringName, tier: int)
+
 var _stats: Stats = null
 var _attack_timer: float = 0.0
 var _respawn_timer: float = 0.0
@@ -141,9 +148,13 @@ func _apply_mob_data() -> void:
 ## Models are exported facing -Z, which is where look_at() points a mob, so
 ## no turn is needed — unlike the player, whose template faced the other way.
 func _wear_model() -> void:
-	if mob_data == null or mob_data.model_path.is_empty() or not ResourceLoader.exists(mob_data.model_path):
+	if mob_data == null:
 		return
-	var scene := load(mob_data.model_path) as PackedScene
+	# A season can put a boss in a different skin.
+	var model_path := SeasonDatabase.model_for(mob_data.id, mob_data.model_path)
+	if model_path.is_empty() or not ResourceLoader.exists(model_path):
+		return
+	var scene := load(model_path) as PackedScene
 	if scene == null:
 		return
 	var model := scene.instantiate() as Node3D
@@ -218,7 +229,16 @@ func _scaled_damage() -> int:
 
 func name_label_text(display_name: String, level: int) -> void:
 	if _name_label:
-		_name_label.text = "%s  (%d)" % [display_name, level]
+		var tier := "  ⟨%s⟩" % GrudgeLedger.roman(grudge_tier) if grudge_tier > 0 else ""
+		_name_label.text = "%s%s  (%d)" % [display_name, tier, level]
+
+
+## Every peer: the pull's grudge tier, so the name reads "Master Kell ⟨IV⟩".
+@rpc("authority", "call_local", "reliable")
+func set_grudge_tier(tier: int) -> void:
+	grudge_tier = maxi(0, tier)
+	if mob_data:
+		name_label_text(mob_data.display_name, mob_data.level)
 
 
 func _physics_process(delta: float) -> void:
@@ -865,8 +885,28 @@ func _award_kill(killer_peer_id: int) -> void:
 		if quest_log and quest_log.has_method("add_currency") and mob_data.currency_reward > 0:
 			quest_log.add_currency(mob_data.currency_reward)
 
+	# A boss down raises the grudge of everyone who was there for it — not
+	# just the party: "present" is what the spec says, and presence is a place.
+	if mob_data.is_boss:
+		var cap := GrudgeLedger.cap_for(mob_data)
+		for character in _players_within(BossMechanics.PRESENCE_RANGE):
+			var ledger := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
+			if ledger:
+				ledger.raise(mob_data.id, cap)
+		boss_fell.emit(mob_data.id, grudge_tier)
+
 	# Loot drops once, on the ground, for whoever reaches it.
 	_drop_loot()
+
+
+## Grudge pays: a modest bump per tier, and the mount is guaranteed at the top
+## tier so nobody runs the raid nine times for nothing.
+func _loot_chance(base: float, item_id: String) -> float:
+	if mob_data == null or not mob_data.is_boss or grudge_tier <= 0:
+		return base
+	if item_id.begins_with("mount_") and grudge_tier >= GrudgeLedger.cap_for(mob_data):
+		return 1.0
+	return minf(1.0, base * (1.0 + 0.15 * float(grudge_tier)))
 
 
 func _find_players_root() -> Node:
@@ -886,7 +926,7 @@ func _drop_loot() -> void:
 		return
 	var dropped := 0
 	for item_id in mob_data.loot_table:
-		if randf() > float(mob_data.loot_table[item_id]):
+		if randf() > _loot_chance(float(mob_data.loot_table[item_id]), str(item_id)):
 			continue
 		var item: Item = ItemDatabase.get_item(str(item_id))
 		if item == null or item.scene_path.is_empty() or not ResourceLoader.exists(item.scene_path):

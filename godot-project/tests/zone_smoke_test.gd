@@ -20,6 +20,7 @@ const PLAYER_ABILITY_BAR := preload("res://scripts/combat/ability_bar.gd")
 const PLAYER_DEATH := preload("res://scripts/combat/death_handler.gd")
 const PLAYER_RUNES := preload("res://scripts/combat/rune_loadout.gd")
 const PLAYER_MOUNTS := preload("res://scripts/combat/mount_controller.gd")
+const PLAYER_GRUDGE := preload("res://scripts/progression/grudge_ledger.gd")
 const TEST_PORT := 47311
 
 var _failures: int = 0
@@ -69,6 +70,7 @@ func _ready() -> void:
 	_check_class_weapons()
 	_check_enemy_models(zone)
 	await _check_boss_mechanics(kingsmourn)
+	await _check_grudge_and_seasons(kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -126,6 +128,10 @@ func _spawn_fake_player() -> void:
 	mounts.set_script(PLAYER_MOUNTS)
 	mounts.name = "MountController"
 	_fake_player.add_child(mounts)
+	var grudge := Node.new()
+	grudge.set_script(PLAYER_GRUDGE)
+	grudge.name = "GrudgeLedger"
+	_fake_player.add_child(grudge)
 	_players.add_child(_fake_player)
 	_fake_player.global_position = Vector3(0, 1, 10)
 
@@ -1359,8 +1365,11 @@ func _check_boss_mechanics(kingsmourn: Node3D) -> void:
 	var known := ["damage", "heal", "slow", "stun", "pool", "pools_fire", "line", "charge", "named", "spawn", "stat"]
 	var bad: Array[String] = []
 	var boss_count := 0
+	var all_bosses := 0
 	for mob_id in MobDatabase.get_all_ids():
 		var data := MobDatabase.get_mob(mob_id)
+		if data.is_boss:
+			all_bosses += 1
 		if not data.is_boss or data.mechanics.is_empty():
 			continue
 		boss_count += 1
@@ -1372,8 +1381,7 @@ func _check_boss_mechanics(kingsmourn: Node3D) -> void:
 			for group in mechanic.get("spawn", []):
 				if MobDatabase.get_mob(StringName(str(group.get("id", "")))) == null:
 					bad.append("%s spawns unknown %s" % [mob_id, group.get("id", "")])
-	# Kell, the Ledger, Ashcombe, Severin and the King: the endgame spec's five.
-	_report("the five endgame bosses carry mechanics", boss_count == 5, "%d bosses" % boss_count)
+	_report("every boss carries mechanics", boss_count == all_bosses and all_bosses >= 10, "%d of %d bosses" % [boss_count, all_bosses])
 	_report("every mechanic is well formed", bad.is_empty(), ", ".join(bad))
 
 	var container := kingsmourn.get_node_or_null("MobContainer")
@@ -1533,6 +1541,134 @@ func _check_boss_mechanics(kingsmourn: Node3D) -> void:
 	king.state = Mob.State.IDLE
 	king.target = null
 	king._attack_timer = 0.0
+	stats.revive()
+	_fake_player.global_position = Vector3(0, 1, 10)
+
+
+# THE GAP THIS CLOSES: the fifth kill of a boss has to be a different fight
+# from the first, or the endgame dies of sameness. Grudge is a saved counter,
+# a gate on the mechanic list, a mark in the name and a bump to the loot; a
+# season is the same gate swapping the whole list. Every piece is exercised.
+func _check_grudge_and_seasons(kingsmourn: Node3D) -> void:
+	print("")
+	print("-- grudge and seasons --")
+	var ledger := _fake_player.get_node("GrudgeLedger") as GrudgeLedger
+	var stats := _fake_player.get_node("Stats") as Stats
+	_report("a character carries a grudge ledger", ledger != null and ledger.tier_for(&"master_kell") == 0, "")
+	_report("dungeon bosses cap at five, raid bosses at three",
+		GrudgeLedger.cap_for(MobDatabase.get_mob(&"master_kell")) == 5 and GrudgeLedger.cap_for(MobDatabase.get_mob(&"first_king_crowned")) == 3, "")
+	_report("tier N turns on the first 2+N mechanics", GrudgeLedger.mechanics_enabled(0) == 2 and GrudgeLedger.mechanics_enabled(3) == 5, "")
+
+	# Every boss has a ladder worth climbing.
+	var short: Array[String] = []
+	for mob_id in MobDatabase.get_all_ids():
+		var data := MobDatabase.get_mob(mob_id)
+		if data.is_boss and data.mechanics.size() < 4:
+			short.append("%s (%d)" % [mob_id, data.mechanics.size()])
+	_report("every boss has at least four mechanics to climb", short.is_empty(), ", ".join(short))
+
+	var container := kingsmourn.get_node_or_null("MobContainer")
+	var kell: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and mob.mob_data and mob.mob_data.id == &"master_kell":
+			kell = mob
+			break
+	if kell == null:
+		_report("found Master Kell", false, "")
+		return
+	var engine: BossMechanics = kell.get_node("BossMechanics")
+	var kell_stats := kell.get_node("Stats") as Stats
+
+	# A fresh group: two mechanics. A grudge-3 group: five, and it says so.
+	_fake_player.global_position = kell.global_position + Vector3(0, 0, 3.0)
+	stats.revive()
+	kell.target = _fake_player
+	kell.state = Mob.State.ATTACKING
+	kell._attack_timer = 999.0
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_report("a fresh group fights two mechanics", engine.active_tier == 0 and engine.enabled_count == 2 and not engine.is_enabled("Bind"), "tier %d, %d on" % [engine.active_tier, engine.enabled_count])
+	# A boss that walks home resets its engine; standing in its aggro range
+	# means it never would, so the test does what walking home does.
+	engine.reset()
+	ledger.tiers["master_kell"] = 3
+	kell.target = _fake_player
+	kell.state = Mob.State.ATTACKING
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_report("a grudge-3 group fights five mechanics", engine.active_tier == 3 and engine.enabled_count == 5 and engine.is_enabled("Bind") and engine.is_enabled("Forbidden Word") and not engine.is_enabled("Second Reading"), "tier %d, %d on" % [engine.active_tier, engine.enabled_count])
+	_report("the boss's name carries the tier", kell.get_node("NameLabel").text.contains("⟨III⟩"), kell.get_node("NameLabel").text)
+
+	# The lowest member's tier wins.
+	var newcomer := CharacterBody3D.new()
+	newcomer.name = "9"
+	var newcomer_stats := Node.new()
+	newcomer_stats.set_script(PLAYER_STATS)
+	newcomer_stats.name = "Stats"
+	newcomer.add_child(newcomer_stats)
+	var newcomer_ledger := Node.new()
+	newcomer_ledger.set_script(PLAYER_GRUDGE)
+	newcomer_ledger.name = "GrudgeLedger"
+	newcomer.add_child(newcomer_ledger)
+	_players.add_child(newcomer)
+	newcomer.global_position = kell.global_position + Vector3(3.0, 0, 0)
+	_report("a newcomer drops the group to their tier", engine.lowest_present_tier() == 0, "lowest %d" % engine.lowest_present_tier())
+	newcomer.queue_free()
+	await get_tree().process_frame
+
+	# Loot scales, and the mount is a promise at the top.
+	_report("loot chance climbs with the tier", kell._loot_chance(0.2, "gear_x") > 0.2 and kell._loot_chance(0.2, "gear_x") < 0.4, "%.2f" % kell._loot_chance(0.2, "gear_x"))
+	kell.grudge_tier = 5
+	_report("the mount is guaranteed at the top tier", is_equal_approx(kell._loot_chance(0.12, "mount_wraithcat"), 1.0), "")
+	kell.grudge_tier = 3
+
+	# A kill raises the grudge for everyone present, and never past the cap.
+	var fell := {"id": &"", "tier": -1}
+	kell.boss_fell.connect(func(boss_id: StringName, tier: int) -> void:
+		fell["id"] = boss_id
+		fell["tier"] = tier)
+	kell_stats.apply_damage(999999, 1)
+	_report("killing the boss raises the grudge", ledger.tier_for(&"master_kell") == 4, "tier %d" % ledger.tier_for(&"master_kell"))
+	_report("the fall is announced with its tier", fell["id"] == &"master_kell" and fell["tier"] == 3, "%s at %d" % [fell["id"], fell["tier"]])
+	for i in range(5):
+		ledger.raise(&"master_kell", GrudgeLedger.cap_for(kell.mob_data))
+	_report("grudge stops at the cap", ledger.tier_for(&"master_kell") == 5, "tier %d" % ledger.tier_for(&"master_kell"))
+
+	# It survives logging out.
+	var saved := CharacterState.capture(_fake_player)
+	ledger.tiers.clear()
+	CharacterState.apply(_fake_player, saved)
+	_report("grudge is saved with the character", ledger.tier_for(&"master_kell") == 5, "tier %d after restore" % ledger.tier_for(&"master_kell"))
+	ledger.tiers.clear()
+
+	# Seasons: the calendar picks one, and a later one swaps the list and skin.
+	_report("a season is running", SeasonDatabase.season_name() != "", SeasonDatabase.season_name())
+	var base_list := SeasonDatabase.mechanics_for(&"master_kell", kell.mob_data.mechanics)
+	_report("season one fights the base lists", base_list == kell.mob_data.mechanics, "")
+	SeasonDatabase.forced_index = 1
+	var swapped := SeasonDatabase.mechanics_for(&"master_kell", kell.mob_data.mechanics)
+	var known := ["damage", "heal", "slow", "stun", "pool", "pools_fire", "line", "charge", "named", "spawn", "stat"]
+	var bad_season: Array[String] = []
+	for boss_id in SeasonDatabase.current().get("mechanics", {}):
+		for mechanic in SeasonDatabase.current()["mechanics"][boss_id]:
+			if not known.has(str(mechanic.get("effect", ""))):
+				bad_season.append("%s: %s" % [boss_id, mechanic.get("effect", "")])
+			for group in mechanic.get("spawn", []):
+				if MobDatabase.get_mob(StringName(str(group.get("id", "")))) == null:
+					bad_season.append("%s spawns unknown %s" % [boss_id, group.get("id", "")])
+	for boss_id in SeasonDatabase.current().get("models", {}):
+		var model := SeasonDatabase.model_for(boss_id, "")
+		if not model.is_empty() and not ResourceLoader.exists(model):
+			bad_season.append("%s wears missing %s" % [boss_id, model])
+	_report("season two swaps Master Kell's mechanics", swapped != base_list and swapped.size() >= 4, "%d mechanics" % swapped.size())
+	_report("season two's data is well formed", bad_season.is_empty(), ", ".join(bad_season))
+	_report("season two swaps a boss's skin", SeasonDatabase.model_for(&"master_kell", kell.mob_data.model_path) != kell.mob_data.model_path, SeasonDatabase.model_for(&"master_kell", "").get_file())
+	_report("the engine reads the season's list", engine.mechanics_list() == swapped, "")
+	_report("season rewards are never power", SeasonDatabase.rewards().has("title") and not SeasonDatabase.rewards().has("power"), str(SeasonDatabase.rewards().get("title", "")))
+	SeasonDatabase.forced_index = -1
+	kell.grudge_tier = 0
+	kell.set_grudge_tier(0)
 	stats.revive()
 	_fake_player.global_position = Vector3(0, 1, 10)
 
