@@ -72,6 +72,10 @@ const GROUND_TEXTURES := {
 ## Mapped in world space, so neighbouring plates line up with no seam.
 const GROUND_TILE_METERS := 4.0
 
+## Every textured plate gets its own UV offset and rotation, seeded from where
+## it stands, so a field never repeats in step with the road beside it.
+const GROUND_SHADER := preload("res://assets/shaders/ground.gdshader")
+
 ## Kit pieces are modelled 2m wide and 3m tall, origin at the base centre, with
 ## the dressed exterior face pointing -Z. Everything below is laid out on that.
 const SECTION_WIDTH := 2.0
@@ -192,7 +196,7 @@ func _build_piece(piece: Dictionary) -> void:
 	var box := BoxMesh.new()
 	box.size = size
 	mesh_instance.mesh = box
-	mesh_instance.material_override = _material_for(color, str(piece.get("texture", "")))
+	mesh_instance.material_override = _material_for(color, str(piece.get("texture", "")), position)
 
 	if not solid:
 		mesh_instance.position = position
@@ -306,30 +310,38 @@ func _build_tiled_floor(piece: String, centre: Vector3, size_x: float, size_z: f
 	sample.queue_free()
 
 
-func _material_for(color: Color, texture_name: String = "") -> StandardMaterial3D:
-	var key := "%s|%s" % [color, texture_name]
+func _material_for(color: Color, texture_name: String = "", at: Vector3 = Vector3.ZERO) -> Material:
+	var texture := ground_texture(texture_name)
+	if texture:
+		return _ground_material(texture_name, texture, color, at)
+	var key := str(color)
 	if _materials.has(key):
 		return _materials[key]
 	var material := StandardMaterial3D.new()
+	material.albedo_color = color
 	material.roughness = 0.92
-	var texture := ground_texture(texture_name)
-	if texture:
-		var base: Color = GROUND_TEXTURES[texture_name]["base"]
-		material.albedo_texture = texture
-		material.albedo_color = Color(
-			clampf(color.r / base.r, 0.0, 1.5),
-			clampf(color.g / base.g, 0.0, 1.5),
-			clampf(color.b / base.b, 0.0, 1.5)
-		)
-		# World-space triplanar: the top of every plate samples the same world
-		# grid, so the square's slab and the field around it tile continuously.
-		material.uv1_triplanar = true
-		material.uv1_world_triplanar = true
-		material.uv1_scale = Vector3.ONE / GROUND_TILE_METERS
-		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	else:
-		material.albedo_color = color
 	_materials[key] = material
+	return material
+
+
+## One material per textured plate: the texture, tinted from its palette colour
+## to the plate's, with a UV offset and rotation drawn from the plate's position
+## so it is the same on every client and every run.
+func _ground_material(texture_name: String, texture: Texture2D, color: Color, at: Vector3) -> ShaderMaterial:
+	var base: Color = GROUND_TEXTURES[texture_name]["base"]
+	var material := ShaderMaterial.new()
+	material.shader = GROUND_SHADER
+	material.set_shader_parameter("albedo", texture)
+	material.set_shader_parameter("tile_meters", GROUND_TILE_METERS)
+	material.set_shader_parameter("tint", Color(
+		clampf(color.r / base.r, 0.0, 1.5),
+		clampf(color.g / base.g, 0.0, 1.5),
+		clampf(color.b / base.b, 0.0, 1.5)
+	))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector3i(roundi(at.x * 10.0), roundi(at.y * 10.0), roundi(at.z * 10.0)))
+	material.set_shader_parameter("offset", Vector2(rng.randf(), rng.randf()))
+	material.set_shader_parameter("rotation", rng.randf() * TAU)
 	return material
 
 

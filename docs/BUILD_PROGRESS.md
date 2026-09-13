@@ -198,6 +198,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
 
 ## Log
 
+### 2026-09-13 — Mud tiling repeat fixed
+
+- **Changed:** ground plates now use `assets/shaders/ground.gdshader`, a world-space triplanar shader; ZoneBuilder gives every textured plate its own UV offset and rotation, seeded from the plate's position so all clients agree. Inside a plate the texture is also read a second time, rotated and rescaled, and blended in by ~20m noise blobs — the offset alone can't help a single 280m plate repeat against itself.
+- **Test:** smoke 177/177; two new checks confirm every grass and mud plate reads from a distinct offset/angle. Re-shot `ground_sablemarch_mud.png`: the pale-pool lattice is gone.
+- **Surprising:** the request said "per plate", but the visible grid was within one plate, not between plates — hence the second read.
+
 ### 2026-09-13 — Skin colour picker removed from the menu
 
 - **Changed:** the "Player Skin" row is gone from `main_menu_ui.tscn`; the menu's host/join signals no longer carry a skin, and `level.gd` passes an empty one to `Network`, which lands on its default. Appearance customisation is cut from v1 and the class models bring their own textures.

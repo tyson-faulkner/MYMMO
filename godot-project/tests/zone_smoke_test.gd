@@ -1222,11 +1222,18 @@ func _check_ground_textures(vale: Node3D, sablemarch: Node3D) -> void:
 		var zone: Node3D = pair[0]
 		var texture := ZoneBuilder.ground_texture(str(pair[1]))
 		var textured := 0
+		var placements := {}
 		for node in zone.find_children("*", "MeshInstance3D", true, false):
-			var material := (node as MeshInstance3D).material_override as StandardMaterial3D
-			if material and texture and material.albedo_texture == texture:
+			var material := (node as MeshInstance3D).material_override as ShaderMaterial
+			if material and texture and material.get_shader_parameter("albedo") == texture:
 				textured += 1
+				# The repeat fix: every plate reads the texture from its own
+				# offset and angle. Plates sharing one would tile in lockstep.
+				var placement := "%s|%.3f" % [material.get_shader_parameter("offset"), material.get_shader_parameter("rotation")]
+				placements[placement] = true
 		_report("%s ground is painted %s" % [zone.name, pair[1]], textured >= 2, "%d plates" % textured)
+		_report("%s plates each tile from their own offset and angle" % zone.name,
+			textured >= 2 and placements.size() == textured, "%d placements for %d plates" % [placements.size(), textured])
 
 
 func _report(label: String, passed: bool, detail: String) -> void:
