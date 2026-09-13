@@ -150,6 +150,9 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 	var stats := _get_stats()
 	if stats == null or stats.is_dead:
 		return
+	# Stunned means stunned: the server refuses, whatever the client pressed.
+	if body.has_method("is_stunned") and body.is_stunned():
+		return
 	# The ability has to belong to this character's class and level.
 	if ability.class_id != _class_id() or stats.level < ability.level_required:
 		return
@@ -334,6 +337,42 @@ func _execute(
 			if ability.speed_multiplier < 1.0:
 				_damage(target, power, caster_peer)
 			_apply_speed(target if target else caster, ability.speed_multiplier, duration)
+		AbilityData.Effect.INTERRUPT:
+			# The damage is a consolation; the cast stopping is the ability.
+			_damage(target, power, caster_peer)
+			if target and target.has_method("interrupt_cast"):
+				target.interrupt_cast(caster_peer)
+		AbilityData.Effect.DAMAGE_REDUCTION:
+			var shielded: Node3D = target if target else caster
+			StatusEffect.apply(shielded, StatusEffect.Kind.DAMAGE_REDUCTION, ability.id, ability.reduction, duration)
+			if radius > 0.0:
+				for friend in _friendlies_near(shielded.global_position, radius):
+					if friend != shielded:
+						StatusEffect.apply(friend, StatusEffect.Kind.DAMAGE_REDUCTION, ability.id, ability.reduction * falloff, duration)
+		AbilityData.Effect.STUN:
+			_damage(target, power, caster_peer)
+			_apply_stun(target, duration)
+			if radius > 0.0 and target:
+				for victim in _hostiles_near(target.global_position, radius):
+					if victim != target:
+						_apply_stun(victim, duration * falloff)
+		AbilityData.Effect.STACK:
+			StatusEffect.apply(target, StatusEffect.Kind.STACK, ability.id, float(power), duration, ability.tick_seconds, caster_peer, ability.max_stacks)
+		AbilityData.Effect.HOT:
+			var mended: Node3D = target if target else caster
+			StatusEffect.apply(mended, StatusEffect.Kind.HOT, ability.id, float(power), duration, ability.tick_seconds, caster_peer)
+			if radius > 0.0:
+				for friend in _friendlies_near(mended.global_position, radius):
+					if friend != mended:
+						StatusEffect.apply(friend, StatusEffect.Kind.HOT, ability.id, float(power) * falloff, duration, ability.tick_seconds, caster_peer)
+		AbilityData.Effect.BUFF:
+			# A party buff reaches everyone in earshot; with no radius it is
+			# just the caster (or the ally they picked).
+			if radius > 0.0:
+				for friend in _friendlies_near(caster.global_position, radius):
+					StatusEffect.apply(friend, StatusEffect.Kind.BUFF, ability.id, float(power), duration)
+			else:
+				StatusEffect.apply(target if target else caster, StatusEffect.Kind.BUFF, ability.id, float(power), duration)
 
 
 ## The world-owned uniques: rings that do something no raid drop does.
@@ -463,3 +502,10 @@ func _apply_speed(target: Node3D, multiplier: float, duration: float) -> void:
 		return
 	if target.has_method("apply_speed_modifier"):
 		target.apply_speed_modifier(multiplier, duration)
+
+
+func _apply_stun(target: Node3D, duration: float) -> void:
+	if target == null or duration <= 0.0:
+		return
+	if target.has_method("apply_stun"):
+		target.apply_stun(duration)

@@ -116,7 +116,8 @@ const DEFINITIONS := {
 		"color": Color(0.4, 0.3, 0.48),
 		"scale": 1.0,
 		"loot": {"gear_levy_ring": 0.06, "gear_levy_trinket": 0.06},
-		"currency": 8
+		"currency": 8,
+		"casts": [{"name": "Grave Bolt", "cast": 1.5, "every": 8.0, "power": 34, "range": 18.0}]
 	},
 	&"barrow_wight":
 	{
@@ -259,7 +260,8 @@ const DEFINITIONS := {
 		"color": Color(0.38, 0.28, 0.46),
 		"scale": 1.0,
 		"loot": {"gear_marcher_trinket": 0.06, "seal_of_two_houses": 0.03},
-		"currency": 12
+		"currency": 12,
+		"casts": [{"name": "Grave Bolt", "cast": 1.5, "every": 8.0, "power": 46, "range": 18.0}]
 	},
 	&"march_wight":
 	{
@@ -419,7 +421,8 @@ const DEFINITIONS := {
 		"color": Color(0.4, 0.22, 0.45),
 		"scale": 1.0,
 		"loot": {"gear_sovereign_trinket": 0.05, "gear_sovereign_ring": 0.04},
-		"currency": 24
+		"currency": 24,
+		"casts": [{"name": "Crown Bolt", "cast": 1.5, "every": 8.0, "power": 70, "range": 18.0}]
 	},
 	&"first_king_herald":
 	{
@@ -514,7 +517,10 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_hands": 0.5, "gear_sovereign_feet": 0.5, "gear_sovereign_weapon_valkyr": 0.25, "gear_sovereign_weapon_bard": 0.25, "gear_sovereign_weapon_necromancer": 0.25, "gear_sovereign_weapon_tinker": 0.25},
 		"currency": 120,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		# The endgame spec: a 2s cast at a random non-tank, every 12s, and the
+		# Tinker's job to stop. The rest of Kell's kit is the mechanics engine's.
+		"casts": [{"name": "Burn the Page", "cast": 2.0, "every": 12.0, "power": 150, "target": "random", "range": 30.0}]
 	},
 	&"the_bound_ledger":
 	{
@@ -666,6 +672,7 @@ func _build(mob_id: StringName, entry: Dictionary) -> MobData:
 	if not model.is_empty():
 		data.model_path = "res://assets/enemies/%s.glb" % model
 	data.loot_table = entry.get("loot", {})
+	data.casts = entry.get("casts", [])
 	data.is_boss = bool(entry.get("boss", false))
 	data.is_dungeon = bool(entry.get("dungeon", false)) or data.is_boss
 	if data.is_boss:

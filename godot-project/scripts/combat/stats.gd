@@ -110,6 +110,10 @@ func apply_damage(amount: int, source_peer_id: int = 0) -> void:
 	if armor > 0:
 		# Flat armour with a floor, so a big hit still hurts.
 		mitigated = maxi(1, amount - armor)
+	# Then whatever is shielding them: Wingguard, a ward, a last stand.
+	var share := StatusEffect.damage_multiplier(get_parent())
+	if share < 1.0:
+		mitigated = maxi(1, int(round(float(mitigated) * share)))
 	var new_health: int = maxi(0, health - mitigated)
 	_set_health(new_health, source_peer_id)
 	_set_health.rpc(new_health, source_peer_id)
@@ -160,7 +164,7 @@ func total_armor() -> int:
 
 
 func total_power() -> int:
-	return bonus_power
+	return bonus_power + StatusEffect.power_bonus(get_parent())
 
 
 func _health_for_level(at_level: int) -> int:

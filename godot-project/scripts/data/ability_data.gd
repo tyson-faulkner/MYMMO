@@ -16,7 +16,13 @@ enum Effect {
 	DRAIN,        ## Damage that heals the caster for a share of it.
 	TAUNT,        ## Force the target to attack the caster.
 	SUMMON,       ## Spawn a pet that fights for the caster.
-	SPEED         ## Temporary movement speed change (negative slows the target).
+	SPEED,        ## Temporary movement speed change (negative slows the target).
+	INTERRUPT,    ## Stops whatever the target is casting, plus a little damage.
+	DAMAGE_REDUCTION, ## The target takes `reduction` less damage for duration_seconds.
+	STUN,         ## The target can't move, cast or swing for duration_seconds.
+	STACK,        ## A stacking bleed: each cast adds a stack, up to max_stacks.
+	HOT,          ## Healing repeated over duration_seconds — the mirror of DOT.
+	BUFF          ## Flat power to everyone friendly nearby for duration_seconds.
 }
 
 enum TargetRule {
@@ -62,6 +68,12 @@ enum TargetRule {
 
 ## For SPEED: multiplier applied for duration_seconds. Below 1.0 is a slow.
 @export var speed_multiplier: float = 1.0
+
+## For DAMAGE_REDUCTION: the share of each hit that is removed, 0..1.
+@export var reduction: float = 0.3
+
+## For STACK: how high the bleed can stack.
+@export var max_stacks: int = 5
 
 @export var level_required: int = 1
 

@@ -43,6 +43,7 @@ func _ready() -> void:
 	await _check_quest_flow()
 	_check_combat()
 	await _check_abilities(zone)
+	await _check_status_effects(zone)
 	_check_death(zone)
 	_check_persistence()
 	_check_parties()
@@ -437,6 +438,160 @@ func _check_abilities(zone: Node) -> void:
 	var far_health: int = victim.get_node("Stats").health
 	bar.request_cast("necro_bolt", victim.get_path())
 	_report("out-of-range casts are refused", victim.get_node("Stats").health == far_health, "")
+
+
+# THE GAP THIS CLOSES: the class spec assumes interrupts, stuns, shields,
+# bleeds, heals-over-time and party buffs exist. Until now nothing in the
+# engine could stop a cast, and Broken Verse was a slow with a misleading name.
+# Every verb here is exercised for real against a live enemy from the zone.
+func _check_status_effects(zone: Node) -> void:
+	print("")
+	print("-- status effects and cast bars --")
+	var silence := AbilityDatabase.get_ability(&"bard_silence")
+	_report("Broken Verse is an interrupt", silence != null and silence.effect == AbilityData.Effect.INTERRUPT, "")
+	var kell := MobDatabase.get_mob(&"master_kell")
+	_report("Master Kell has Burn the Page as a cast", kell != null and kell.casts.size() > 0 and str(kell.casts[0].get("name", "")) == "Burn the Page", "")
+
+	var stats := _fake_player.get_node("Stats") as Stats
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var targeting := _fake_player.get_node("Targeting") as Targeting
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats.level = 20
+
+	var container := zone.get_node_or_null("MobContainer")
+	var caster: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and mob.mob_data and mob.mob_data.id == &"grave_binder" and not mob.is_friendly:
+			caster = mob
+			break
+	if caster == null:
+		_report("found a Grave-Binder to cast at", false, "")
+		return
+	# Take the pair somewhere quiet: the timed waits below must only ever see
+	# THIS enemy's casts, not its friends' swings. Its swing is parked too.
+	var caster_home := caster.home_position
+	var quiet := Vector3(0, 1, 10)
+	caster.global_position = quiet + Vector3(3, 0, 0)
+	caster.home_position = caster.global_position
+	caster._attack_timer = 999.0
+	_fake_player.global_position = quiet
+	targeting.set_target(caster)
+	caster.target = _fake_player
+	caster.state = Mob.State.ATTACKING
+
+	# A cast everyone can see.
+	var started := caster.start_cast(0)
+	_report("a caster winds up a visible cast", started and caster.is_casting and caster.cast_name == "Grave Bolt", caster.cast_name)
+	await get_tree().create_timer(0.3).timeout
+	var progress := caster.cast_progress()
+	_report("the cast bar fills from the local clock", progress > 0.05 and progress < 0.6, "%.2f after 0.3s" % progress)
+	var moved := caster.velocity.length()
+	_report("a casting enemy stands still", moved < 0.01, "speed %.2f" % moved)
+
+	# Broken Verse stops it, and says who did.
+	var stopped := {"name": "", "by": -1}
+	caster.cast_interrupted.connect(func(cast_name: String, by: int) -> void:
+		stopped["name"] = cast_name
+		stopped["by"] = by)
+	var health_before: int = stats.health
+	bar.request_cast("bard_silence", caster.get_path())
+	_report("Broken Verse interrupts the cast", not caster.is_casting and stopped["name"] == "Grave Bolt", "stopped '%s'" % stopped["name"])
+	_report("the interrupt is credited to the caster", stopped["by"] == 1, "peer %d" % stopped["by"])
+	_report("an interrupted caster is locked out", not caster.start_cast(0), "")
+	await get_tree().create_timer(1.6).timeout
+	_report("an interrupted cast never lands", stats.health == health_before, "%d -> %d" % [health_before, stats.health])
+
+	# Left alone, it lands.
+	health_before = stats.health
+	var landed := {"name": ""}
+	caster.cast_landed.connect(func(cast_name: String, _victim: Node3D) -> void: landed["name"] = cast_name)
+	_report("a cast can be forced past the lockout", caster.start_cast(0, true), "")
+	await get_tree().create_timer(1.8).timeout
+	_report("an uninterrupted cast lands on its target", landed["name"] == "Grave Bolt" and stats.health < health_before, "%d -> %d" % [health_before, stats.health])
+
+	# Stuns: the enemy stops, and its cast dies with it, interruptible or not.
+	var stun := AbilityData.new()
+	stun.id = &"test_stun"
+	stun.effect = AbilityData.Effect.STUN
+	stun.power = 5
+	stun.duration_seconds = 2.0
+	caster.cast_interruptible = true
+	caster.start_cast(0, true)
+	bar._execute(stun, _fake_player, caster, 0)
+	_report("a stun stops the enemy and breaks its cast", caster.is_stunned() and not caster.is_casting, "")
+	_report("a stunned enemy cannot start a cast", not caster.start_cast(0, true), "")
+
+	# Damage reduction halves what gets through.
+	var ward := AbilityData.new()
+	ward.id = &"test_ward"
+	ward.effect = AbilityData.Effect.DAMAGE_REDUCTION
+	ward.target_rule = AbilityData.TargetRule.SELF
+	ward.reduction = 0.5
+	ward.duration_seconds = 5.0
+	stats.revive()
+	bar._execute(ward, _fake_player, _fake_player, 0)
+	var share := StatusEffect.damage_multiplier(_fake_player)
+	_report("damage reduction is on the caster", is_equal_approx(share, 0.5), "share %.2f" % share)
+	var full: int = stats.max_health
+	stats.apply_damage(40 + stats.total_armor(), 0)
+	_report("a shielded hit lands for half", full - stats.health == 20, "took %d of 40" % (full - stats.health))
+
+	# A stacking bleed climbs, caps, and can be eaten.
+	var bleed := AbilityData.new()
+	bleed.id = &"test_bleed"
+	bleed.effect = AbilityData.Effect.STACK
+	bleed.power = 3
+	bleed.duration_seconds = 6.0
+	bleed.tick_seconds = 0.5
+	bleed.max_stacks = 3
+	for i in range(5):
+		bar._execute(bleed, _fake_player, caster, 0)
+	_report("a bleed stacks to its cap", StatusEffect.stack_count(caster, &"test_bleed") == 3, "%d stacks" % StatusEffect.stack_count(caster, &"test_bleed"))
+	var bleed_before: int = caster.get_node("Stats").health
+	await get_tree().create_timer(0.7).timeout
+	_report("stacks tick harder together", caster.get_node("Stats").health <= bleed_before - 9, "%d -> %d" % [bleed_before, caster.get_node("Stats").health])
+	var eaten := StatusEffect.consume_stacks(caster, &"test_bleed")
+	_report("a finisher can eat the stacks", eaten == 3 and StatusEffect.stack_count(caster, &"test_bleed") == 0, "ate %d" % eaten)
+
+	# A heal over time keeps healing after the cast.
+	stats.apply_damage(60 + stats.total_armor(), 0)
+	var hurt: int = stats.health
+	var hot := AbilityData.new()
+	hot.id = &"test_hot"
+	hot.effect = AbilityData.Effect.HOT
+	hot.target_rule = AbilityData.TargetRule.SELF
+	hot.power = 8
+	hot.duration_seconds = 4.0
+	hot.tick_seconds = 0.5
+	bar._execute(hot, _fake_player, _fake_player, 0)
+	await get_tree().create_timer(1.2).timeout
+	_report("a heal over time keeps healing", stats.health >= hurt + 16, "%d -> %d" % [hurt, stats.health])
+
+	# A party buff adds flat power to everyone in earshot.
+	var hymn := AbilityData.new()
+	hymn.id = &"test_hymn"
+	hymn.effect = AbilityData.Effect.BUFF
+	hymn.target_rule = AbilityData.TargetRule.GROUND
+	hymn.power = 15
+	hymn.aoe_radius = 20.0
+	hymn.duration_seconds = 5.0
+	var power_before := stats.total_power()
+	bar._execute(hymn, _fake_player, _fake_player, 0)
+	_report("a party buff raises power for its duration", stats.total_power() == power_before + 15, "%d -> %d" % [power_before, stats.total_power()])
+
+	# Clean up so later checks meet a normal enemy.
+	for effect in StatusEffect.all_on(_fake_player):
+		effect.free()
+	for effect in StatusEffect.all_on(caster):
+		effect.free()
+	caster._stun_remaining = 0.0
+	caster._attack_timer = 0.0
+	caster.state = Mob.State.IDLE
+	caster.target = null
+	caster.home_position = caster_home
+	caster.global_position = caster_home
+	stats.revive()
 
 
 func _check_death(zone: Node) -> void:

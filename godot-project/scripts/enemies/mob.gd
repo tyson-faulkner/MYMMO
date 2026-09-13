@@ -8,7 +8,17 @@ extends CharacterBody3D
 
 enum State { IDLE, CHASING, ATTACKING, RETURNING, DEAD }
 
+## Fired on the server when somebody stops a cast. The combat recorder and the
+## parse count these; "Most Interrupts" is a real award.
+signal cast_interrupted(cast_name: String, by_peer_id: int)
+## Fired on the server when a cast lands.
+signal cast_landed(cast_name: String, target: Node3D)
+
 const GRAVITY := 24.0
+## After an interrupt, a caster is silenced for this long before trying again.
+const INTERRUPT_LOCKOUT := 3.0
+## How far away a cast target may be if the cast entry doesn't say.
+const DEFAULT_CAST_RANGE := 20.0
 ## How close to home counts as "back where I started".
 const HOME_TOLERANCE := 0.6
 
@@ -49,6 +59,23 @@ var _model_player: AnimationPlayer = null
 var _clip: StringName = &""
 var _last_ground_position: Vector3 = Vector3.ZERO
 
+## Casting. `is_casting`, `cast_name`, `cast_interruptible` and the two clocks
+## are set on EVERY peer by begin_cast/end_cast, so a client can draw the bar
+## from its own clock without the server streaming progress at it. The rest is
+## server-only.
+var is_casting: bool = false
+var cast_name: String = ""
+var cast_interruptible: bool = true
+var _cast_started_msec: int = 0
+var _cast_seconds: float = 1.0
+var _cast_entry: Dictionary = {}
+var _cast_target: Node3D = null
+var _cast_remaining: float = 0.0
+var _cast_ready_at: Dictionary = {}
+var _cast_lockout: float = 0.0
+var _stun_remaining: float = 0.0
+var _cast_label: Label3D = null
+
 var _stats: Stats = null
 var _attack_timer: float = 0.0
 var _respawn_timer: float = 0.0
@@ -70,6 +97,17 @@ func _ready() -> void:
 	_stats.died.connect(_on_died)
 	_on_health_changed(_stats.health, _stats.max_health)
 	add_to_group("Hostiles")
+	_cast_label = Label3D.new()
+	_cast_label.name = "CastLabel"
+	_cast_label.position = Vector3(0, 2.0, 0)
+	_cast_label.pixel_size = 0.003
+	_cast_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_cast_label.no_depth_test = true
+	_cast_label.font_size = 44
+	_cast_label.outline_size = 14
+	_cast_label.modulate = Color(1.0, 0.75, 0.35)
+	_cast_label.visible = false
+	add_child(_cast_label)
 
 
 func _apply_mob_data() -> void:
@@ -129,6 +167,7 @@ func _play_clip(clip: StringName) -> void:
 ## run the AI, but they do see the synchronised position change, which is all
 ## a run cycle needs to know.
 func _process(delta: float) -> void:
+	_refresh_cast_label()
 	if _model_player == null or delta <= 0.0:
 		return
 	var moved := global_position - _last_ground_position
@@ -179,6 +218,27 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_attack_timer = maxf(0.0, _attack_timer - delta)
+	_cast_lockout = maxf(0.0, _cast_lockout - delta)
+
+	if _stun_remaining > 0.0:
+		# Stunned: nothing happens except gravity. The cast, if any, is
+		# already gone — apply_stun() stopped it.
+		_stun_remaining -= delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= GRAVITY * delta
+		move_and_slide()
+		return
+
+	if is_casting:
+		_tick_cast(delta)
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= GRAVITY * delta
+		move_and_slide()
+		return
 
 	if _speed_modifier_remaining > 0.0:
 		_speed_modifier_remaining -= delta
@@ -255,6 +315,8 @@ func _tick_attacking() -> void:
 		state = State.CHASING
 		return
 	_face(target.global_position)
+	if _try_begin_cast():
+		return
 	if _attack_timer > 0.0:
 		return
 	_attack_timer = mob_data.attack_cooldown if mob_data else 1.8
@@ -277,6 +339,192 @@ func play_attack() -> void:
 	var tween := create_tween()
 	tween.tween_property(body, "position:z", -0.25, 0.08)
 	tween.tween_property(body, "position:z", 0.0, 0.16)
+
+
+# --- Casting ------------------------------------------------------------------
+#
+# A cast is a wind-up everyone can see, then a hit. The wind-up is the point:
+# it gives the party a few seconds to do something about it — an interrupt, a
+# stun, or just moving. Ordinary casters carry one cast; bosses carry several,
+# and the mechanics engine adds its own on top of these.
+
+
+## Server. Looks for a cast that is ready and has a target, and starts it.
+func _try_begin_cast() -> bool:
+	if mob_data == null or mob_data.casts.is_empty() or _cast_lockout > 0.0:
+		return false
+	var now := Time.get_ticks_msec()
+	for index in range(mob_data.casts.size()):
+		var entry: Dictionary = mob_data.casts[index]
+		if not _cast_ready_at.has(index):
+			var first := float(entry.get("first", float(entry.get("every", 10.0)) * 0.5))
+			_cast_ready_at[index] = now + int(first * 1000.0)
+		if now < int(_cast_ready_at[index]):
+			continue
+		if start_cast(index):
+			return true
+	return false
+
+
+## Server. Begins cast `index` from mob_data.casts if it has a target in range.
+## Public so bosses and tests can force one. Returns whether it started.
+func start_cast(index: int, ignore_cooldowns: bool = false) -> bool:
+	if not multiplayer.is_server() or mob_data == null or index < 0 or index >= mob_data.casts.size():
+		return false
+	if is_casting or state == State.DEAD or _stun_remaining > 0.0:
+		return false
+	if not ignore_cooldowns and _cast_lockout > 0.0:
+		return false
+	var entry: Dictionary = mob_data.casts[index]
+	var chosen := _pick_cast_target(str(entry.get("target", "current")), float(entry.get("range", DEFAULT_CAST_RANGE)))
+	if chosen == null:
+		return false
+	_cast_entry = entry
+	_cast_target = chosen
+	_cast_remaining = maxf(0.1, float(entry.get("cast", 1.5)))
+	_cast_ready_at[index] = Time.get_ticks_msec() + int(float(entry.get("every", 10.0)) * 1000.0)
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_face(chosen.global_position)
+	begin_cast(str(entry.get("name", "Cast")), _cast_remaining, bool(entry.get("interruptible", true)))
+	begin_cast.rpc(cast_name, _cast_remaining, cast_interruptible)
+	return true
+
+
+func _pick_cast_target(rule: String, cast_range: float) -> Node3D:
+	match rule:
+		"random":
+			var candidates := _players_within(cast_range)
+			return candidates.pick_random() if not candidates.is_empty() else null
+		"furthest":
+			var furthest: Node3D = null
+			var best := -1.0
+			for candidate in _players_within(cast_range):
+				var distance := global_position.distance_to(candidate.global_position)
+				if distance > best:
+					best = distance
+					furthest = candidate
+			return furthest
+		_:
+			if _is_target_valid() and global_position.distance_to(target.global_position) <= cast_range:
+				return target
+			return null
+
+
+func _players_within(radius: float) -> Array[Node3D]:
+	var found: Array[Node3D] = []
+	for container in get_tree().get_nodes_in_group("Players"):
+		for child in container.get_children():
+			var character := child as Node3D
+			if character == null or not character.is_inside_tree():
+				continue
+			var character_stats := character.get_node_or_null("Stats") as Stats
+			if character_stats and character_stats.is_dead:
+				continue
+			if global_position.distance_to(character.global_position) <= radius:
+				found.append(character)
+	return found
+
+
+func _tick_cast(delta: float) -> void:
+	if _cast_target and is_instance_valid(_cast_target):
+		_face(_cast_target.global_position)
+	_cast_remaining -= delta
+	if _cast_remaining > 0.0:
+		return
+	_land_cast()
+
+
+func _land_cast() -> void:
+	var entry := _cast_entry
+	var victim := _cast_target
+	var landed_name := cast_name
+	end_cast(false)
+	end_cast.rpc(false)
+	var power := int(entry.get("power", _scaled_damage()))
+	if mob_data and mob_data.is_boss:
+		power = int(round(float(power) * (1.0 + 0.12 * float(maxi(1, _count_players()) - 1))))
+	match str(entry.get("effect", "damage")):
+		"heal":
+			_stats.heal(power)
+		_:
+			if victim and is_instance_valid(victim):
+				var victim_stats := victim.get_node_or_null("Stats") as Stats
+				if victim_stats and not victim_stats.is_dead:
+					victim_stats.apply_damage(power, 0)
+	cast_landed.emit(landed_name, victim)
+
+
+## Server. Stops the cast in progress. Returns true if there was one to stop.
+## An uninterruptible cast ignores this unless `force` (a stun) says otherwise.
+func interrupt_cast(by_peer_id: int = 0, force: bool = false) -> bool:
+	if not multiplayer.is_server() or not is_casting:
+		return false
+	if not cast_interruptible and not force:
+		return false
+	var stopped := cast_name
+	_cast_lockout = INTERRUPT_LOCKOUT
+	end_cast(true)
+	end_cast.rpc(true)
+	cast_interrupted.emit(stopped, by_peer_id)
+	return true
+
+
+## Server. Stops everything for a while; also breaks any cast, interruptible or not.
+func apply_stun(seconds: float) -> void:
+	if not multiplayer.is_server() or seconds <= 0.0:
+		return
+	_stun_remaining = maxf(_stun_remaining, seconds)
+	interrupt_cast(0, true)
+	velocity.x = 0.0
+	velocity.z = 0.0
+
+
+func is_stunned() -> bool:
+	return _stun_remaining > 0.0
+
+
+## 0..1, how far along the visible cast is. Any peer can ask.
+func cast_progress() -> float:
+	if not is_casting or _cast_seconds <= 0.0:
+		return 0.0
+	return clampf(float(Time.get_ticks_msec() - _cast_started_msec) / (_cast_seconds * 1000.0), 0.0, 1.0)
+
+
+@rpc("authority", "call_local", "reliable")
+func begin_cast(shown_name: String, seconds: float, interruptible: bool) -> void:
+	is_casting = true
+	cast_name = shown_name
+	cast_interruptible = interruptible
+	_cast_seconds = seconds
+	_cast_started_msec = Time.get_ticks_msec()
+
+
+@rpc("authority", "call_local", "reliable")
+func end_cast(interrupted: bool) -> void:
+	is_casting = false
+	_cast_entry = {}
+	_cast_target = null
+	if _cast_label:
+		if interrupted:
+			_cast_label.text = "Interrupted"
+			_cast_label.modulate = Color(0.8, 0.85, 1.0)
+			var tween := create_tween()
+			tween.tween_interval(0.7)
+			tween.tween_callback(func() -> void:
+				if not is_casting:
+					_cast_label.visible = false)
+		else:
+			_cast_label.visible = false
+
+
+func _refresh_cast_label() -> void:
+	if _cast_label == null or not is_casting:
+		return
+	var filled := int(round(cast_progress() * 10.0))
+	_cast_label.visible = true
+	_cast_label.modulate = Color(1.0, 0.75, 0.35) if cast_interruptible else Color(1.0, 0.45, 0.4)
+	_cast_label.text = "%s\n%s%s" % [cast_name, "▮".repeat(filled), "▯".repeat(10 - filled)]
 
 
 func _tick_returning() -> void:
@@ -471,6 +719,10 @@ func _on_died(killer_peer_id: int) -> void:
 	target = null
 	velocity = Vector3.ZERO
 	_last_damage_source = killer_peer_id
+	_stun_remaining = 0.0
+	if is_casting and multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		end_cast(true)
+		end_cast.rpc(true)
 	set_visual_dead.rpc(true)
 	set_visual_dead(true)
 	if not multiplayer.is_server():

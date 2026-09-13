@@ -32,6 +32,10 @@ var _slot_cooldowns: Array[Label] = []
 @onready var _target_frame: PanelContainer = $TargetFrame
 @onready var _target_name: Label = $TargetFrame/Margin/Rows/TargetName
 @onready var _target_health: ProgressBar = $TargetFrame/Margin/Rows/TargetHealth
+## The target's cast bar, built in code under the health bar: fills while an
+## enemy winds up, orange if you can stop it, red if you can't.
+var _target_cast: ProgressBar = null
+var _target_cast_text: Label = null
 
 @onready var _action_bar: HBoxContainer = $ActionBar/Slots
 @onready var _tracker: VBoxContainer = $QuestTracker/Rows
@@ -46,6 +50,7 @@ var _slot_cooldowns: Array[Label] = []
 
 func _ready() -> void:
 	_build_action_bar()
+	_build_target_cast_bar()
 	_target_frame.visible = false
 	_quest_panel.visible = false
 	_toast.visible = false
@@ -240,6 +245,38 @@ func _refresh_target_frame() -> void:
 		_target_name.text = str(target.name)
 	_target_health.max_value = maxi(1, stats.max_health)
 	_target_health.value = stats.health
+	_refresh_target_cast(mob)
+
+
+func _build_target_cast_bar() -> void:
+	var rows := _target_health.get_parent()
+	_target_cast = ProgressBar.new()
+	_target_cast.name = "TargetCast"
+	_target_cast.min_value = 0.0
+	_target_cast.max_value = 1.0
+	_target_cast.show_percentage = false
+	_target_cast.custom_minimum_size = Vector2(0, 16)
+	_target_cast.visible = false
+	rows.add_child(_target_cast)
+	_target_cast_text = Label.new()
+	_target_cast_text.name = "Text"
+	_target_cast_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_target_cast_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_target_cast_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_target_cast_text.add_theme_font_size_override("font_size", 12)
+	_target_cast.add_child(_target_cast_text)
+
+
+func _refresh_target_cast(mob: Mob) -> void:
+	if _target_cast == null:
+		return
+	if mob == null or not mob.is_casting:
+		_target_cast.visible = false
+		return
+	_target_cast.visible = true
+	_target_cast.value = mob.cast_progress()
+	_target_cast.modulate = Color(1.0, 0.75, 0.35) if mob.cast_interruptible else Color(1.0, 0.45, 0.4)
+	_target_cast_text.text = mob.cast_name if mob.cast_interruptible else "%s  (cannot be stopped)" % mob.cast_name
 
 
 # --- Action bar ------------------------------------------------------------

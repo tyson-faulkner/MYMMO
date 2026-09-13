@@ -89,6 +89,11 @@ var _speed_modifier_remaining: float = 0.0
 ## that ticks itself away, and a mount has to stay until the rider gets off.
 var mount_speed_multiplier: float = 1.0
 
+## Stunned: no moving, no casting, no swinging until this runs out. The server
+## sets it and the owner's client keeps its own copy, because the owner is the
+## one whose input has to be ignored.
+var _stun_remaining: float = 0.0
+
 ## Being dead. A ghost moves faster than the living, which is the entire reason
 ## a corpse run is tolerable — WoW's mistake was making the walk back cost the
 ## same as the walk out. You cannot be mounted and dead at once, so this never
@@ -195,6 +200,9 @@ func _physics_process(delta):
 		_apply_gravity(delta)
 		move_and_slide()
 		return
+
+	if is_stunned():
+		should_freeze = true
 
 	if should_freeze:
 		_freeze()
@@ -453,11 +461,31 @@ func sync_speed_modifier(multiplier: float, seconds: float) -> void:
 
 
 func _tick_speed_modifier(delta: float) -> void:
+	if _stun_remaining > 0.0:
+		_stun_remaining -= delta
 	if _speed_modifier_remaining <= 0.0:
 		return
 	_speed_modifier_remaining -= delta
 	if _speed_modifier_remaining <= 0.0:
 		speed_multiplier = 1.0
+
+
+# Called on the server by AbilityBar (or a boss); relayed to whoever owns this
+# body so their input stops mattering for a while.
+func apply_stun(seconds: float) -> void:
+	if not multiplayer.is_server() or seconds <= 0.0:
+		return
+	sync_stun(seconds)
+	sync_stun.rpc(seconds)
+
+
+@rpc("authority", "reliable")
+func sync_stun(seconds: float) -> void:
+	_stun_remaining = maxf(_stun_remaining, seconds)
+
+
+func is_stunned() -> bool:
+	return _stun_remaining > 0.0
 
 
 func _check_out_of_bounds():

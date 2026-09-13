@@ -39,7 +39,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   engine, grudge bosses and seasons, the combat recorder, specs and rune
   moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 189/189 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 209/209 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +200,10 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Cast progress is never streamed.** `begin_cast`/`end_cast`
+  RPCs carry the name and length once; every peer draws the bar from its
+  own clock. Stuns are not StatusEffects: they need the body to stop, so
+  Mob and Player each own a stun clock and everything else asks `is_stunned()`.
 - 2026-09-13 — **Enemy models live in `MobDatabase.MODELS`, not per mob
   entry.** One table says which of the eleven models each of the 36 mob ids
   wears, so a zone-three retainer reusing the Stag Outrider is one line, and
@@ -215,6 +219,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Six new effect verbs, enemy cast bars, Broken Verse interrupts
+
+- **Changed:** `AbilityData.Effect` gains INTERRUPT, DAMAGE_REDUCTION, STUN, STACK, HOT and BUFF, all executed in `AbilityBar._execute`. New `scripts/combat/status_effect.gd` holds the timed ones as children of the target (mirror of DamageOverTime); `Stats.apply_damage` reads the reduction and `total_power` reads buffs. Enemies can cast: `MobData.casts` entries (name, cast, every, power, target rule, range, interruptible) drive a wind-up in `Mob` with a 3D label bar over its head and a bar in the HUD target frame; `interrupt_cast()` stops it with a 3s lockout and `apply_stun()` stops everything. Grave-Binder, Field-Binder, Crown-Binder and Master Kell ("Burn the Page", random target) cast. Broken Verse is now `interrupt`. Players get `apply_stun`/`is_stunned`, which also refuses casts server-side.
+- **Test:** smoke 209/209 with 20 new checks (visible cast, bar fills, interrupt stops and credits, lockout, interrupted cast never lands, forced cast lands, stun breaks casts, halved hit, bleed stacks/caps/consumed, HoT ticks, buff adds power). In-game shot: target frame cast bar and over-head label seen; live player stun confirmed.
+- **Surprising:** the first run failed only because the Grave-Binder's friends walked over and hit the test player mid-wait. Timed checks now teleport the pair to the empty square first. Note for the boss engine: `_execute` can be called with a hand-built AbilityData, so mechanics need no bar entry.
 
 ### 2026-09-13 — Enemy models: ten body variants and the vale wolf
 

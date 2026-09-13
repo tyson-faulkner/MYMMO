@@ -149,6 +149,31 @@ func _ready() -> void:
 		var player: AnimationPlayer = model.get_node_or_null("AnimationPlayer") if model else null
 		print("enemy: %s model=%s clip=%s" % [mob_id, model != null, player.current_animation if player else "-"])
 
+	# A cast bar, above the enemy and in the target frame, and a stun on the
+	# player, which the fake player in the smoke test cannot show.
+	var binder: Mob = null
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var mob := node as Mob
+		if mob and mob.mob_data and mob.mob_data.id == &"hedge_bandit" and not mob.is_friendly:
+			binder = mob
+			break
+	if binder:
+		binder.mob_data = binder.mob_data.duplicate()
+		binder.mob_data.casts = [{"name": "Grave Bolt", "cast": 6.0, "every": 20.0, "power": 1, "range": 30.0}]
+		await _place(binder.global_position + Vector3(0, 0.5, 3.5))
+		_player._spring_arm_offset.get_node("SpringArm3D/Camera3D").current = true
+		var targeting: Targeting = _player.get_node("Targeting")
+		targeting.set_target(binder)
+		binder.target = _player
+		binder.state = Mob.State.ATTACKING
+		var started := binder.start_cast(0, true)
+		await get_tree().create_timer(2.0).timeout
+		await _save("enemy_cast_bar")
+		print("cast: started=%s casting=%s progress=%.2f label=%s" % [started, binder.is_casting, binder.cast_progress(), binder.get_node("CastLabel").visible])
+		_player.apply_stun(1.0)
+		print("stun: player stunned=%s" % _player.is_stunned())
+		_camera.current = true
+
 	print("SHOTS COMPLETE")
 	get_tree().quit(0)
 

@@ -183,15 +183,13 @@ const DEFINITIONS := {
 		"name": "Broken Verse",
 		"class": &"bard",
 		"slot": 6,
-		"effect": "speed",
+		"effect": "interrupt",
 		"power": 22,
-		"speed": 0.5,
 		"cost": 20,
 		"cooldown": 12.0,
 		"range": 22.0,
-		"duration": 5.0,
 		"level": 11,
-		"text": "Deliberately wrong. Whatever hears it loses its footing."
+		"text": "Deliberately wrong. Whatever was being said or sung stops mid-line."
 	},
 	&"bard_ballad":
 	{
@@ -416,7 +414,13 @@ const EFFECT_NAMES := {
 	"drain": AbilityData.Effect.DRAIN,
 	"taunt": AbilityData.Effect.TAUNT,
 	"summon": AbilityData.Effect.SUMMON,
-	"speed": AbilityData.Effect.SPEED
+	"speed": AbilityData.Effect.SPEED,
+	"interrupt": AbilityData.Effect.INTERRUPT,
+	"damage_reduction": AbilityData.Effect.DAMAGE_REDUCTION,
+	"stun": AbilityData.Effect.STUN,
+	"stack": AbilityData.Effect.STACK,
+	"hot": AbilityData.Effect.HOT,
+	"buff": AbilityData.Effect.BUFF
 }
 
 const TARGET_NAMES := {
@@ -485,6 +489,8 @@ func _build(ability_id: StringName, entry: Dictionary) -> AbilityData:
 	ability.summon_mob_id = StringName(str(entry.get("summon", &"")))
 	ability.summon_seconds = float(entry.get("summon_seconds", 30.0))
 	ability.speed_multiplier = float(entry.get("speed", 1.0))
+	ability.reduction = clampf(float(entry.get("reduction", 0.3)), 0.0, 1.0)
+	ability.max_stacks = maxi(1, int(entry.get("max_stacks", 5)))
 	ability.level_required = int(entry.get("level", 1))
 	ability.description = str(entry.get("text", ""))
 	return ability

@@ -47,6 +47,19 @@ extends Resource
 ## human is the shared body re-textured; the wolf is its own quadruped.
 @export var model_path: String = ""
 
+## Cast abilities, each a dictionary the Mob reads at runtime:
+##   name          shown on the cast bar
+##   cast          seconds of wind-up (the bar)
+##   every         seconds between casts
+##   power         damage (or healing) when it lands
+##   effect        "damage" (default) or "heal" (heals the caster)
+##   target        "current" (default), "random", "furthest"
+##   range         how far the target may be, default 20
+##   interruptible true by default; false is a boss's unstoppable cast
+##   first         seconds before the first cast, default half of `every`
+## Bosses get more of these from the mechanics engine; ordinary casters get one.
+@export var casts: Array = []
+
 ## Item ids that can drop, each with a 0..1 chance.
 @export var loot_table: Dictionary = {}
 
