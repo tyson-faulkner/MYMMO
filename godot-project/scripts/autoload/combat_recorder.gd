@@ -667,6 +667,8 @@ func _settle_records(recap: Dictionary, peers: Array) -> void:
 			recap["new_records"].append(line)
 		if float(recap["best_seconds"]) <= 0.0:
 			recap["best_seconds"] = seconds
+	# Records are history: the skald writes them down.
+	Chronicle.record_lines(recap["new_records"])
 
 
 # --- Lookups -------------------------------------------------------------------

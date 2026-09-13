@@ -18,7 +18,8 @@ enum Kind {
 	WEAKEN,            ## value = share taken off the bearer's own hits (Mocking Verse).
 	UNKILLABLE,        ## the bearer cannot drop below 1 health (Last Stand).
 	CHEAT_DEATH,       ## value = share of max health lethal damage leaves instead (Refuse the Grave).
-	CHARGES            ## stacks = free, doubled casts of the ability named by effect_id.
+	CHARGES,           ## stacks = free, doubled casts of the ability named by effect_id.
+	OUTPUT_MULT        ## value = share added to everything the bearer does (paying respects: 0.05).
 }
 
 ## Chorus: heals-over-time from this peer tick twice as fast until then.
@@ -145,6 +146,16 @@ static func haste_hots(tree: SceneTree, caster_peer_id: int, seconds: float) -> 
 					effect.hasted_until_msec = until
 					hasted += 1
 	return hasted
+
+
+## What the bearer's damage and healing are multiplied by: 1.05 after
+## paying respects at a gravestone.
+static func output_multiplier(target: Node) -> float:
+	var total := 1.0
+	for effect in all_on(target):
+		if effect.kind == Kind.OUTPUT_MULT:
+			total += effect.value
+	return total
 
 
 ## Flat power from every buff on them, added to hits and heals.

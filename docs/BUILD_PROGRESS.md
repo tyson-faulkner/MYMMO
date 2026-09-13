@@ -35,11 +35,18 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   grass and marsh-mud ground, the Phase 3 props (fountain, stalls, lamps,
   trees, planters), and **every enemy modelled**: ten textured variants of the
   shared body plus the vale wolf, worn by all 36 mob types.
-- **Next:** ability effect types and enemy cast bars, the boss mechanics
-  engine, grudge bosses and seasons, the combat recorder, specs and rune
-  moves, then the QoL pass (minimap, healer frames, chests, chronicle).
-- **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 311/311 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Also shipped (2026-09-13 build list):** six new ability effects and
+  enemy cast bars, the boss mechanics engine (pools, braziers, the dais),
+  grudge bosses and seasons, the combat recorder with meter/recap/coach/parse,
+  eight specs and twelve rune moves, quest markers with a minimap and map,
+  healer party frames with mouseover, upgrade arrows, gravestones and the
+  chronicle, and chests.
+- **Next:** play it. The remaining spec items are art (bookshelf, lectern,
+  brazier, throne, banner props; boss skins for season two), the claimants'
+  shared-health rule and the heroic raid, and moving records/chronicle into a
+  Nakama server module when saves go server-authoritative.
+- **Loop status:** build list complete
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 343/343 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +207,10 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **The map is two instances of one drawing.** Minimap and big
+  map are the same `MapView` at two scales, so they can never disagree.
+- 2026-09-13 — **The chronicle rides in the host's character save** (key
+  "chronicle", peer 1 only), for the same reason the records do.
 - 2026-09-13 — **Specs are a database, not fields on the class .tres.** The
   spec doc said `ClassData` gains a list; every other content table in the
   game is an autoload dictionary, so specs are too (`spec_database.gd`), and
@@ -246,6 +257,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Quest markers and minimap, healer frames, upgrade arrows, gravestones and chronicle, chests
+
+- **Changed:** `scripts/world/quest_markers.gd` derives every objective's area from data (spawner bounding circles, the trigger's box, the NPC); `scripts/ui/map_view.gd` draws it as the minimap (top right, north up) and the big map (M): numbered translucent circles, NPC marks, enemies, party in class colours, an edge arrow with distance for the tracked quest (click a title in the tracker) that becomes "here" on arrival, when matching enemies get a gold diamond over their heads; a "what now" line names the next quest and who has it; NPC marks go grey for in-progress and too-low-level. Party frames (class coloured, health, resource, known debuffs, greyed out of heal range, the tank marked) with mouseover casting in `AbilityBar` and a smart default to the lowest member in range; Marching Air is party-wide. Upgrade arrows: per-class stat weights in `GearDatabase`, `PlayerInventory.compare_to_worn` (rings against the worse), a green ▲ on bag slots and the delta in the tooltip. `scripts/world/gravestone.gd`: a stone where you fell with your name and killer (+5% for 10 minutes for paying respects, once per stone, +8% at a cairn, Widow's Salt doubles). `scripts/autoload/chronicle.gd` (new autoload): first falls, first grudge tiers, records, deaths, season turnover; Ilsa recites the weekly line and the last five; rides in the host's save. `scripts/world/chest.gd`: common (Sovereigns + a run-changing consumable: Marcher's Draught, lesser Ferryman's Coin, Widow's Salt, all wired into DeathHandler/Gravestone), rare (gear for your weakest slot or a title, moves between spots, announced), and the season chest behind the throne. Titles live in RecordBook and show after your name.
+- **Test:** smoke 343/343 with 32 new checks. In-game shots of the square (tracker, minimap arrow, gravestone, chest) and the big map looked at.
+- **Surprising:** clients only know the debuffs the server synced to them, so a party frame on a client lists less than the host's; honest, not wrong. Gravestones live for a day of play in memory, not across restarts.
 
 ### 2026-09-13 — Eight specs and twelve rune moves
 

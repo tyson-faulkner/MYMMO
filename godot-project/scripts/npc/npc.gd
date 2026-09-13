@@ -61,14 +61,31 @@ func _process(_delta: float) -> void:
 	if quest_log == null:
 		_quest_marker.visible = false
 		return
+	# Gold for something you can do now; grey for "in progress" and "too low
+	# a level yet", so the mark still tells you the person matters.
 	var marker := ""
+	var colour := Color(1.0, 0.85, 0.2)
+	var stats := local_player.get_node_or_null("Stats") as Stats
+	var level := stats.level if stats else 1
 	for quest_id in QuestDatabase.quests_offered_by(npc_id):
-		if quest_log.is_active(quest_id) and quest_log.is_complete(quest_id):
+		var quest := QuestDatabase.get_quest(quest_id)
+		if quest == null:
+			continue
+		if quest_log.is_active(quest_id) and quest_log.is_complete(quest_id) and quest.turn_in_id == npc_id:
 			marker = "?"
+			colour = Color(1.0, 0.85, 0.2)
 			break
 		if quest_log.can_accept(quest_id):
 			marker = "!"
+			colour = Color(1.0, 0.85, 0.2)
+		elif marker.is_empty() and quest_log.is_active(quest_id) and quest.turn_in_id == npc_id:
+			marker = "?"
+			colour = Color(0.6, 0.6, 0.6)
+		elif marker.is_empty() and not quest_log.is_turned_in(quest_id) and not quest_log.is_active(quest_id) and quest.required_level > level and (quest.prerequisite == &"" or quest_log.is_turned_in(quest.prerequisite)):
+			marker = "!"
+			colour = Color(0.6, 0.6, 0.6)
 	_quest_marker.text = marker
+	_quest_marker.modulate = colour
 	_quest_marker.visible = marker != ""
 
 

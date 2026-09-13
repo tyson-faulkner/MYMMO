@@ -74,6 +74,7 @@ func _ready() -> void:
 	await _check_boss_mechanics(kingsmourn)
 	await _check_grudge_and_seasons(kingsmourn)
 	await _check_combat_recorder(kingsmourn)
+	await _check_quality_of_life(zone, kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -2003,6 +2004,219 @@ func _check_combat_recorder(kingsmourn: Node3D) -> void:
 	boss.target = null
 	boss._attack_timer = 0.0
 	CombatRecorder.live.clear()
+	stats.revive()
+	_fake_player.global_position = Vector3(0, 1, 10)
+
+
+# THE GAP THIS CLOSES: the quality-of-life spec exists to not ship the
+# problems WoW's addons patch. Markers must come from data, heals must find
+# their target, an upgrade must say so, a death must leave a stone, the
+# skald must remember, and a chest must never disappoint — each checked here.
+func _check_quality_of_life(zone: Node3D, kingsmourn: Node3D) -> void:
+	print("")
+	print("-- quest markers, healer frames, upgrade arrows, gravestones, chronicle, chests --")
+	var stats := _fake_player.get_node("Stats") as Stats
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var quest_log := _fake_player.get_node("QuestLog") as QuestLog
+	var death := _fake_player.get_node("DeathHandler") as DeathHandler
+	var book := _fake_player.get_node("RecordBook") as RecordBook
+
+	# --- Quest markers, derived from data ---
+	var kill_quest: QuestData = null
+	var kill_index := -1
+	var talk_quest: QuestData = null
+	var talk_index := -1
+	var reach_quest: QuestData = null
+	var reach_index := -1
+	for quest_id in QuestDatabase.get_all_ids():
+		var quest := QuestDatabase.get_quest(quest_id)
+		for index in range(quest.objective_count()):
+			var kind := str(quest.objectives[index].get("type", ""))
+			if kill_quest == null and kind in ["kill", "kill_tag"]:
+				kill_quest = quest
+				kill_index = index
+			elif talk_quest == null and kind == "talk":
+				talk_quest = quest
+				talk_index = index
+			elif reach_quest == null and kind == "reach":
+				reach_quest = quest
+				reach_index = index
+	var kill_area := QuestMarkers.objective_area(get_tree(), kill_quest, kill_index) if kill_quest else {"found": false}
+	var kill_ok := bool(kill_area["found"]) and float(kill_area["radius"]) > 3.0
+	if kill_ok:
+		var nearest := INF
+		for spawner in _all_spawners(zone):
+			nearest = minf(nearest, spawner.global_position.distance_to(kill_area["centre"]))
+		kill_ok = nearest <= float(kill_area["radius"])
+	_report("a kill objective's area is the bounding circle of its spawners", kill_ok, "%s r=%.0f" % [str(kill_area.get("centre", "?")), float(kill_area.get("radius", 0.0))])
+	var talk_area := QuestMarkers.objective_area(get_tree(), talk_quest, talk_index) if talk_quest else {"found": false}
+	var talk_ok := bool(talk_area["found"])
+	if talk_ok:
+		var npc_target := StringName(str(talk_quest.objectives[talk_index].get("target", "")))
+		for npc in _all_npcs(zone):
+			if npc.npc_id == npc_target:
+				talk_ok = npc.global_position.distance_to(talk_area["centre"]) < 0.5
+	_report("a talk objective points at the NPC", talk_ok, "")
+	var reach_area := QuestMarkers.objective_area(get_tree(), reach_quest, reach_index) if reach_quest else {"found": false}
+	_report("a reach objective uses the trigger's box", bool(reach_area["found"]) and float(reach_area["radius"]) >= 4.0, "r=%.0f" % float(reach_area.get("radius", 0.0)))
+	var container := zone.get_node("MobContainer")
+	var counted: Mob = null
+	var boss_any: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob == null or mob.mob_data == null:
+			continue
+		if counted == null and kill_quest and QuestMarkers.mob_matches(mob, kill_quest, kill_index):
+			counted = mob
+		if boss_any == null and mob.mob_data.is_boss:
+			boss_any = mob
+	_report("the enemies that count for the objective are known", counted != null and (boss_any == null or not QuestMarkers.mob_matches(boss_any, kill_quest, kill_index)), counted.mob_data.display_name if counted else "none")
+	var fresh_log := Node.new()
+	fresh_log.set_script(PLAYER_QUEST_LOG)
+	fresh_log.name = "QuestLog"
+	var fresh_body := Node3D.new()
+	fresh_body.add_child(fresh_log)
+	add_child(fresh_body)
+	var what := QuestMarkers.what_now(fresh_log, 1)
+	_report("with nothing tracked the log says what now, and who has it", what.begins_with("What now") and what.contains("see"), what)
+	fresh_body.queue_free()
+	var accepted := false
+	for quest_id in QuestDatabase.get_all_ids():
+		if quest_log.can_accept(quest_id):
+			accepted = quest_log.accept_quest(quest_id)
+			break
+	var areas := QuestMarkers.active_areas(get_tree(), quest_log)
+	_report("every active objective has a numbered area", not accepted or (areas.size() >= 1 and int(areas[0]["number"]) >= 1), "%d areas" % areas.size())
+
+	# --- Healer frames: mouseover, smart default, party-wide buffs ---
+	var friend := CharacterBody3D.new()
+	friend.name = "6"
+	var friend_stats := Node.new()
+	friend_stats.set_script(PLAYER_STATS)
+	friend_stats.name = "Stats"
+	friend.add_child(friend_stats)
+	_players.add_child(friend)
+	friend.global_position = _fake_player.global_position + Vector3(3, 0, 0)
+	(friend_stats as Stats).apply_damage(60, 0)
+	PartyManager.add_to_party(1, 6)
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats.level = 20
+	stats.revive()
+	_fake_player.get_node("Targeting").set_target(null)
+	bar.hovered_ally = null
+	var mend := AbilityDatabase.get_ability(&"bard_mend")
+	_report("a heal with no target finds the lowest party member in range", bar._resolve_target(mend) == friend, "")
+	bar.hovered_ally = _fake_player
+	_report("mouseover on a frame wins", bar._resolve_target(mend) == _fake_player, "")
+	bar.hovered_ally = null
+	friend.global_position = _fake_player.global_position + Vector3(60, 0, 0)
+	_report("out of range, the heal falls back to you", bar._resolve_target(mend) == _fake_player, "")
+	PartyManager.leave_party(6)
+	friend.queue_free()
+	var march := AbilityDatabase.get_ability(&"bard_march")
+	_report("buffs are party-wide", march.target_rule == AbilityData.TargetRule.GROUND and march.aoe_radius > 0.0, "")
+
+	# --- Upgrade arrows ---
+	var inventory := PlayerInventory.new()
+	inventory.get_gear_slot(&"chest").item_id = "gear_levy_chest"
+	inventory.get_gear_slot(&"chest").quantity = 1
+	var better := inventory.compare_to_worn(ItemDatabase.get_item("gear_marcher_chest"), &"valkyr")
+	var same := inventory.compare_to_worn(ItemDatabase.get_item("gear_levy_chest"), &"valkyr")
+	_report("a better chestpiece shows as an upgrade with its deltas", bool(better["upgrade"]) and int(better["armor"]) > 0 and not bool(same["upgrade"]), "+%d armour, +%d stamina" % [int(better["armor"]), int(better["stamina"])])
+	inventory.get_gear_slot(&"ring1").item_id = "gear_marcher_ring"
+	inventory.get_gear_slot(&"ring1").quantity = 1
+	inventory.get_gear_slot(&"ring2").item_id = "gear_levy_ring"
+	inventory.get_gear_slot(&"ring2").quantity = 1
+	var ring := inventory.compare_to_worn(ItemDatabase.get_item("gear_sovereign_ring"), &"bard")
+	_report("rings compare against the worse of the two", ring["against"] != null and (ring["against"] as Item).id == "gear_levy_ring", "")
+	var chest_item := ItemDatabase.get_item("gear_sovereign_chest")
+	_report("stat weights differ by class", GearDatabase.score_for_class(chest_item, &"valkyr") > GearDatabase.score_for_class(chest_item, &"necromancer"), "")
+	_report("the weakest slot is the empty one", inventory.weakest_gear_key(&"valkyr") == &"head" and GearDatabase.upgrade_for(inventory, &"valkyr") == &"gear_levy_head", str(GearDatabase.upgrade_for(inventory, &"valkyr")))
+	for key in PlayerInventory.GEAR_KEYS:
+		var slot_id := "gear_sovereign_%s" % [key.trim_suffix("1").trim_suffix("2")]
+		if key in [&"weapon", &"offhand"]:
+			slot_id += "_valkyr"
+		inventory.get_gear_slot(key).item_id = slot_id
+		inventory.get_gear_slot(key).quantity = 1
+	inventory.get_gear_slot(&"chest").item_id = "gear_levy_chest"
+	_report("the rare chest picks the next tier for your weakest slot", GearDatabase.upgrade_for(inventory, &"valkyr") == &"gear_marcher_chest", str(GearDatabase.upgrade_for(inventory, &"valkyr")))
+
+	# --- Gravestones ---
+	_fake_player.global_position = Vector3(20, 1, 30)
+	var fell_at := _fake_player.global_position
+	stats.last_attacker = "a test wolf"
+	stats.apply_damage(999999, 0)
+	var stone: Gravestone = null
+	for node in get_tree().get_nodes_in_group(Gravestone.GROUP_STONES):
+		var candidate := node as Gravestone
+		if candidate and candidate.global_position.distance_to(fell_at) < 1.0:
+			stone = candidate
+	_report("dying leaves a stone with a name and a cause", stone != null and stone.cause == "a test wolf" and not stone.who.is_empty(), "%s / %s" % [stone.who if stone else "?", stone.cause if stone else "?"])
+	stats.revive()
+	death.leave_ghost()
+	if stone:
+		stone.perform(_fake_player)
+		var share := StatusEffect.output_multiplier(_fake_player)
+		_report("paying respects is a ten-minute +5%", is_equal_approx(share, 1.05), "x%.2f" % share)
+		stone.perform(_fake_player)
+		_report("respects are paid once per stone", is_equal_approx(StatusEffect.output_multiplier(_fake_player), 1.05) and stone.has_paid(1), "")
+		Gravestone.spawn(get_tree(), "TestStone2", fell_at + Vector3(1, 0, 0), "Two", "the test", "")
+		Gravestone.spawn(get_tree(), "TestStone3", fell_at + Vector3(0, 0, 1), "Three", "the test", "")
+		_report("three stones make a cairn worth +8%", stone.is_cairn() and is_equal_approx(Gravestone.buff_share(true, false), 0.08), "")
+		_report("Widow's Salt doubles the next one", is_equal_approx(Gravestone.buff_share(false, true), 0.10), "")
+	for effect in StatusEffect.all_on(_fake_player):
+		effect.free()
+	for node in get_tree().get_nodes_in_group(Gravestone.GROUP_STONES):
+		node.queue_free()
+
+	# --- The chronicle ---
+	var first_fall := false
+	for entry in Chronicle.entries:
+		if str(entry["text"]).contains("fell for the first time"):
+			first_fall = true
+	_report("the skald remembers the first fall of a boss", first_fall, "%d entries" % Chronicle.entries.size())
+	_report("Ilsa has a weekly line", Chronicle.weekly_line().begins_with("This week"), Chronicle.weekly_line())
+	var saved_chronicle := Chronicle.to_dict()
+	var had := Chronicle.entries.size()
+	Chronicle.entries.clear()
+	Chronicle.from_dict(saved_chronicle)
+	_report("the chronicle survives the host's save", Chronicle.entries.size() == had and had > 0, "%d entries" % Chronicle.entries.size())
+	_report("the chronicle rides in the host's save", CharacterState.capture(_fake_player).has("chronicle"), "")
+
+	# --- Chests ---
+	var common: Chest = null
+	var rare: Chest = null
+	var season: Chest = null
+	for node in zone.find_children("*", "Node3D", true, false) + kingsmourn.find_children("*", "Node3D", true, false):
+		var chest := node as Chest
+		if chest == null:
+			continue
+		if chest.tier == Chest.Tier.COMMON and common == null:
+			common = chest
+		elif chest.tier == Chest.Tier.RARE and rare == null:
+			rare = chest
+		elif chest.tier == Chest.Tier.SEASON:
+			season = chest
+	_report("every kind of chest is placed", common != null and rare != null and season != null, "")
+	if common and rare and season:
+		var coin_before := quest_log.currency
+		common.perform(_fake_player)
+		_report("a common chest pays Sovereigns", quest_log.currency > coin_before, "%d -> %d" % [coin_before, quest_log.currency])
+		coin_before = quest_log.currency
+		common.perform(_fake_player)
+		_report("once per character per respawn", quest_log.currency == coin_before and not common.can_open(1), "")
+		rare.relocate_now()
+		_report("the glinting chest moves between its spots", rare.rare_spots.has(rare.global_position), str(rare.global_position))
+		var titles_before := book.titles.size()
+		rare.perform(_fake_player)
+		_report("a glinting chest is never a shrug", book.titles.size() == titles_before + 1, str(book.worn_title()))
+		season.perform(_fake_player)
+		var season_title := str(SeasonDatabase.rewards().get("title", ""))
+		_report("the season chest gives the season's title", book.titles.has(season_title) and book.season_chest == String(SeasonDatabase.current_id()), season_title)
+		var titled := book.titles.size()
+		season.perform(_fake_player)
+		_report("the season chest opens once a season", book.titles.size() == titled, "")
+	_report("the run-changing consumables exist", ItemDatabase.get_item("marchers_draught") != null and ItemDatabase.get_item("ferrymans_coin_lesser") != null and ItemDatabase.get_item("widows_salt") != null, "")
 	stats.revive()
 	_fake_player.global_position = Vector3(0, 1, 10)
 

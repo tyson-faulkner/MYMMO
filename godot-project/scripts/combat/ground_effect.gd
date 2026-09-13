@@ -130,4 +130,5 @@ func _process(delta: float) -> void:
 			var stats := character.get_node_or_null("Stats") as Stats
 			if stats and not stats.is_dead:
 				# Standing in it was a choice: this is the avoidable kind.
+				stats.last_attacker = "the ink"
 				stats.apply_damage(damage_per_tick, 0, &"pool", true)

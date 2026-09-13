@@ -77,6 +77,8 @@ var _stun_remaining: float = 0.0
 var _cast_label: Label3D = null
 ## A line over the head that isn't a cast: "THE CROWN: Tyson", "Heralds".
 var _announce_text: String = ""
+## The gold diamond that says "this one counts for your quest".
+var _objective_label: Label3D = null
 var _announce_until_msec: int = 0
 
 ## Server only, bosses only: the thing that runs their mechanics.
@@ -126,6 +128,24 @@ func _ready() -> void:
 	_cast_label.modulate = Color(1.0, 0.75, 0.35)
 	_cast_label.visible = false
 	add_child(_cast_label)
+	_objective_label = Label3D.new()
+	_objective_label.name = "ObjectiveMarker"
+	_objective_label.position = Vector3(0, 2.85, 0)
+	_objective_label.pixel_size = 0.004
+	_objective_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_objective_label.no_depth_test = true
+	_objective_label.font_size = 52
+	_objective_label.outline_size = 16
+	_objective_label.modulate = Color(1.0, 0.85, 0.35)
+	_objective_label.text = "◆"
+	_objective_label.visible = false
+	add_child(_objective_label)
+
+
+## Local, cosmetic: this enemy counts for the objective you are tracking.
+func set_objective_marker(shown: bool) -> void:
+	if _objective_label:
+		_objective_label.visible = shown
 
 
 func _apply_mob_data() -> void:
@@ -419,6 +439,7 @@ func _tick_attacking() -> void:
 	_attack_timer = mob_data.attack_cooldown if mob_data else 1.8
 	var target_stats := target.get_node_or_null("Stats") as Stats
 	if target_stats and not target_stats.is_dead:
+		target_stats.last_attacker = mob_data.display_name if mob_data else "something"
 		target_stats.apply_damage(_scaled_damage(), 0, &"melee")
 		play_attack.rpc()
 
@@ -564,6 +585,7 @@ func _land_cast() -> void:
 			if victim and is_instance_valid(victim):
 				var victim_stats := victim.get_node_or_null("Stats") as Stats
 				if victim_stats and not victim_stats.is_dead:
+					victim_stats.last_attacker = "%s's %s" % [mob_data.display_name, landed_name]
 					victim_stats.apply_damage(power, 0, StringName(landed_name), bool(entry.get("avoidable", false)))
 		_:
 			# A boss mechanic with a wind-up: the engine knows what lands.
@@ -932,11 +954,15 @@ func _award_kill(killer_peer_id: int) -> void:
 	# just the party: "present" is what the spec says, and presence is a place.
 	if mob_data.is_boss:
 		var cap := GrudgeLedger.cap_for(mob_data)
+		var present := []
 		for character in _players_within(BossMechanics.PRESENCE_RANGE):
 			var ledger := character.get_node_or_null("GrudgeLedger") as GrudgeLedger
 			if ledger:
 				ledger.raise(mob_data.id, cap)
+			var nickname := character.get_node_or_null("PlayerNick/Nickname") as Label3D
+			present.append(nickname.text if nickname and not nickname.text.is_empty() else "Player %s" % character.name)
 		boss_fell.emit(mob_data.id, grudge_tier)
+		Chronicle.record_boss_fall(mob_data.id, mob_data.display_name, grudge_tier, present)
 
 	# Loot drops once, on the ground, for whoever reaches it.
 	_drop_loot()

@@ -18,6 +18,21 @@ var _spec_button: Button = null
 var _spec_panel: PanelContainer = null
 var _spec_rows: VBoxContainer = null
 
+## Quest markers: the minimap in the corner, the big map on M, the tracked
+## objective, and the areas every active objective covers.
+const HEAL_RANGE := 24.0
+var _minimap: MapView = null
+var _big_map: MapView = null
+var _tracked_quest: StringName = &""
+var _areas: Array = []
+var _marker_accumulated: float = 0.0
+
+## Party frames: one per member, class coloured, with mouseover casting.
+var _party_box: VBoxContainer = null
+var _party_frames: Dictionary = {}
+var _party_accumulated: float = 0.0
+var _book: RecordBook = null
+
 var _player: Node3D = null
 var _stats: Stats = null
 var _quest_log: QuestLog = null
@@ -76,6 +91,9 @@ func _ready() -> void:
 	_build_meter()
 	_build_recap()
 	_build_spec_chooser()
+	_build_maps()
+	_build_party_frames()
+	PartyManager.party_changed.connect(func(_party_id: int, _members: Array) -> void: _rebuild_party_frames())
 	CombatRecorder.meter_updated.connect(_on_meter_updated)
 	CombatRecorder.fight_ended.connect(_on_fight_ended)
 	_target_frame.visible = false
@@ -98,6 +116,8 @@ func _process(delta: float) -> void:
 	_refresh_target_frame()
 	_refresh_cooldowns()
 	_refresh_death_panel()
+	_tick_markers(delta)
+	_tick_party(delta)
 	if _recap_timer > 0.0:
 		_recap_timer -= delta
 		if _recap_timer <= 0.0 and _recap and not _coach.visible:
@@ -374,6 +394,222 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _quest_panel.visible:
 			_rebuild_quest_panel()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("map"):
+		_toggle_big_map()
+		get_viewport().set_input_as_handled()
+
+
+# --- Quest markers, the minimap and the map ------------------------------------
+
+
+func _build_maps() -> void:
+	_minimap = MapView.new()
+	_minimap.name = "Minimap"
+	_minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_minimap.anchor_left = 1.0
+	_minimap.anchor_right = 1.0
+	_minimap.offset_left = -196
+	_minimap.offset_right = -16
+	_minimap.offset_top = 16
+	_minimap.offset_bottom = 196
+	_minimap.metres_per_pixel = 0.7
+	add_child(_minimap)
+	_big_map = MapView.new()
+	_big_map.name = "BigMap"
+	_big_map.big = true
+	_big_map.set_anchors_preset(Control.PRESET_CENTER)
+	_big_map.offset_left = -300
+	_big_map.offset_right = 300
+	_big_map.offset_top = -300
+	_big_map.offset_bottom = 300
+	_big_map.metres_per_pixel = 2.2
+	_big_map.enemy_range = 1.0e9
+	_big_map.visible = false
+	add_child(_big_map)
+
+
+func _toggle_big_map() -> void:
+	if _big_map:
+		_big_map.visible = not _big_map.visible
+
+
+## Which quest the arrow points at. One at a time, so it never clutters.
+func track_quest(quest_id: StringName) -> void:
+	_tracked_quest = quest_id
+	_marker_accumulated = 10.0
+	_rebuild_tracker()
+
+
+func tracked_area() -> Dictionary:
+	for area in _areas:
+		if area.get("quest_id") == _tracked_quest:
+			return area
+	return {}
+
+
+func _tick_markers(delta: float) -> void:
+	_marker_accumulated += delta
+	if _marker_accumulated < 0.5:
+		return
+	_marker_accumulated = 0.0
+	if _minimap:
+		_minimap.follow = _player
+		_big_map.follow = _player
+	if _quest_log == null:
+		return
+	_areas = QuestMarkers.active_areas(get_tree(), _quest_log)
+	if _tracked_quest == &"" or not _quest_log.is_active(_tracked_quest):
+		_tracked_quest = _quest_log.active.keys()[0] if not _quest_log.active.is_empty() else &""
+	var tracked := tracked_area()
+	if not tracked.is_empty():
+		var short := str(tracked.get("text", ""))
+		tracked["short"] = short.substr(0, 18) + ("…" if short.length() > 18 else "")
+	if _minimap:
+		_minimap.areas = _areas
+		_minimap.tracked = tracked
+		_big_map.areas = _areas
+		_big_map.tracked = tracked
+	# On arrival, the enemies that count get a mark over their heads.
+	var quest := QuestDatabase.get_quest(_tracked_quest) if not tracked.is_empty() else null
+	var arrived := false
+	if not tracked.is_empty() and _player:
+		var flat: Vector3 = tracked["centre"] - _player.global_position
+		flat.y = 0.0
+		arrived = flat.length() <= float(tracked["radius"])
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var mob := node as Mob
+		if mob == null or not mob.is_inside_tree():
+			continue
+		var counts: bool = arrived and quest != null and QuestMarkers.mob_matches(mob, quest, int(tracked.get("index", -1)))
+		mob.set_objective_marker(counts)
+
+
+# --- Party frames ---------------------------------------------------------------
+
+
+func _build_party_frames() -> void:
+	_party_box = VBoxContainer.new()
+	_party_box.name = "PartyFrames"
+	_party_box.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_party_box.offset_left = 16
+	_party_box.offset_top = 210
+	_party_box.offset_right = 250
+	_party_box.add_theme_constant_override("separation", 4)
+	add_child(_party_box)
+
+
+func _rebuild_party_frames() -> void:
+	for child in _party_box.get_children():
+		child.queue_free()
+	_party_frames.clear()
+	if _player == null or not multiplayer.has_multiplayer_peer():
+		return
+	var local_id := multiplayer.get_unique_id()
+	var members: Array = PartyManager.members_of(local_id)
+	if members.size() <= 1:
+		return
+	for member_id in members:
+		var member: Node3D = null
+		for container in get_tree().get_nodes_in_group("Players"):
+			var found := container.get_node_or_null(str(member_id)) as Node3D
+			if found:
+				member = found
+				break
+		if member == null:
+			continue
+		var panel := PanelContainer.new()
+		panel.custom_minimum_size = Vector2(230, 0)
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.mouse_entered.connect(func() -> void:
+			if _ability_bar:
+				_ability_bar.hovered_ally = member)
+		panel.mouse_exited.connect(func() -> void:
+			if _ability_bar and _ability_bar.hovered_ally == member:
+				_ability_bar.hovered_ally = null)
+		var margin := MarginContainer.new()
+		for side in ["left", "right", "top", "bottom"]:
+			margin.add_theme_constant_override("margin_" + side, 6)
+		panel.add_child(margin)
+		var rows := VBoxContainer.new()
+		rows.add_theme_constant_override("separation", 2)
+		margin.add_child(rows)
+		var name_label := Label.new()
+		name_label.add_theme_font_size_override("font_size", 13)
+		rows.add_child(name_label)
+		var health := ProgressBar.new()
+		health.show_percentage = false
+		health.custom_minimum_size = Vector2(0, 14)
+		health.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rows.add_child(health)
+		var resource := ProgressBar.new()
+		resource.show_percentage = false
+		resource.custom_minimum_size = Vector2(0, 8)
+		resource.modulate = Color(0.55, 0.7, 1.0)
+		resource.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rows.add_child(resource)
+		var debuffs := Label.new()
+		debuffs.add_theme_font_size_override("font_size", 11)
+		debuffs.modulate = Color(1.0, 0.7, 0.6)
+		rows.add_child(debuffs)
+		_party_box.add_child(panel)
+		_party_frames[int(member_id)] = {"member": member, "panel": panel, "name": name_label, "health": health, "resource": resource, "debuffs": debuffs}
+	_tick_party(10.0)
+
+
+func _tick_party(delta: float) -> void:
+	_party_accumulated += delta
+	if _party_accumulated < 0.4:
+		return
+	_party_accumulated = 0.0
+	if _player == null:
+		return
+	var local_id := multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+	if PartyManager.members_of(local_id).size() != _party_frames.size():
+		_rebuild_party_frames()
+		return
+	for peer_id in _party_frames:
+		var frame: Dictionary = _party_frames[peer_id]
+		var member: Node3D = frame["member"]
+		if member == null or not is_instance_valid(member) or not member.is_inside_tree():
+			continue
+		var stats := member.get_node_or_null("Stats") as Stats
+		var nickname := member.get_node_or_null("PlayerNick/Nickname") as Label3D
+		var who := nickname.text if nickname and not nickname.text.is_empty() else "Player %d" % peer_id
+		var class_id: StringName = stats.class_data.id if stats and stats.class_data else &"valkyr"
+		var tank: bool = stats != null and stats.threat_multiplier() > 1.0
+		(frame["name"] as Label).text = "%s%s%s" % [who, "  [Tank]" if tank else "", "  (dead)" if stats and stats.is_dead else ""]
+		(frame["name"] as Label).modulate = CombatRecorder.CLASS_COLOURS.get(class_id, Color.WHITE)
+		if stats:
+			(frame["health"] as ProgressBar).max_value = maxi(1, stats.max_health)
+			(frame["health"] as ProgressBar).value = stats.health
+			(frame["resource"] as ProgressBar).max_value = maxi(1, stats.max_mana)
+			(frame["resource"] as ProgressBar).value = stats.mana
+		(frame["debuffs"] as Label).text = ", ".join(_debuffs_of(member))
+		# Out of heal range: the frame greys out.
+		var in_range := _player.global_position.distance_to(member.global_position) <= HEAL_RANGE
+		(frame["panel"] as PanelContainer).modulate = Color.WHITE if in_range else Color(0.55, 0.55, 0.58)
+
+
+## What this machine knows is wrong with someone. The host sees every
+## effect; a client sees what was synced to it.
+func _debuffs_of(member: Node3D) -> Array:
+	var found := []
+	for effect in StatusEffect.all_on(member):
+		match effect.kind:
+			StatusEffect.Kind.STACK:
+				found.append("Bleeding ×%d" % effect.stacks)
+			StatusEffect.Kind.WEAKEN:
+				found.append("Weakened")
+	for child in member.get_children():
+		if child is DamageOverTime:
+			found.append("Burning")
+			break
+	if member.has_method("is_stunned") and member.is_stunned():
+		found.append("Stunned")
+	var speed = member.get("speed_multiplier")
+	if speed != null and float(speed) < 1.0:
+		found.append("Slowed")
+	return found
 
 
 func _attach_to_local_player() -> void:
@@ -410,11 +646,23 @@ func _attach_to_local_player() -> void:
 			_death.died_at.connect(_on_died_at)
 			_death.resurrected.connect(_on_resurrected)
 			_death.sickness_changed.connect(_on_sickness_changed)
-		var nickname := candidate.get_node_or_null("PlayerNick/Nickname") as Label3D
-		if nickname:
-			_player_name.text = nickname.text
+		_book = candidate.get_node_or_null("RecordBook") as RecordBook
+		if _book:
+			_book.book_changed.connect(_refresh_title)
+		_refresh_title()
 		_refresh_slot_labels()
+		_rebuild_party_frames()
 		return
+
+
+## The name, and the title worn after it: "Tyson, Kingsmourner".
+func _refresh_title() -> void:
+	if _player == null:
+		return
+	var nickname := _player.get_node_or_null("PlayerNick/Nickname") as Label3D
+	var who := nickname.text if nickname and not nickname.text.is_empty() else str(_player.name)
+	var title := _book.worn_title() if _book else ""
+	_player_name.text = who if title.is_empty() else "%s, %s" % [who, title]
 
 
 # --- The player's own frame ------------------------------------------------
@@ -457,6 +705,7 @@ func _on_leveled_up(new_level: int) -> void:
 	if new_level == SpecDatabase.CHOOSE_LEVEL:
 		_show_toast("Level %d — choose a spec at an inn or a graveyard" % new_level)
 	_refresh_slot_labels()
+	_rebuild_tracker()
 
 
 func _on_spec_changed(spec_id: StringName) -> void:
@@ -703,9 +952,14 @@ func _rebuild_tracker() -> void:
 		if quest == null:
 			continue
 		var complete := _quest_log.is_complete(quest_id)
-		var title := Label.new()
-		title.text = quest.title + ("  (ready to hand in)" if complete else "")
+		# The title is a button: click it and the arrow points at this one.
+		var title := Button.new()
+		title.flat = true
+		title.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		title.text = ("▸ " if quest_id == _tracked_quest else "   ") + quest.title + ("  (ready to hand in)" if complete else "")
+		title.tooltip_text = "Track this quest"
 		title.modulate = Color(1, 0.85, 0.45) if complete else Color(0.95, 0.93, 0.85)
+		title.pressed.connect(track_quest.bind(quest_id))
 		_tracker.add_child(title)
 		var progress: Array = _quest_log.progress_for(quest_id)
 		for index in range(quest.objective_count()):
@@ -714,6 +968,14 @@ func _rebuild_tracker() -> void:
 			line.text = "   %s  %d / %d" % [quest.objective_text(index), have, quest.objective_required(index)]
 			line.modulate = Color(0.72, 0.78, 0.6) if have >= quest.objective_required(index) else Color(0.78, 0.75, 0.68)
 			_tracker.add_child(line)
+	if _quest_log.active.is_empty():
+		# Nothing tracked: say what to do next, and who has it.
+		var what_now := Label.new()
+		what_now.text = QuestMarkers.what_now(_quest_log, _stats.level if _stats else 1)
+		what_now.modulate = Color(0.85, 0.82, 0.7)
+		what_now.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		what_now.custom_minimum_size = Vector2(260, 0)
+		_tracker.add_child(what_now)
 	if _quest_panel.visible:
 		_rebuild_quest_panel()
 

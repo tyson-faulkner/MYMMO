@@ -245,6 +245,33 @@ func _ready() -> void:
 		names.append(on_bar.display_name if on_bar else "-")
 	print("bar: %s" % ", ".join(names))
 
+	# The quality-of-life pass: back in the square with a quest tracked, the
+	# minimap and its arrow, a gravestone, a chest, then the big map.
+	if not huds.is_empty():
+		var hud: GameHUD = huds[0]
+		hud._spec_panel.visible = false
+		hud._recap.visible = false
+		hud._coach.visible = false
+	_player.fall_limit_y = -15.0
+	await _place(Vector3(-4, 1.5, 6))
+	var log: QuestLog = _player.get_node("QuestLog")
+	for quest_id in QuestDatabase.get_all_ids():
+		if log.can_accept(quest_id):
+			log.accept_quest(quest_id)
+			break
+	Chronicle.place_gravestone(_player, _player.global_position + Vector3(2.5, 0, 1.5), "a screenshot")
+	_player._spring_arm_offset.get_node("SpringArm3D/Camera3D").current = true
+	await get_tree().create_timer(1.2).timeout
+	await _save("qol_square")
+	var chests := _level.find_children("*", "Node3D", true, false).filter(func(n: Node) -> bool: return n is Chest)
+	print("qol: areas=%d tracked=%s chests=%d stones=%d" % [huds[0]._areas.size() if not huds.is_empty() else -1, str(huds[0]._tracked_quest) if not huds.is_empty() else "?", chests.size(), get_tree().get_nodes_in_group(Gravestone.GROUP_STONES).size()])
+	if not huds.is_empty():
+		huds[0]._toggle_big_map()
+		await _frames(8)
+		await _save("qol_big_map")
+		huds[0]._toggle_big_map()
+	_camera.current = true
+
 	print("SHOTS COMPLETE")
 	get_tree().quit(0)
 

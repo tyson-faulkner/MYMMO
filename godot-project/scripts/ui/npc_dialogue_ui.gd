@@ -102,6 +102,12 @@ func _rebuild() -> void:
 			button.pressed.connect(_on_buy.bind(String(item_id)))
 			_options.add_child(button)
 
+	# Ilsa writes things down. Ask her and she tells you the last few.
+	if _npc.npc_id == &"npc_ilsa":
+		body_text += "\n\n" + Chronicle.weekly_line()
+		for line in Chronicle.recent(5):
+			body_text += "\n· " + str(line)
+
 	_body_label.text = body_text
 	if _options.get_child_count() == 0:
 		var nothing := Label.new()

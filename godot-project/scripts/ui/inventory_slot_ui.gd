@@ -23,13 +23,41 @@ var _is_mouse_hovering := false
 @onready var item_icon: TextureRect = $ItemIcon
 @onready var quantity_label: Label = $QuantityLabel
 
+## The green up-arrow: this item beats what you wear in its slot.
+var upgrade_arrow: Label = null
+
 
 func _ready():
 	gui_input.connect(_on_gui_input)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	upgrade_arrow = Label.new()
+	upgrade_arrow.text = "▲"
+	upgrade_arrow.modulate = Color(0.35, 1.0, 0.45)
+	upgrade_arrow.add_theme_font_size_override("font_size", 18)
+	upgrade_arrow.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	upgrade_arrow.offset_left = -20
+	upgrade_arrow.offset_top = -2
+	upgrade_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	upgrade_arrow.visible = false
+	add_child(upgrade_arrow)
 
 	update_display()
+
+
+## Is this item an upgrade for the player looking at it?
+func _is_upgrade(item: Item) -> bool:
+	if item == null or not item.is_gear() or parent_inventory == null:
+		return false
+	var player = parent_inventory.get("current_player")
+	if player == null or not player.has_method("get_inventory"):
+		return false
+	var inventory = player.get_inventory()
+	if inventory == null:
+		return false
+	var stats: Stats = player.get_node_or_null("Stats")
+	var class_id: StringName = stats.class_data.id if stats and stats.class_data else (player.class_id if player.get("class_id") != null else &"valkyr")
+	return bool(inventory.compare_to_worn(item, class_id).get("upgrade", false))
 
 
 func set_slot_data(slot_data: InventorySlot, index: int):
@@ -54,6 +82,8 @@ func _show_empty_slot():
 		quantity_label.visible = false
 	if background:
 		background.modulate = Color.WHITE
+	if upgrade_arrow:
+		upgrade_arrow.visible = false
 
 
 func _show_item_slot():
@@ -63,6 +93,8 @@ func _show_item_slot():
 		return
 
 	item_icon.texture = item.icon
+	if upgrade_arrow:
+		upgrade_arrow.visible = slot_type == TYPE.INVENTORY and _is_upgrade(item)
 
 	if item.stackable and inventory_data.quantity > 1:
 		quantity_label.text = str(inventory_data.quantity)

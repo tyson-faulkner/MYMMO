@@ -270,15 +270,15 @@ const DEFINITIONS := {
 		"class": &"bard",
 		"slot": 4,
 		"effect": "speed",
-		"target": "ally",
+		"target": "ground",
 		"speed": 1.35,
 		"power": 0,
 		"cost": 18,
 		"cooldown": 18.0,
-		"range": 24.0,
+		"aoe": 20.0,
 		"duration": 10.0,
 		"level": 5,
-		"text": "An old road song. Feet follow it whether their owner agrees or not."
+		"text": "An old road song. Every foot in earshot follows it whether its owner agrees or not."
 	},
 	&"bard_soothe":
 	{

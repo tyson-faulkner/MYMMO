@@ -75,6 +75,37 @@ func _create_items():
 		false,
 		35
 	)
+	# Chest consumables: run-changing, never a stat potion.
+	_create_item(
+		"marchers_draught",
+		"Marcher's Draught",
+		"Your next Grave-Chill does not take. Drunk for you, by the game, when it matters.",
+		Item.ItemType.CONSUMABLE,
+		"",
+		CHICKEN_LEG_ICON,
+		false,
+		30
+	)
+	_create_item(
+		"ferrymans_coin_lesser",
+		"Ferryman's Coin, lesser",
+		"One free ride: release, and wake at your body instead of the graveyard.",
+		Item.ItemType.CONSUMABLE,
+		"",
+		CHALICE_ICON,
+		false,
+		30
+	)
+	_create_item(
+		"widows_salt",
+		"Widow's Salt",
+		"Your next gravestone buff is doubled.",
+		Item.ItemType.CONSUMABLE,
+		"",
+		BONE_ICON,
+		false,
+		30
+	)
 
 
 func _create_item(

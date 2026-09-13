@@ -37,6 +37,23 @@ const TIER_NAME := {
 	Item.GearTier.CAP: "Sovereign"
 }
 
+## Per-class stat weights (armour / power / stamina) that turn an item's
+## three numbers into one score for YOUR class. Valkyr leans armour,
+## Necromancer leans power. This is what the green up-arrow reads.
+const CLASS_WEIGHTS := {
+	&"valkyr": [1.0, 0.5, 0.7],
+	&"bard": [0.4, 1.0, 0.6],
+	&"necromancer": [0.3, 1.0, 0.5],
+	&"tinker": [0.4, 1.0, 0.5]
+}
+
+## The next tier up, for the rare chest's "gear for your weakest slot".
+const NEXT_TIER := {
+	Item.GearTier.NONE: Item.GearTier.STARTER,
+	Item.GearTier.STARTER: Item.GearTier.MID,
+	Item.GearTier.MID: Item.GearTier.CAP
+}
+
 ## How each slot splits its budget between Armour / Power / Stamina, and where
 ## it comes from. Chest and legs are where your health lives; the weapon is
 ## where your damage lives; rings and trinkets lean into power so a world drop
@@ -151,6 +168,51 @@ func items_for(slot: Item.GearSlot, tier: Item.GearTier) -> Array:
 		if item.gear_slot == slot and item.gear_tier == tier:
 			found.append(item)
 	return found
+
+
+## One number for an item, weighted for a class. Nothing worn scores zero.
+static func score_for_class(item: Item, class_id: StringName) -> float:
+	if item == null or not item.is_gear():
+		return 0.0
+	var weights: Array = CLASS_WEIGHTS.get(class_id, CLASS_WEIGHTS[&"valkyr"])
+	return float(item.armor) * float(weights[0]) + float(item.power) * float(weights[1]) + float(item.stamina) * float(weights[2])
+
+
+## The rare chest's pick: the next tier up for the slot this character is
+## weakest in, class-specific where the slot is. "" when everything worn is
+## already Sovereign.
+static func upgrade_for(inventory, class_id: StringName) -> StringName:
+	if inventory == null:
+		return &""
+	var weakest_key: StringName = inventory.weakest_gear_key(class_id)
+	if weakest_key == &"":
+		return &""
+	var worn: InventorySlot = inventory.get_gear_slot(weakest_key)
+	var worn_tier: Item.GearTier = Item.GearTier.NONE
+	if worn and not worn.is_empty():
+		var worn_item: Item = ItemDatabase.get_item(worn.item_id)
+		if worn_item:
+			worn_tier = worn_item.gear_tier
+	if not NEXT_TIER.has(worn_tier):
+		return &""
+	var slot := _slot_for_key(weakest_key)
+	var class_bound := slot == Item.GearSlot.WEAPON or slot == Item.GearSlot.OFFHAND
+	return generated_id(NEXT_TIER[worn_tier], slot, class_id if class_bound else &"")
+
+
+static func _slot_for_key(key: StringName) -> Item.GearSlot:
+	match key:
+		&"head": return Item.GearSlot.HEAD
+		&"chest": return Item.GearSlot.CHEST
+		&"legs": return Item.GearSlot.LEGS
+		&"hands": return Item.GearSlot.HANDS
+		&"feet": return Item.GearSlot.FEET
+		&"weapon": return Item.GearSlot.WEAPON
+		&"offhand": return Item.GearSlot.OFFHAND
+		&"ring1", &"ring2": return Item.GearSlot.RING
+		&"trinket": return Item.GearSlot.TRINKET
+		&"cloak": return Item.GearSlot.CLOAK
+	return Item.GearSlot.NONE
 
 
 ## Generated id, so loot tables and quests can name items predictably:

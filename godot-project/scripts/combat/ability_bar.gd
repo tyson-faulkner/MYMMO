@@ -30,6 +30,11 @@ var _current_ability: StringName = &""
 ## never chain into itself.
 var _chaining: bool = false
 
+## Mouseover casting: the party frame the mouse is over, set by the HUD. A
+## heal pressed while hovering goes to that person. Client-side only; the
+## server just sees a target path like any other.
+var hovered_ally: Node3D = null
+
 
 func _ready() -> void:
 	var stats := _get_stats()
@@ -151,17 +156,51 @@ func _resolve_target(ability: AbilityData) -> Node3D:
 		AbilityData.TargetRule.SELF, AbilityData.TargetRule.GROUND:
 			return _get_body()
 		AbilityData.TargetRule.ALLY:
+			# Mouseover first: the frame under the mouse is who you meant.
+			if hovered_ally and is_instance_valid(hovered_ally) and hovered_ally.is_inside_tree():
+				return hovered_ally
 			var targeting_ally := _get_targeting()
 			if targeting_ally and targeting_ally.current_target is Node3D:
 				var candidate := targeting_ally.current_target
 				# Healing something hostile is almost always a misclick.
-				if candidate is Mob and not (candidate as Mob).is_friendly:
-					return _get_body()
-				return candidate
-			return _get_body()
+				if not (candidate is Mob and not (candidate as Mob).is_friendly):
+					return candidate
+			# No target and no mouseover: the lowest party member in range.
+			var lowest := lowest_party_member(ability.cast_range)
+			return lowest if lowest else _get_body()
 		_:
 			var targeting := _get_targeting()
 			return targeting.current_target if targeting else null
+
+
+## The party member (self included) with the lowest health fraction within
+## reach, or null when alone. Removes the last excuse for a heal going nowhere.
+func lowest_party_member(reach: float) -> Node3D:
+	var body := _get_body()
+	if body == null:
+		return null
+	var peer_id := body.get_multiplayer_authority()
+	var lowest: Node3D = null
+	var lowest_fraction := 2.0
+	for member_id in PartyManager.members_of(peer_id):
+		var member: Node3D = null
+		for container in get_tree().get_nodes_in_group("Players"):
+			var found := container.get_node_or_null(str(member_id)) as Node3D
+			if found:
+				member = found
+				break
+		if member == null or not member.is_inside_tree():
+			continue
+		if body.global_position.distance_to(member.global_position) > reach:
+			continue
+		var stats := member.get_node_or_null("Stats") as Stats
+		if stats == null or stats.is_dead:
+			continue
+		var fraction := float(stats.health) / float(maxi(1, stats.max_health))
+		if fraction < lowest_fraction:
+			lowest_fraction = fraction
+			lowest = member
+	return lowest
 
 
 # --- The server's side -----------------------------------------------------
@@ -330,6 +369,10 @@ func _execute(
 		power = int(round(float(power) * SpecDatabase.multiplier(spec, "healing_mult")))
 	elif hurts:
 		power = int(round(float(power) * SpecDatabase.multiplier(spec, "damage_mult")))
+	# Respects paid at a gravestone: a little more of everything.
+	var respects := StatusEffect.output_multiplier(caster)
+	if respects != 1.0 and (heals or hurts):
+		power = int(round(float(power) * respects))
 	if charged:
 		power *= 2
 	# Gear. Flat, so a level-8 ring is still worth exactly what it says at 20.
@@ -430,7 +473,12 @@ func _execute(
 		AbilityData.Effect.SPEED:
 			if ability.speed_multiplier < 1.0:
 				_damage(target, power, caster_peer)
-			_apply_speed(target if target else caster, ability.speed_multiplier, duration)
+			if ability.speed_multiplier >= 1.0 and radius > 0.0:
+				# A march is for the whole party: everyone in earshot, one press.
+				for friend in _friendlies_near(caster.global_position, radius):
+					_apply_speed(friend, ability.speed_multiplier, duration)
+			else:
+				_apply_speed(target if target else caster, ability.speed_multiplier, duration)
 		AbilityData.Effect.INTERRUPT:
 			# The damage is a consolation; the cast stopping is the ability.
 			_damage(target, power, caster_peer)
@@ -508,7 +556,12 @@ func _execute(
 		var chained_ability := AbilityDatabase.get_ability(chained_id)
 		if chained_ability:
 			_chaining = true
-			_execute(chained_ability, caster, target, 0)
+			if _target_rule(ability) == AbilityData.TargetRule.GROUND and radius > 0.0:
+				# A party song chains onto everyone it reached.
+				for friend in _friendlies_near(caster.global_position, radius):
+					_execute(chained_ability, caster, friend, 0)
+			else:
+				_execute(chained_ability, caster, target, 0)
 			_chaining = false
 			_current_ability = ability.id
 

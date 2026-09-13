@@ -242,6 +242,23 @@ func _show_tooltip(item: Item):
 	if item.stackable:
 		tooltip_content += "\n[color=#98FB98]Max Stack:[/color] " + str(item.max_stack)
 
+	# Gear: the three numbers, and the delta against what you wear. "+4
+	# armour, −2 power, upgrade" is the whole reason to hover.
+	if item.is_gear():
+		tooltip_content += "\n[color=#87CEEB]%s[/color]  Armour %d · Power %d · Stamina %d" % [Item.slot_name(item.gear_slot), item.armor, item.power, item.stamina]
+		if current_player and current_player.get_inventory():
+			var stats: Stats = current_player.get_node_or_null("Stats")
+			var class_id: StringName = stats.class_data.id if stats and stats.class_data else &"valkyr"
+			var delta: Dictionary = current_player.get_inventory().compare_to_worn(item, class_id)
+			var parts := []
+			for stat in ["armor", "power", "stamina"]:
+				var change := int(delta[stat])
+				if change != 0:
+					parts.append("%s%d %s" % ["+" if change > 0 else "−", absi(change), stat if stat != "armor" else "armour"])
+			var verdict := "upgrade" if bool(delta["upgrade"]) else ("sidegrade" if parts.is_empty() else "not an upgrade")
+			var colour := "#5AFF73" if bool(delta["upgrade"]) else "#CCCCCC"
+			tooltip_content += "\n[color=%s]%s%s[/color]" % [colour, ", ".join(parts) + (", " if not parts.is_empty() else ""), verdict]
+
 	tooltip_label.text = tooltip_content
 	_tooltip_should_be_visible = true
 	_queue_tooltip_layout()

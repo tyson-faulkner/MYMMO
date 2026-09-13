@@ -130,6 +130,56 @@ func has_effect(effect: StringName) -> bool:
 	return gear_totals()["effects"].has(effect)
 
 
+## The green up-arrow: does this item beat what is worn in its slot, for
+## this class? Rings compare against the worse of the two. Returns
+## {"upgrade": bool, "armor": delta, "power": delta, "stamina": delta,
+## "against": Item or null, "score": delta}.
+func compare_to_worn(item: Item, class_id: StringName) -> Dictionary:
+	var result := {"upgrade": false, "armor": 0, "power": 0, "stamina": 0, "against": null, "score": 0.0}
+	if item == null or not item.is_gear():
+		return result
+	if item.class_restriction != &"" and item.class_restriction != class_id:
+		return result
+	var key := gear_key_for(item)
+	if key == &"":
+		return result
+	var worn: Item = null
+	if key == &"ring1":
+		var first: Item = ItemDatabase.get_item(gear[&"ring1"].item_id) if not gear[&"ring1"].is_empty() else null
+		var second: Item = ItemDatabase.get_item(gear[&"ring2"].item_id) if not gear[&"ring2"].is_empty() else null
+		if first == null or second == null:
+			worn = null
+		else:
+			worn = first if GearDatabase.score_for_class(first, class_id) <= GearDatabase.score_for_class(second, class_id) else second
+	elif not gear[key].is_empty():
+		worn = ItemDatabase.get_item(gear[key].item_id)
+	result["against"] = worn
+	result["armor"] = item.armor - (worn.armor if worn else 0)
+	result["power"] = item.power - (worn.power if worn else 0)
+	result["stamina"] = item.stamina - (worn.stamina if worn else 0)
+	result["score"] = GearDatabase.score_for_class(item, class_id) - (GearDatabase.score_for_class(worn, class_id) if worn else 0.0)
+	result["upgrade"] = float(result["score"]) > 0.01
+	return result
+
+
+## The worn slot with the least behind it, by tier budget. Empty slots count
+## as nothing, so a bare ring finger is always the weakest.
+func weakest_gear_key(_class_id: StringName) -> StringName:
+	var weakest_key: StringName = &""
+	var weakest_budget := 1_000_000
+	for key in GEAR_KEYS:
+		var slot: InventorySlot = gear[key]
+		var budget := 0
+		if not slot.is_empty():
+			var item: Item = ItemDatabase.get_item(slot.item_id)
+			if item and item.is_gear():
+				budget = int(GearDatabase.TIER_BUDGET.get(item.gear_tier, 0))
+		if budget < weakest_budget:
+			weakest_budget = budget
+			weakest_key = key
+	return weakest_key
+
+
 func get_active_slot_count() -> int:
 	return MAX_INVENTORY_SIZE if not equipped_backpack.is_empty() else BASE_INVENTORY_SIZE
 

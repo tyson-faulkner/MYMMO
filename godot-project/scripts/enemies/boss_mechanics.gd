@@ -371,6 +371,7 @@ func _hit(target: Node3D, power: int, avoidable: bool = false, mechanic_name: St
 		return
 	var stats := target.get_node_or_null("Stats") as Stats
 	if stats and not stats.is_dead:
+		stats.last_attacker = "%s's %s" % [mob.mob_data.display_name, mechanic_name] if mob.mob_data else mechanic_name
 		stats.apply_damage(int(round(float(power) * damage_multiplier())), 0, StringName(mechanic_name), avoidable)
 
 

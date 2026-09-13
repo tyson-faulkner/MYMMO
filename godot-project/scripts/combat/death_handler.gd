@@ -76,6 +76,11 @@ func _on_died(_killer_peer_id: int) -> void:
 		var where := body.global_position
 		enter_ghost(where)
 		enter_ghost.rpc(where)
+		# A stone where it happened, and a line in the book.
+		var cause := _stats.last_attacker if _stats else ""
+		var stone := Chronicle.place_gravestone(body, where, cause)
+		if stone:
+			Chronicle.record_death(stone.who, cause)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -126,8 +131,24 @@ func request_release() -> void:
 		return
 	if multiplayer.get_remote_sender_id() not in [0, body.get_multiplayer_authority()]:
 		return
+	# The lesser Ferryman's Coin: one free ride back to the body instead.
+	if _consume(body, "ferrymans_coin_lesser"):
+		_resurrect(corpse_position, false)
+		return
 	var graveyard := _nearest_graveyard(corpse_position)
 	_resurrect(graveyard, true)
+
+
+## Server. Takes one of a consumable out of the bag if it is there.
+func _consume(body: Node3D, item_id: String) -> bool:
+	if body == null or not body.has_method("get_inventory"):
+		return false
+	var inventory = body.get_inventory()
+	if inventory == null or inventory.remove_item(item_id, 1) <= 0:
+		return false
+	if body.has_method("_sync_inventory_to_owner"):
+		body._sync_inventory_to_owner()
+	return true
 
 
 # --- Corpse run: resurrect where you fell, clean ---------------------------
@@ -164,6 +185,9 @@ func _resurrect(where: Vector3, with_sickness: bool) -> void:
 	leave_ghost()
 	leave_ghost.rpc()
 	if with_sickness:
+		# The Marcher's Draught: this one does not take.
+		if _consume(body, "marchers_draught"):
+			return
 		var seconds := SICKNESS_SECONDS
 		# The Ferryman's Coin: he knows the way back.
 		if body.has_method("get_inventory"):

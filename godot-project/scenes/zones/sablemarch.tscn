@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
 [ext_resource type="Script" path="res://scripts/enemies/mob_container.gd" id="2_container"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
 [ext_resource type="Script" path="res://scripts/world/graveyard.gd" id="7_grave"]
+[ext_resource type="Script" path="res://scripts/world/chest.gd" id="9_chest"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_portal"]
 size = Vector3(7, 5, 3)
@@ -170,6 +171,30 @@ mob_id = &"the_weight_of_them"
 count = 1
 scatter_radius = 0.0
 is_boss_encounter = true
+
+[node name="Chests" type="Node3D" parent="."]
+
+[node name="ChestCamp" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 620, 0.3, 40)
+script = ExtResource("9_chest")
+tier = 0
+respawn_minutes = 30.0
+glint_text = "something glints in the Sablemarch flood"
+
+[node name="ChestFlood" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 0.3, -60)
+script = ExtResource("9_chest")
+tier = 0
+respawn_minutes = 30.0
+glint_text = "something glints in the Sablemarch flood"
+
+[node name="GlintingChestMarch" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 640, 0.3, -100)
+script = ExtResource("9_chest")
+tier = 1
+respawn_minutes = 120.0
+rare_spots = Array[Vector3]([Vector3(640, 0.3, -100), Vector3(560, 0.3, 120), Vector3(660, 0.3, 30)])
+glint_text = "something glints in the Sablemarch flood"
 
 [node name="NPCs" type="Node3D" parent="."]
 

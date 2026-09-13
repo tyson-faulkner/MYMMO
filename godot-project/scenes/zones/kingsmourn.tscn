@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/interactable.gd" id="8_interact"]
 [ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/world/dungeon_portal.gd" id="5_portal"]
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="6_npc"]
 [ext_resource type="Script" path="res://scripts/world/graveyard.gd" id="7_grave"]
+[ext_resource type="Script" path="res://scripts/world/chest.gd" id="9_chest"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_portal"]
 size = Vector3(7, 5, 3)
@@ -294,6 +295,37 @@ interact_id = &"throne_dais"
 display_name = "The Dais"
 action = "stand"
 action_radius = 11.0
+
+[node name="Chests" type="Node3D" parent="."]
+
+[node name="ChestMarketWard" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1230, 0.3, 140)
+script = ExtResource("9_chest")
+tier = 0
+respawn_minutes = 30.0
+glint_text = "something glints in the capital"
+
+[node name="ChestPalaceWard" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1170, 0.3, -60)
+script = ExtResource("9_chest")
+tier = 0
+respawn_minutes = 30.0
+glint_text = "something glints in the capital"
+
+[node name="GlintingChestCapital" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1260, 0.3, -120)
+script = ExtResource("9_chest")
+tier = 1
+respawn_minutes = 120.0
+rare_spots = Array[Vector3]([Vector3(1260, 0.3, -120), Vector3(1140, 0.3, 80), Vector3(1200, 0.3, 170)])
+glint_text = "something glints in the capital, down by the river"
+
+[node name="SeasonChest" type="Node3D" parent="Chests"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1208, -1999.5, -742)
+script = ExtResource("9_chest")
+tier = 2
+respawn_minutes = 30.0
+glint_text = "the season's chest waits behind the throne"
 
 [node name="NPCs" type="Node3D" parent="."]
 

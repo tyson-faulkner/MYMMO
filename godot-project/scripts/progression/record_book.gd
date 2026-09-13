@@ -13,6 +13,23 @@ signal book_changed
 var bests: Dictionary = {}
 ## boss id -> {"seconds": float, "holder": "names", "since": "YYYY-MM-DD"}
 var records: Dictionary = {}
+## Cosmetics from chests: titles, newest last. The last one is worn.
+var titles: Array = []
+## Which season's chest this character has already opened.
+var season_chest: String = ""
+
+
+func worn_title() -> String:
+	return str(titles.back()) if not titles.is_empty() else ""
+
+
+## Server. A title is worth having once.
+func add_title(title: String) -> void:
+	if title.is_empty() or titles.has(title):
+		return
+	titles.append(title)
+	book_changed.emit()
+	_push()
 
 
 func best_seconds(boss_id: StringName) -> float:
@@ -68,23 +85,30 @@ func _push() -> void:
 		return
 	var owner_id := get_parent().get_multiplayer_authority()
 	if owner_id != 1:
-		sync_book.rpc_id(owner_id, bests, records)
+		sync_book.rpc_id(owner_id, bests, records, titles, season_chest)
 
 
 @rpc("authority", "reliable")
-func sync_book(saved_bests: Dictionary, saved_records: Dictionary) -> void:
+func sync_book(saved_bests: Dictionary, saved_records: Dictionary, saved_titles: Array = [], saved_season_chest: String = "") -> void:
 	bests = saved_bests.duplicate(true)
 	records = saved_records.duplicate(true)
+	titles = saved_titles.duplicate()
+	season_chest = saved_season_chest
 	book_changed.emit()
 
 
 func to_dict() -> Dictionary:
-	return {"bests": bests.duplicate(true), "records": records.duplicate(true)}
+	return {"bests": bests.duplicate(true), "records": records.duplicate(true), "titles": titles.duplicate(), "season_chest": season_chest}
 
 
 func from_dict(data: Dictionary) -> void:
 	bests = {}
 	records = {}
+	titles = []
+	for title in data.get("titles", []):
+		if not str(title).is_empty():
+			titles.append(str(title))
+	season_chest = str(data.get("season_chest", ""))
 	for key in data.get("bests", {}):
 		var entry: Dictionary = data["bests"][key]
 		bests[str(key)] = {"seconds": maxf(0.0, float(entry.get("seconds", 0.0))), "parse": clampi(int(entry.get("parse", 0)), 0, 100), "when": str(entry.get("when", ""))}

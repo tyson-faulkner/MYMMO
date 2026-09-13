@@ -32,6 +32,9 @@ const MAX_LEVEL := 20
 ## numbers come from SpecDatabase; the spec's abilities from AbilityDatabase.
 var spec_id: StringName = &""
 
+## Who hit us last, in words, for the gravestone: "Vale Wolf", "the ink".
+var last_attacker: String = ""
+
 @export var max_health: int = 100
 @export var max_mana: int = 100
 @export var level: int = 1

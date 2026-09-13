@@ -60,6 +60,10 @@ static func capture(character: Node) -> Dictionary:
 	if records:
 		data["records"] = records.to_dict()
 
+	# The chronicle is the world's, so it rides with whoever hosts.
+	if str(character.name) == "1":
+		data["chronicle"] = Chronicle.to_dict()
+
 	var inventory = character.get_inventory() if character.has_method("get_inventory") else null
 	if inventory:
 		data["inventory"] = inventory.to_dict()
@@ -136,6 +140,9 @@ static func apply(character: Node, data: Dictionary) -> bool:
 	var records := character.get_node_or_null("RecordBook") as RecordBook
 	if records and migrated.has("records"):
 		records.from_dict(migrated["records"])
+
+	if str(character.name) == "1" and migrated.has("chronicle") and migrated["chronicle"] is Dictionary:
+		Chronicle.from_dict(migrated["chronicle"])
 
 	if migrated.has("inventory") and character.has_method("get_inventory"):
 		var inventory = character.get_inventory()
