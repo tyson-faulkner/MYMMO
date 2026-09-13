@@ -215,7 +215,7 @@ func _on_item_selected(index: int):
 			)
 			return
 		current_player.add_world_item.rpc_id(
-			1, current_item.scene_path, current_player.get_node("GodotRobot3D/InfrontArea3D").global_position
+			1, current_item.scene_path, current_player.get_node("Body/InfrontArea3D").global_position
 		)
 		current_player.request_remove_item.rpc_id(1, current_item.id, 1)
 		refresh_display()

@@ -61,6 +61,8 @@ func _ready() -> void:
 	_check_zone_two_and_three(zone, sablemarch, kingsmourn)
 	_check_mounts()
 	_check_graveyards(zone, sablemarch, kingsmourn)
+	_check_character_models()
+	_check_ground_textures(zone, sablemarch)
 
 	print("")
 	if _failures == 0:
@@ -1094,6 +1096,105 @@ func _check_graveyards(vale: Node3D, sablemarch: Node3D, kingsmourn: Node3D) -> 
 	# run is the free option.
 	_report("ghosts run faster than the living", DeathHandler.GHOST_SPEED > 1.2,
 		"%.2fx" % DeathHandler.GHOST_SPEED)
+
+
+# THE GAP THIS CLOSES: the class model is what everyone else sees of you. One
+# that loads with play-once clips, faces backwards, or leaves the equipment
+# sockets pointing at a freed skeleton still "works" — it just looks broken
+# the moment anyone moves or changes class.
+func _check_character_models() -> void:
+	print("")
+	print("-- character models --")
+
+	var body := Body.new()
+	body.name = "ModelCheckBody"
+	for socket_name in Body.SOCKETS:
+		var attachment := BoneAttachment3D.new()
+		attachment.name = socket_name
+		body.add_child(attachment)
+	add_child(body)
+
+	var problems: Array[String] = []
+	# Valkyr twice, so the last swap is back onto a class already worn once.
+	for class_id: StringName in [&"valkyr", &"bard", &"necromancer", &"tinker", &"valkyr"]:
+		if not body.set_class_model(class_id):
+			problems.append("%s: no model" % class_id)
+			continue
+		var skeleton := body.get_skeleton()
+		if skeleton == null:
+			problems.append("%s: no skeleton" % class_id)
+			continue
+		var player := body.animation_player
+		for clip in Character.ALLOWED_ANIMATION_STATES:
+			if player == null or not player.has_animation(clip):
+				problems.append("%s: missing clip %s" % [class_id, clip])
+		for clip in Body.LOOPING_CLIPS:
+			if player and player.has_animation(clip) and player.get_animation(clip).loop_mode == Animation.LOOP_NONE:
+				problems.append("%s: %s does not loop" % [class_id, clip])
+		for socket_name in Body.SOCKETS:
+			var attachment := body.get_node(socket_name) as BoneAttachment3D
+			if attachment.get_node_or_null(attachment.external_skeleton) != skeleton or attachment.bone_idx < 0:
+				problems.append("%s: socket %s not bound to this skeleton" % [class_id, socket_name])
+		# Facing: the toes must sit in front of the foot along the body's +Z,
+		# which is the way movement turns the body.
+		var foot := skeleton.find_bone("LeftFoot")
+		var toes := skeleton.find_bone("LeftToes")
+		if foot < 0 or toes < 0:
+			problems.append("%s: no foot bones to tell facing from" % class_id)
+		else:
+			var to_body := body.global_transform.affine_inverse() * skeleton.global_transform
+			var foot_z := (to_body * skeleton.get_bone_global_rest(foot)).origin.z
+			var toes_z := (to_body * skeleton.get_bone_global_rest(toes)).origin.z
+			if toes_z <= foot_z:
+				problems.append("%s: faces backwards" % class_id)
+		var models := 0
+		for child in body.get_children():
+			if not (child is BoneAttachment3D):
+				models += 1
+		if models != 1:
+			problems.append("%s: %d models worn at once" % [class_id, models])
+	_report("every class wears a working model", problems.is_empty(),
+		"; ".join(problems) if not problems.is_empty() else "4 classes, 5 swaps")
+	body.queue_free()
+
+	# The real player scene: the robot is gone, and everything the network
+	# synchronises still exists at the path it is synchronised by.
+	var packed := load("res://scenes/level/player.tscn") as PackedScene
+	var player_node: Node = null
+	if packed:
+		player_node = packed.instantiate()
+	var wears_model := player_node != null \
+		and player_node.get_node_or_null("Body/ClassModel/Armature/Skeleton3D") is Skeleton3D \
+		and player_node.get_node_or_null("Body/HeadAttach") is BoneAttachment3D \
+		and player_node.get_node_or_null("Body/InfrontArea3D") is Area3D \
+		and player_node.get_node_or_null("GodotRobot3D") == null
+	_report("the player scene wears a class model, not the robot", wears_model, "")
+	var unresolved: Array[String] = []
+	if player_node:
+		var sync := player_node.get_node_or_null("MultiplayerSynchronizer") as MultiplayerSynchronizer
+		if sync and sync.replication_config:
+			for property in sync.replication_config.get_properties():
+				if player_node.get_node_or_null(NodePath(property.get_concatenated_names())) == null:
+					unresolved.append(str(property))
+		player_node.free()
+	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
+
+
+func _check_ground_textures(vale: Node3D, sablemarch: Node3D) -> void:
+	print("")
+	print("-- ground textures --")
+	for ground_name in ZoneBuilder.GROUND_TEXTURES:
+		_report("ground texture '%s' exists" % ground_name, ZoneBuilder.ground_texture(ground_name) != null,
+			str(ZoneBuilder.GROUND_TEXTURES[ground_name]["path"]))
+	for pair in [[vale, "grass"], [sablemarch, "mud"]]:
+		var zone: Node3D = pair[0]
+		var texture := ZoneBuilder.ground_texture(str(pair[1]))
+		var textured := 0
+		for node in zone.find_children("*", "MeshInstance3D", true, false):
+			var material := (node as MeshInstance3D).material_override as StandardMaterial3D
+			if material and texture and material.albedo_texture == texture:
+				textured += 1
+		_report("%s ground is painted %s" % [zone.name, pair[1]], textured >= 2, "%d plates" % textured)
 
 
 func _report(label: String, passed: bool, detail: String) -> void:

@@ -48,8 +48,11 @@ const IRON := Color(0.30, 0.31, 0.34)
 
 
 ## A box, with the defaults every layout wants.
-static func slab(at: Vector3, size: Vector3, color: Color, solid: bool = true) -> Dictionary:
-	return {"pos": at, "size": size, "color": color, "solid": solid}
+static func slab(at: Vector3, size: Vector3, color: Color, solid: bool = true, texture: String = "") -> Dictionary:
+	var piece := {"pos": at, "size": size, "color": color, "solid": solid}
+	if not texture.is_empty():
+		piece["texture"] = texture
+	return piece
 
 
 ## Four walls and a ceiling around a room. Every interior is made of these, and
@@ -147,8 +150,8 @@ static func sablemarch() -> Array:
 
 	# Ground: churned mud rather than the vale's green. Same trick as the vale,
 	# a darker plate further out so the eye has somewhere to travel.
-	pieces.append(slab(o + Vector3(0, -0.5, 0), Vector3(280, 1.0, 360), MUD))
-	pieces.append(slab(o + Vector3(0, -0.44, -60), Vector3(240, 1.0, 200), MUD_DARK, false))
+	pieces.append(slab(o + Vector3(0, -0.5, 0), Vector3(280, 1.0, 360), MUD, true, "mud"))
+	pieces.append(slab(o + Vector3(0, -0.44, -60), Vector3(240, 1.0, 200), MUD_DARK, false, "mud"))
 
 	# Standing flood water. The zone's whole idea in one colour.
 	for pool in [
@@ -164,7 +167,7 @@ static func sablemarch() -> Array:
 	pieces.append(slab(o + Vector3(0, 0.08, -40), Vector3(7, 0.2, 200), ZoneBuilder.ROAD, false))
 
 	# --- The field camp, south end ---
-	pieces.append(slab(o + Vector3(0, 0.1, 112), Vector3(44, 0.3, 38), MUD_DARK))
+	pieces.append(slab(o + Vector3(0, 0.1, 112), Vector3(44, 0.3, 38), MUD_DARK, true, "mud"))
 	# Wrenn's surgery and Colm's command tent are the only real buildings.
 	pieces.append_array(ZoneBuilder.house(o + Vector3(-16, 0, 118), 8, 6, 1))
 	pieces.append_array(ZoneBuilder.house(o + Vector3(16, 0, 118), 8, 6, 1))
@@ -205,7 +208,7 @@ static func sablemarch() -> Array:
 		pieces.append(slab(o + Vector3(5.5, 1.8, float(post_z)), Vector3(0.4, 2.6, 0.4), ZoneBuilder.TIMBER))
 
 	# --- The redoubt approach, north end ---
-	pieces.append(slab(o + Vector3(0, 0.1, -150), Vector3(60, 0.4, 40), MUD_DARK))
+	pieces.append(slab(o + Vector3(0, 0.1, -150), Vector3(60, 0.4, 40), MUD_DARK, true, "mud"))
 	# The fort itself, seen from outside: a squat wall with a gate in it.
 	pieces.append(slab(o + Vector3(-22, 5, -168), Vector3(34, 10, 4), ZoneBuilder.STONE_DARK))
 	pieces.append(slab(o + Vector3(22, 5, -168), Vector3(34, 10, 4), ZoneBuilder.STONE_DARK))
@@ -271,7 +274,7 @@ static func kingsmourn() -> Array:
 
 	# Ground: paved, not grass. A city floor.
 	pieces.append(slab(o + Vector3(0, -0.5, 0), Vector3(300, 1.0, 420), ZoneBuilder.COBBLE))
-	pieces.append(slab(o + Vector3(0, -0.44, 190), Vector3(300, 1.0, 60), ZoneBuilder.GRASS_DARK, false))
+	pieces.append(slab(o + Vector3(0, -0.44, 190), Vector3(300, 1.0, 60), ZoneBuilder.GRASS_DARK, false, "grass"))
 
 	# The avenue, gate to palace.
 	pieces.append(slab(o + Vector3(0, 0.08, 0), Vector3(16, 0.2, 380), ZoneBuilder.STONE_DARK, false))

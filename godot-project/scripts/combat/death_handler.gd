@@ -107,7 +107,7 @@ func _set_ghost_visuals(ghost: bool) -> void:
 	var body := get_parent() as Node3D
 	if body == null:
 		return
-	var model := body.get_node_or_null("GodotRobot3D") as Node3D
+	var model := body.get_node_or_null("Body") as Node3D
 	if model:
 		for mesh in model.find_children("*", "MeshInstance3D", true, false):
 			var mesh_instance := mesh as MeshInstance3D

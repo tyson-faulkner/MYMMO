@@ -26,9 +26,16 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
 
 ## Current state
 
-- **Milestone:** M1-M7 done, parties and runes in. Next: gear slots and stats, then vendors, then content volume.
+- **Milestone:** M1-M7 done, parties and runes in. Also shipped: **gear** (53
+  items across three tiers, five uniques), **mounts** (all ten from the mount
+  spec, each with a way to get it), **zones two and three** (Sablemarch and
+  Kingsmourn, with their four interiors, linked by the Marcher Road and King's
+  Road portals), **23 graveyards**, each with a spirit healer, and the **four
+  class models** worn by the player, with painted grass and marsh-mud ground.
+- **Next:** the mount list UI and mount models, boss abilities per the endgame
+  spec, the equipment paper-doll UI, and Phase 3 kit props.
 - **Loop status:** running
-- **Last verified playable:** 2026-09-12, `tests/zone_smoke_test.gd`, 164/164 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 171/171 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -171,8 +178,61 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   each `PersistenceManager`. Closing the window and both Quit buttons all route
   through it; the Quit buttons previously called `get_tree().quit()` directly,
   which never raises a close request, so they skipped the save entirely.
+- 2026-09-13 — **The class model is turned 180° inside `Body`**, not the rest of
+  the character. The exported models face -Z; movement facing and the pickup
+  area were laid out for the template robot's +Z. One number instead of a bug
+  hunt, and a smoke check fails if a model ever faces backwards.
+- 2026-09-13 — **Equipment sockets are external-skeleton `BoneAttachment3D`s on
+  `Body`**, not children of the model's skeleton. Changing class re-points three
+  nodes at the new skeleton instead of re-parenting every hat and weapon.
+- 2026-09-13 — **Skin colour no longer changes how a character looks.** The class
+  models carry their own painted textures. `set_player_skin()` still accepts and
+  remembers the menu's choice, so nothing that sends one breaks.
+- 2026-09-13 — **Clip looping is set in code** (`Body.LOOPING_CLIPS`), not in the
+  `.glb` import settings. The export marks every clip play-once, and a fix in
+  the import dock would be silently undone by the next re-export from Blender.
+- 2026-09-13 — **Ground textures tile at 4m in world space** (triplanar), not the
+  kit's 2m: a ground plate is hundreds of metres across and mostly seen from far
+  off. Each is normalised so its average IS its palette colour, which lets a
+  darker plate of the same ground tint the one texture rather than need its own.
 
 ## Log
+
+### 2026-09-13 — The classes wear their own models, and the ground is painted
+
+**Characters.** `player.tscn` no longer instances the template robot. `Body`
+wears `char_valkyr.glb` by default and swaps to the chosen class's model
+whenever `apply_class()` runs — at spawn, when the menu's class arrives, and
+when a save is restored. All four share one skeleton and eight clips, so a swap
+is the model node plus three socket re-points. The scene went from 4,930 lines
+to 258: the robot's skin, materials, meshes and ~4,300 lines of baked animation
+are gone.
+
+- The node was renamed `GodotRobot3D` -> `Body`, including every synchronised
+  property path; a new smoke check resolves each of them against the real scene
+  so a stale path can't come back quietly.
+- Idle, Run, Sprint and Fall loop. A model swapped mid-attack reports the attack
+  finished, so the character can't get stuck unable to swing again.
+- First person collapses the head bone; the camera sits at 1.68m, 0.17m forward.
+- The nickname clears the tallest part of the model (the Valkyr's halo).
+
+**Ground.** `km_textures.py` gained `grass` and `marsh_mud`, generated in Blender
+into `blender-source/textures/` and copied to
+`godot-project/assets/textures/ground/`. ZoneBuilder paints any piece carrying
+`{texture: ...}`: the vale's plates, farmland and barrow mound are grass;
+Sablemarch's plates, field camp and redoubt approach are mud; Kingsmourn's
+outskirts are grass.
+
+**Verified:** smoke test 171/171 (7 new checks: every class swaps on and back,
+clips loop, sockets bind, models face forward, no robot left in the scene, every
+synced path resolves, both grounds painted). `character_check.gd` passes all
+five rigged models. Screenshots from the running game via
+`tests/character_shot.tscn`: `Claude outputs/char_*.png`, `ground_*.png`.
+
+**Not done:** the template's hats, swords and backpack keep transforms fitted to
+the robot's bones, so one equipped would sit wrong on a class body — they are
+template items rather than Kingsmourn gear, and none is equipped by default. The
+mud's 4m repeat is visible from low angles.
 
 ### 2026-09-12 — Saving on quit actually saves, and a dead server can't freeze the game
 

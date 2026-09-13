@@ -58,6 +58,20 @@ const KIT := {
 	"fountain": "res://assets/kit/fountain.glb"
 }
 
+## Painted ground textures from blender-source/tools/km_textures.py, laid over
+## the ground plates. Each is painted AT its palette colour ("base"), so a plate
+## of that colour shows the texture unchanged and a darker plate of the same
+## ground tints it down instead of needing a texture of its own. A missing file
+## falls back to the flat colour, same as the kit.
+const GROUND_TEXTURES := {
+	"grass": {"path": "res://assets/textures/ground/km_grass.png", "base": GRASS},
+	"mud": {"path": "res://assets/textures/ground/km_mud.png", "base": Color(0.42, 0.38, 0.30)}
+}
+
+## World metres per texture tile. Matches GROUND_TILE_METERS in km_textures.py.
+## Mapped in world space, so neighbouring plates line up with no seam.
+const GROUND_TILE_METERS := 4.0
+
 ## Kit pieces are modelled 2m wide and 3m tall, origin at the base centre, with
 ## the dressed exterior face pointing -Z. Everything below is laid out on that.
 const SECTION_WIDTH := 2.0
@@ -158,7 +172,7 @@ func _pave_thornhollow() -> void:
 # A piece is {pos, size, color, solid, rot} — solid defaults to true, meaning it
 # gets collision and you can stand on it. A piece may also carry {kit: "wall"},
 # in which case the real model is used when it exists and the box when it
-# doesn't.
+# doesn't, and {texture: "grass"}, which paints a GROUND_TEXTURES entry over it.
 func _build_piece(piece: Dictionary) -> void:
 	var kit_name := str(piece.get("kit", ""))
 	if not kit_name.is_empty():
@@ -178,7 +192,7 @@ func _build_piece(piece: Dictionary) -> void:
 	var box := BoxMesh.new()
 	box.size = size
 	mesh_instance.mesh = box
-	mesh_instance.material_override = _material_for(color)
+	mesh_instance.material_override = _material_for(color, str(piece.get("texture", "")))
 
 	if not solid:
 		mesh_instance.position = position
@@ -292,15 +306,49 @@ func _build_tiled_floor(piece: String, centre: Vector3, size_x: float, size_z: f
 	sample.queue_free()
 
 
-func _material_for(color: Color) -> StandardMaterial3D:
-	var key := str(color)
+func _material_for(color: Color, texture_name: String = "") -> StandardMaterial3D:
+	var key := "%s|%s" % [color, texture_name]
 	if _materials.has(key):
 		return _materials[key]
 	var material := StandardMaterial3D.new()
-	material.albedo_color = color
 	material.roughness = 0.92
+	var texture := ground_texture(texture_name)
+	if texture:
+		var base: Color = GROUND_TEXTURES[texture_name]["base"]
+		material.albedo_texture = texture
+		material.albedo_color = Color(
+			clampf(color.r / base.r, 0.0, 1.5),
+			clampf(color.g / base.g, 0.0, 1.5),
+			clampf(color.b / base.b, 0.0, 1.5)
+		)
+		# World-space triplanar: the top of every plate samples the same world
+		# grid, so the square's slab and the field around it tile continuously.
+		material.uv1_triplanar = true
+		material.uv1_world_triplanar = true
+		material.uv1_scale = Vector3.ONE / GROUND_TILE_METERS
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	else:
+		material.albedo_color = color
 	_materials[key] = material
 	return material
+
+
+static var _ground_textures: Dictionary = {}
+
+
+## The painted texture for a ground name, or null if there isn't one (or the
+## PNG hasn't been generated yet).
+static func ground_texture(texture_name: String) -> Texture2D:
+	if texture_name.is_empty() or not GROUND_TEXTURES.has(texture_name):
+		return null
+	if _ground_textures.has(texture_name):
+		return _ground_textures[texture_name]
+	var path: String = GROUND_TEXTURES[texture_name]["path"]
+	var texture: Texture2D = null
+	if ResourceLoader.exists(path):
+		texture = load(path) as Texture2D
+	_ground_textures[texture_name] = texture
+	return texture
 
 
 # --- Helpers used by the layouts -------------------------------------------
@@ -478,8 +526,8 @@ static func thornhollow_vale() -> Array:
 
 	# Ground: one big green plate, with a darker band further out so the eye has
 	# somewhere to go.
-	pieces.append({"pos": Vector3(0, -0.5, 0), "size": Vector3(260, 1.0, 340), "color": GRASS})
-	pieces.append({"pos": Vector3(0, -0.45, -120), "size": Vector3(200, 1.0, 90), "color": GRASS_DARK, "solid": false})
+	pieces.append({"pos": Vector3(0, -0.5, 0), "size": Vector3(260, 1.0, 340), "color": GRASS, "texture": "grass"})
+	pieces.append({"pos": Vector3(0, -0.45, -120), "size": Vector3(200, 1.0, 90), "color": GRASS_DARK, "solid": false, "texture": "grass"})
 
 	# The road: south gate, through the square, north to the barrow.
 	pieces.append({"pos": Vector3(0, 0.06, 40), "size": Vector3(9, 0.2, 120), "color": ROAD, "solid": false})
@@ -519,7 +567,7 @@ static func thornhollow_vale() -> Array:
 	# --- Farmland and hedgerow, levels 1-5 ---
 	for x in [-46, -30, 30, 46]:
 		for z in [-6, 8, 22]:
-			pieces.append({"pos": Vector3(x, 0.08, z), "size": Vector3(13, 0.25, 11), "color": GRASS_DARK, "solid": false})
+			pieces.append({"pos": Vector3(x, 0.08, z), "size": Vector3(13, 0.25, 11), "color": GRASS_DARK, "solid": false, "texture": "grass"})
 	for hedge in [Vector3(-38, 0, -18), Vector3(-38, 0, 30), Vector3(38, 0, -18), Vector3(38, 0, 30)]:
 		pieces.append({"pos": hedge + Vector3(0, 0.8, 0), "size": Vector3(26, 1.6, 1.2), "color": GRASS_DARK})
 
@@ -540,7 +588,7 @@ static func thornhollow_vale() -> Array:
 	# The mound is scenery you walk AROUND; the door sits on flat ground in
 	# front of it, because a CharacterBody3D can't climb a two-metre step and a
 	# blockout is not the place to be solving stairs.
-	pieces.append({"pos": Vector3(0, 1.0, -148), "size": Vector3(90, 2.0, 60), "color": GRASS_DARK})
+	pieces.append({"pos": Vector3(0, 1.0, -148), "size": Vector3(90, 2.0, 60), "color": GRASS_DARK, "texture": "grass"})
 	pieces.append({"pos": Vector3(0, 2.6, -152), "size": Vector3(66, 2.0, 46), "color": BARROW})
 	pieces.append({"pos": Vector3(0, 4.2, -156), "size": Vector3(44, 2.0, 32), "color": BARROW})
 

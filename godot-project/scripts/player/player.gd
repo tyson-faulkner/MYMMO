@@ -35,10 +35,9 @@ const HAT_NODES_BY_ITEM := {
 }
 const WEAPON_NODES_BY_ITEM := {"sword": "Sword", "sword_big": "SwordBig", "axe": "Axe"}
 const BACKPACK_NODES_BY_ITEM := {"backpack": "Backpack"}
-const HEAD_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/HeadAttach/"
-const HAND_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/LeftHandAttach/"
-const BACK_EQUIPMENT_PATH := "GodotRobot3D/RobotArmature/Skeleton3D/BackAttach/"
-const FIRST_PERSON_HIDDEN_BONES: Array[StringName] = [&"Head", &"HeadTop"]
+const HEAD_EQUIPMENT_PATH := "Body/HeadAttach/"
+const HAND_EQUIPMENT_PATH := "Body/LeftHandAttach/"
+const BACK_EQUIPMENT_PATH := "Body/BackAttach/"
 const CLASS_RESOURCE_PATHS := {
 	&"valkyr": "res://resources/classes/valkyr.tres",
 	&"bard": "res://resources/classes/bard.tres",
@@ -57,14 +56,8 @@ const CLASS_RESOURCE_PATHS := {
 @export_range(0.0, 1.0, 0.01) var nickname_clearance: float = 0.2
 
 @export_category("Objects")
-@export var _body: Node3D = null
+@export var _body: Body = null
 @export var _spring_arm_offset: SpringArmCharacter = null
-
-@export_category("Skin Colors")
-@export var blue_texture: CompressedTexture2D
-@export var yellow_texture: CompressedTexture2D
-@export var green_texture: CompressedTexture2D
-@export var red_texture: CompressedTexture2D
 
 var player_inventory: PlayerInventory
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -109,12 +102,7 @@ var _equipped_hat_visual_id := ""
 
 @onready var nickname: Label3D = $PlayerNick/Nickname
 
-@onready var _bottom_mesh: MeshInstance3D = get_node("GodotRobot3D/RobotArmature/Skeleton3D/Bottom")
-@onready var _chest_mesh: MeshInstance3D = get_node("GodotRobot3D/RobotArmature/Skeleton3D/Chest")
-@onready var _face_mesh: MeshInstance3D = get_node("GodotRobot3D/RobotArmature/Skeleton3D/Face")
-@onready var _limbs_head_mesh: MeshInstance3D = get_node("GodotRobot3D/RobotArmature/Skeleton3D/LimbsAndHead")
-@onready var _skeleton: Skeleton3D = get_node("GodotRobot3D/RobotArmature/Skeleton3D")
-@onready var _pickup_area: Area3D = $GodotRobot3D/InfrontArea3D
+@onready var _pickup_area: Area3D = $Body/InfrontArea3D
 @onready var _first_person_hud: CanvasLayer = $FirstPersonHUD
 
 
@@ -134,9 +122,9 @@ func _ready():
 	apply_class(class_id)
 
 	set_player_skin(skin_color)
-	var animation_player := get_node_or_null("GodotRobot3D/AnimationPlayer") as AnimationPlayer
-	if animation_player:
-		animation_player.animation_finished.connect(_on_animation_finished)
+	# Through the body, not its AnimationPlayer: the player is replaced whenever
+	# the class model is, and this connection has to survive that.
+	_body.animation_finished.connect(_on_animation_finished)
 	_body.play_animation_state(&"Idle")
 	nickname.visible = true
 	_set_nickname_height(BASE_NICKNAME_HEIGHT)
@@ -155,16 +143,9 @@ func _on_camera_perspective_changed(first_person: bool) -> void:
 	if not is_multiplayer_authority():
 		return
 	_body.visible = true
-	_bottom_mesh.visible = not first_person
-	_chest_mesh.visible = not first_person
-	_face_mesh.visible = not first_person
-	_limbs_head_mesh.visible = true
+	_body.set_head_hidden(first_person)
 	nickname.visible = not first_person
 	_first_person_hud.visible = first_person
-	for bone_name in FIRST_PERSON_HIDDEN_BONES:
-		var bone_index := _skeleton.find_bone(bone_name)
-		if bone_index >= 0:
-			_skeleton.set_bone_pose_scale(bone_index, Vector3.ZERO if first_person else Vector3.ONE)
 	if first_person:
 		_align_pickup_area_with_camera()
 	else:
@@ -483,34 +464,11 @@ func _reset_position_after_fall():
 	velocity = Vector3.ZERO
 
 
-func _get_texture_from_name(color: SkinColor) -> CompressedTexture2D:
-	match color:
-		SkinColor.BLUE:
-			return blue_texture
-		SkinColor.GREEN:
-			return green_texture
-		SkinColor.RED:
-			return red_texture
-		SkinColor.YELLOW:
-			return yellow_texture
-		_:
-			return blue_texture
-
-
+## The menu and the network still send a skin colour. Class models carry their
+## own painted textures, so it no longer changes how the character looks; it is
+## remembered so nothing that sends it breaks.
 func set_player_skin(skin_name: SkinColor) -> void:
-	var texture = _get_texture_from_name(skin_name)
-
-	_set_mesh_texture(_bottom_mesh, texture)
-	_set_mesh_texture(_chest_mesh, texture)
-	_set_mesh_texture(_face_mesh, texture)
-	_set_mesh_texture(_limbs_head_mesh, texture)
-
-
-func _set_mesh_texture(mesh_instance: MeshInstance3D, texture: CompressedTexture2D) -> void:
-	if mesh_instance:
-		var new_material := StandardMaterial3D.new()
-		new_material.albedo_texture = texture
-		mesh_instance.set_surface_override_material(0, new_material)
+	skin_color = skin_name
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -868,6 +826,13 @@ func _update_nickname_height(hat_id: String = "") -> void:
 
 func _calculate_nickname_height(hat_id: String) -> float:
 	var target_height := BASE_NICKNAME_HEIGHT
+	# Tall silhouettes — the Valkyr's halo and wings — would swallow the name.
+	if _body and is_inside_tree():
+		var model := _body.get_node_or_null(Body.MODEL_NODE) as Node3D
+		if model:
+			var model_top := _get_visual_top(model)
+			if model_top > -INF and model_top < INF:
+				target_height = maxf(target_height, model_top + nickname_clearance)
 	var equipped_hat := _get_hat_node(hat_id)
 	if equipped_hat:
 		var hat_top := _get_visual_top(equipped_hat)
@@ -1010,7 +975,7 @@ func _has_collectible_item_in_front() -> bool:
 
 func _get_collectible_items_in_front() -> Array[ItemRigidBody3D]:
 	var collectible_items: Array[ItemRigidBody3D] = []
-	var pickup_area := get_node_or_null("GodotRobot3D/InfrontArea3D") as Area3D
+	var pickup_area := get_node_or_null("Body/InfrontArea3D") as Area3D
 	if not pickup_area:
 		return collectible_items
 
@@ -1049,6 +1014,11 @@ func _is_grounded_on_server() -> bool:
 ## health, the resource bar and what that bar is called.
 func apply_class(new_class_id: StringName) -> void:
 	class_id = new_class_id
+	if _body:
+		_body.set_class_model(class_id)
+		# A new silhouette moves the name, and every peer has to hear about it.
+		if is_inside_tree() and multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+			call_deferred("_sync_equipment_appearance")
 	var path: String = str(CLASS_RESOURCE_PATHS.get(class_id, ""))
 	if path.is_empty() or not ResourceLoader.exists(path):
 		return

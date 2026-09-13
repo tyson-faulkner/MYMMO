@@ -2,8 +2,10 @@
 
 Generates the tileable, hand-painted-look textures every kit piece shares:
 cream limestone, blue slate, warm timber, gray cobblestone, white plaster,
-gold, black iron. Painted shading (dark crevices, lit edges, mottling) is
-baked straight into the pixels -- no normal maps, matching the kit spec.
+gold, black iron -- plus the two ground textures ZoneBuilder lays over its
+ground plates: meadow grass and marsh mud. Painted shading (dark crevices,
+lit edges, mottling) is baked straight into the pixels -- no normal maps,
+matching the kit spec.
 
 Colours are taken from docs/reference/03-environments/07-material-bible.png.
 
@@ -33,6 +35,18 @@ GOLD = np.array([0.831, 0.667, 0.259])
 GOLD_DARK = np.array([0.400, 0.290, 0.075])
 IRON = np.array([0.165, 0.158, 0.150])   # neutral, faintly warm -- see note in black_iron()
 HERALDRY_BLUE = np.array([0.114, 0.169, 0.365])
+
+# Ground. The material bible has no grass or mud swatch, so these are the
+# palette colours the zones already use: grass is BUILD_PLAN's locked #6F8F4A
+# (ZoneBuilder.GRASS) and mud is ZoneLayouts.MUD. The textures are painted AT
+# those colours so a plate tinted to them in Godot comes out unchanged.
+GRASS_BASE = np.array([0.440, 0.560, 0.290])
+GRASS_DEEP = np.array([0.215, 0.318, 0.150])
+GRASS_SUN = np.array([0.700, 0.745, 0.385])
+MUD_BASE = np.array([0.420, 0.380, 0.300])
+MUD_WET = np.array([0.205, 0.192, 0.165])
+MUD_SILT = np.array([0.575, 0.520, 0.415])
+MUD_SHEEN = np.array([0.470, 0.540, 0.560])   # sky caught in standing water
 
 
 # ------------------------------------------------------------------ noise ---
@@ -89,6 +103,17 @@ def _tint(base, amount):
 
 def _finish(rgb):
     return np.clip(rgb, 0.0, 1.0)
+
+
+def _match_mean(rgb, target):
+    """Rescale so the texture averages exactly `target`.
+
+    Ground textures are tinted in Godot relative to their palette colour, so
+    the painted detail may only move pixels around that colour, never shift
+    the whole field darker or lighter -- or every plate renders off-palette.
+    """
+    mean = rgb.reshape(-1, 3).mean(axis=0)
+    return rgb * (np.asarray(target) / np.maximum(mean, 1e-6))[None, None, :]
 
 
 def _rgba(rgb, alpha=None):
@@ -381,6 +406,97 @@ def black_iron(size=SIZE, seed=91):
     return _rgba(rgb)
 
 
+# ----------------------------------------------------------------- ground ---
+# Ground plates are hundreds of metres across and seen from above and far off,
+# so these lean on broad light-and-shade drifts (which read at distance) over
+# fine detail (which only reads underfoot). ZoneBuilder maps them at
+# GROUND_TILE_METERS per tile, not the kit's 2m.
+GROUND_TILE_METERS = 4.0
+
+
+def _streaks(size, freq, seed, length, axis=0):
+    """Fine noise smeared along one axis -- short painted strokes. Tileable,
+    because the smear is a wrap-around rolling mean."""
+    n = value_noise(size, freq, seed)
+    acc = np.zeros_like(n)
+    for step in range(length):
+        acc += np.roll(n, step, axis=axis)
+    return acc / length
+
+
+def grass(size=SIZE, seed=241):
+    """Meadow grass: sunlit and shaded drifts, clumped tufts with dark roots and
+    lit tips, and short blade strokes. No flowers -- the palette has none."""
+    drift = fbm(size, 3, seed, octaves=3, gain=0.55)          # the big painted patches
+    clumps = fbm(size, 14, seed + 7, octaves=4)
+    blades = _streaks(size, 160, seed + 13, length=9)
+    speck = value_noise(size, 90, seed + 29)
+
+    # Tufts: the upper part of the clump noise, softened, so grass bunches up
+    # rather than sitting as an even carpet.
+    tuft = _smooth(np.clip((clumps - 0.42) / 0.32, 0, 1))
+
+    value = 0.84 + (drift - 0.5) * 0.42 + (blades - 0.5) * 0.30
+    rgb = _tint(GRASS_BASE, value)
+
+    # Dark between the tufts, lit on their crowns -- the same crevice/edge rule
+    # as the stonework, applied to something soft.
+    gaps = (1.0 - tuft)[:, :, None]
+    rgb = rgb * (1.0 - gaps * 0.34) + GRASS_DEEP[None, None, :] * gaps * 0.34
+    tips = (np.clip((blades - 0.58) / 0.2, 0, 1) * tuft)[:, :, None]
+    rgb = rgb * (1.0 - tips * 0.45) + GRASS_SUN[None, None, :] * tips * 0.45
+
+    # Warm the sunlit drifts a touch, cool the shaded ones.
+    warm = (drift - 0.5) * 0.06
+    rgb[:, :, 0] += warm
+    rgb[:, :, 2] -= warm * 0.8
+
+    # A scatter of dry flecks so a large field doesn't read as green felt.
+    dry = np.clip((speck - 0.9) / 0.1, 0, 1)[:, :, None]
+    rgb = rgb * (1.0 - dry * 0.35) + GRASS_SUN[None, None, :] * dry * 0.35
+    return _rgba(_match_mean(rgb, GRASS_BASE))
+
+
+def marsh_mud(size=SIZE, seed=251):
+    """Churned marsh mud for Sablemarch: wet black hollows, drier ridged silt,
+    ruts pressed through it, and sky caught in the standing water."""
+    u, v = _uv(size)
+    hollows = fbm(size, 4, seed, octaves=4)
+    ridges = np.abs(fbm(size, 9, seed + 5, octaves=3) - 0.5) * 2.0
+    grit = fbm(size, 40, seed + 11, octaves=3)
+    speck = value_noise(size, 110, seed + 17)
+
+    # Ruts: a few wobbling parallel tracks. Integer frequency across u keeps
+    # them tileable; the warp keeps them from being ruled lines.
+    warp = (fbm(size, 3, seed + 23, octaves=2) - 0.5) * 1.6
+    rut = np.abs(np.sin((u * 3.0 + warp) * np.pi * 2.0))
+    rut = 1.0 - _smooth(np.clip(rut / 0.16, 0, 1))                # 1 in the rut
+
+    value = 0.86 + (grit - 0.5) * 0.30
+    rgb = _tint(MUD_BASE, value)
+
+    # Crease lines along the ridges: dark in the fold, a lit silty lip beside it.
+    crease = (1.0 - _smooth(np.clip(ridges / 0.14, 0, 1)))[:, :, None]
+    lip = (_smooth(np.clip((ridges - 0.14) / 0.10, 0, 1))
+           * (1.0 - _smooth(np.clip((ridges - 0.30) / 0.12, 0, 1))))[:, :, None]
+    rgb = rgb * (1.0 - crease * 0.38) + MUD_WET[None, None, :] * crease * 0.38
+    rgb = rgb * (1.0 - lip * 0.30) + MUD_SILT[None, None, :] * lip * 0.30
+
+    # Wet: low ground and the bottoms of ruts go dark and flat.
+    wet = np.maximum(_smooth(np.clip((0.44 - hollows) / 0.12, 0, 1)), rut * 0.7)[:, :, None]
+    rgb = rgb * (1.0 - wet * 0.62) + MUD_WET[None, None, :] * wet * 0.62
+
+    # Standing water in the deepest hollows keeps a painted sky highlight.
+    pool = _smooth(np.clip((0.34 - hollows) / 0.06, 0, 1))
+    sheen = (pool * (0.55 + (fbm(size, 6, seed + 31) - 0.5) * 0.6))[:, :, None]
+    rgb = rgb * (1.0 - sheen * 0.55) + MUD_SHEEN[None, None, :] * sheen * 0.55
+
+    # Grit: pale stones and dark bits trodden in.
+    stones = np.clip((speck - 0.92) / 0.08, 0, 1)[:, :, None] * (1.0 - wet)
+    rgb = rgb * (1.0 - stones * 0.5) + MUD_SILT[None, None, :] * stones * 0.5
+    return _rgba(_match_mean(rgb, MUD_BASE))
+
+
 SKIN = np.array([0.741, 0.545, 0.427])
 UNDERSUIT = np.array([0.212, 0.224, 0.259])
 
@@ -557,6 +673,8 @@ BUILDERS = {
     "plaster": plaster,
     "gold": gold_leaf,
     "iron": black_iron,
+    "grass": grass,
+    "mud": marsh_mud,
 }
 
 
