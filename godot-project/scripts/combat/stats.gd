@@ -15,6 +15,8 @@ signal resource_changed(current: int, maximum: int, label: String)
 ## Carries who landed the killing blow so quests and XP can be credited.
 ## 0 means "nobody / the world".
 signal died(killer_peer_id: int)
+## Server only: a hit landed, after armour. Bosses and the recorder listen.
+signal damaged(amount: int, source_peer_id: int)
 signal revived
 ## current xp, xp needed for the next level
 signal xp_changed(current: int, needed: int)
@@ -117,6 +119,7 @@ func apply_damage(amount: int, source_peer_id: int = 0) -> void:
 	var new_health: int = maxi(0, health - mitigated)
 	_set_health(new_health, source_peer_id)
 	_set_health.rpc(new_health, source_peer_id)
+	damaged.emit(mitigated, source_peer_id)
 	# Taking a hit builds a tank's resource.
 	if _resource_builds_in_combat:
 		restore_resource(int(ceil(mitigated * 0.35)))

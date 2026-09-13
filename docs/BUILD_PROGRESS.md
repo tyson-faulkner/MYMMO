@@ -39,7 +39,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   engine, grudge bosses and seasons, the combat recorder, specs and rune
   moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 209/209 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 236/236 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +200,13 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Pools are not replicated nodes.** A boss RPCs the recipe
+  (name, spot, size, lifetime) and every peer draws its own; only the
+  server's copy damages. Someone joining mid-fight will not see pools laid
+  before they arrived — accepted, since nobody joins a boss fight late.
+- 2026-09-13 — **Feuds wait for an audience.** A Stag/Sunburst pack only
+  starts fighting itself once a player is within 2.5× aggro range, so packs
+  are whole when you arrive and thin out while you watch, as the spec wants.
 - 2026-09-13 — **Cast progress is never streamed.** `begin_cast`/`end_cast`
   RPCs carry the name and length once; every peer draws the bar from its
   own clock. Stuns are not StatusEffects: they need the body to stop, so
@@ -219,6 +226,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Boss mechanics engine: the Hall and the Throne fight back
+
+- **Changed:** `scripts/enemies/boss_mechanics.gd` runs `MobData.mechanics` on the server: timer (`every`/`first`) and health (`at: [70, 35]`) triggers, target rules tank/random/furthest/self, optional cast wind-up through the unit-7 cast bar, and eleven effects (damage, heal, slow, stun, pool, pools_fire, line, charge, named, spawn, stat). `scripts/combat/ground_effect.gd` is the persistent pool (drawn on every peer from one RPC, hurts only on the server); `scripts/world/interactable.gd` is the generalised press-F: four braziers in the vault (3s channel, clear pools within 6m, 25s relight) and the throne dais (`stand`). Spawns go through the existing MobContainer. All five endgame bosses are written as data per the spec; Records packs and the claimants carry a `feud` tag and fight each other until a player interferes. `Stats` gains a `damaged` signal; players gain `apply_knockback`.
+- **Test:** smoke 236/236 with 27 new checks (data well formed, pools hurt and persist, brazier clears and cools, Turn the Page fires pools, Call the Shelves at 70% once, Bind, Charge, Sun Lance hits the line and misses off it, the Crown heals the King unless the named player is on the dais, Heralds add damage, enrage stacks). In-game shot: ink pool under the player beside a brazier, looked at.
+- **Surprising:** the King's spawner stands ON the dais, so "off the dais" in a test means 30m down the hall. Teleporting the real player below the vale's fall limit bounces them back to the surface — the screenshot script now lifts `fall_limit_y` first. Left for later: the claimants' shared-health rule and the heroic variant.
 
 ### 2026-09-13 — Six new effect verbs, enemy cast bars, Broken Verse interrupts
 

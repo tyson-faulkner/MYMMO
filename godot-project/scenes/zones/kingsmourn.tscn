@@ -1,5 +1,6 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
+[ext_resource type="Script" path="res://scripts/world/interactable.gd" id="8_interact"]
 [ext_resource type="Script" path="res://scripts/world/zone_builder.gd" id="1_zone"]
 [ext_resource type="Script" path="res://scripts/enemies/mob_container.gd" id="2_container"]
 [ext_resource type="Script" path="res://scripts/enemies/mob_spawner.gd" id="3_spawner"]
@@ -239,6 +240,60 @@ mob_id = &"first_king_crowned"
 count = 1
 scatter_radius = 0.0
 is_boss_encounter = true
+
+[node name="Interactables" type="Node3D" parent="."]
+
+[node name="BrazierNorthWest" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1178, -1497.8, -734)
+script = ExtResource("8_interact")
+interact_id = &"brazier_nw"
+display_name = "Brazier"
+prompt = "Light the brazier"
+action = "clear_pools"
+action_radius = 6.0
+channel_seconds = 3.0
+cooldown_seconds = 25.0
+
+[node name="BrazierNorthEast" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1222, -1497.8, -734)
+script = ExtResource("8_interact")
+interact_id = &"brazier_ne"
+display_name = "Brazier"
+prompt = "Light the brazier"
+action = "clear_pools"
+action_radius = 6.0
+channel_seconds = 3.0
+cooldown_seconds = 25.0
+
+[node name="BrazierSouthWest" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1178, -1497.8, -766)
+script = ExtResource("8_interact")
+interact_id = &"brazier_sw"
+display_name = "Brazier"
+prompt = "Light the brazier"
+action = "clear_pools"
+action_radius = 6.0
+channel_seconds = 3.0
+cooldown_seconds = 25.0
+
+[node name="BrazierSouthEast" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1222, -1497.8, -766)
+script = ExtResource("8_interact")
+interact_id = &"brazier_se"
+display_name = "Brazier"
+prompt = "Light the brazier"
+action = "clear_pools"
+action_radius = 6.0
+channel_seconds = 3.0
+cooldown_seconds = 25.0
+
+[node name="ThroneDais" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1200, -1997.6, -724)
+script = ExtResource("8_interact")
+interact_id = &"throne_dais"
+display_name = "The Dais"
+action = "stand"
+action_radius = 11.0
 
 [node name="NPCs" type="Node3D" parent="."]
 

@@ -75,6 +75,12 @@ var _cast_ready_at: Dictionary = {}
 var _cast_lockout: float = 0.0
 var _stun_remaining: float = 0.0
 var _cast_label: Label3D = null
+## A line over the head that isn't a cast: "THE CROWN: Tyson", "Heralds".
+var _announce_text: String = ""
+var _announce_until_msec: int = 0
+
+## Server only, bosses only: the thing that runs their mechanics.
+var _mechanics: BossMechanics = null
 
 var _stats: Stats = null
 var _attack_timer: float = 0.0
@@ -95,8 +101,13 @@ func _ready() -> void:
 	_apply_mob_data()
 	_stats.health_changed.connect(_on_health_changed)
 	_stats.died.connect(_on_died)
+	_stats.damaged.connect(_on_damaged)
 	_on_health_changed(_stats.health, _stats.max_health)
 	add_to_group("Hostiles")
+	if mob_data and not mob_data.mechanics.is_empty() and multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		_mechanics = BossMechanics.new()
+		_mechanics.setup(self)
+		add_child(_mechanics)
 	_cast_label = Label3D.new()
 	_cast_label.name = "CastLabel"
 	_cast_label.position = Vector3(0, 2.0, 0)
@@ -198,7 +209,11 @@ func _scaled_damage() -> int:
 		return mob_data.damage
 	# Damage scales far more gently than health, or a full group melts the tank.
 	var player_count: int = maxi(1, _count_players())
-	return int(round(float(mob_data.damage) * (1.0 + 0.12 * float(player_count - 1))))
+	var scaled := float(mob_data.damage) * (1.0 + 0.12 * float(player_count - 1))
+	# Enrage stacks and living heralds make a boss hit harder still.
+	if _mechanics:
+		scaled *= _mechanics.damage_multiplier()
+	return int(round(scaled))
 
 
 func name_label_text(display_name: String, level: int) -> void:
@@ -278,6 +293,31 @@ func _tick_idle() -> void:
 	if nearest:
 		target = nearest
 		state = State.CHASING
+		return
+	# A feud: the Records packs and the claimants fight each other, but only
+	# once a player is close enough to see it, so a pack is whole when you
+	# arrive and thins itself out while you watch.
+	if mob_data and mob_data.feud != &"" and _find_nearest_player(_aggro_radius() * 2.5):
+		var rival := _find_feud_rival(_aggro_radius())
+		if rival:
+			target = rival
+			state = State.CHASING
+
+
+func _find_feud_rival(radius: float) -> Node3D:
+	var best: Node3D = null
+	var best_distance := radius
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var other := node as Mob
+		if other == null or other == self or other.is_friendly or other.state == State.DEAD:
+			continue
+		if other.mob_data == null or not other.mob_data.tags.has(mob_data.feud):
+			continue
+		var distance := global_position.distance_to(other.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = other
+	return best
 
 
 func _tick_chasing() -> void:
@@ -367,25 +407,38 @@ func _try_begin_cast() -> bool:
 
 
 ## Server. Begins cast `index` from mob_data.casts if it has a target in range.
-## Public so bosses and tests can force one. Returns whether it started.
+## Public so tests can force one. Returns whether it started.
 func start_cast(index: int, ignore_cooldowns: bool = false) -> bool:
 	if not multiplayer.is_server() or mob_data == null or index < 0 or index >= mob_data.casts.size():
+		return false
+	var entry: Dictionary = mob_data.casts[index]
+	if not start_cast_entry(entry, ignore_cooldowns):
+		return false
+	_cast_ready_at[index] = Time.get_ticks_msec() + int(float(entry.get("every", 10.0)) * 1000.0)
+	return true
+
+
+## Server. Begins a cast from any entry — a casts row or a boss mechanic.
+func start_cast_entry(entry: Dictionary, ignore_cooldowns: bool = false) -> bool:
+	if not multiplayer.is_server():
 		return false
 	if is_casting or state == State.DEAD or _stun_remaining > 0.0:
 		return false
 	if not ignore_cooldowns and _cast_lockout > 0.0:
 		return false
-	var entry: Dictionary = mob_data.casts[index]
-	var chosen := _pick_cast_target(str(entry.get("target", "current")), float(entry.get("range", DEFAULT_CAST_RANGE)))
+	var rule := str(entry.get("target", "current"))
+	if rule == "tank":
+		rule = "current"
+	var chosen: Node3D = self if rule == "self" else _pick_cast_target(rule, float(entry.get("range", DEFAULT_CAST_RANGE)))
 	if chosen == null:
 		return false
 	_cast_entry = entry
 	_cast_target = chosen
 	_cast_remaining = maxf(0.1, float(entry.get("cast", 1.5)))
-	_cast_ready_at[index] = Time.get_ticks_msec() + int(float(entry.get("every", 10.0)) * 1000.0)
 	velocity.x = 0.0
 	velocity.z = 0.0
-	_face(chosen.global_position)
+	if chosen != self:
+		_face(chosen.global_position)
 	begin_cast(str(entry.get("name", "Cast")), _cast_remaining, bool(entry.get("interruptible", true)))
 	begin_cast.rpc(cast_name, _cast_remaining, cast_interruptible)
 	return true
@@ -447,11 +500,15 @@ func _land_cast() -> void:
 	match str(entry.get("effect", "damage")):
 		"heal":
 			_stats.heal(power)
-		_:
+		"damage":
 			if victim and is_instance_valid(victim):
 				var victim_stats := victim.get_node_or_null("Stats") as Stats
 				if victim_stats and not victim_stats.is_dead:
 					victim_stats.apply_damage(power, 0)
+		_:
+			# A boss mechanic with a wind-up: the engine knows what lands.
+			if _mechanics:
+				_mechanics.land(entry, victim if victim and is_instance_valid(victim) else null)
 	cast_landed.emit(landed_name, victim)
 
 
@@ -518,8 +575,34 @@ func end_cast(interrupted: bool) -> void:
 			_cast_label.visible = false
 
 
+## Every peer: a line over the head for a few seconds. Bosses use it to say
+## who the Crown named and what just walked in.
+@rpc("authority", "call_local", "reliable")
+func announce(text: String, seconds: float) -> void:
+	_announce_text = text
+	_announce_until_msec = Time.get_ticks_msec() + int(seconds * 1000.0)
+
+
+## Every peer, from the boss: draw a pool. The server's copy is the one that
+## hurts; the others are the picture.
+@rpc("authority", "call_local", "reliable")
+func spawn_ground_effect(
+	effect_name: String, at: Vector3, radius: float, slow: float, damage: int, tick: float, seconds: float
+) -> void:
+	GroundEffect.spawn(get_tree(), effect_name, at, radius, slow, damage, tick, seconds, name, Color(0.08, 0.06, 0.16, 0.75))
+
+
 func _refresh_cast_label() -> void:
-	if _cast_label == null or not is_casting:
+	if _cast_label == null:
+		return
+	if not is_casting:
+		if _announce_text != "" and Time.get_ticks_msec() < _announce_until_msec:
+			_cast_label.visible = true
+			_cast_label.modulate = Color(1.0, 0.9, 0.5)
+			_cast_label.text = _announce_text
+		elif _announce_text != "":
+			_announce_text = ""
+			_cast_label.visible = false
 		return
 	var filled := int(round(cast_progress() * 10.0))
 	_cast_label.visible = true
@@ -714,12 +797,29 @@ func _on_health_changed(current: int, maximum: int) -> void:
 			state = State.CHASING
 
 
+## Server. Somebody hit this mob: a feuding mob drops its rival for the player
+## who interfered, and a boss's engine gets to react (the Crown).
+func _on_damaged(amount: int, source_peer_id: int) -> void:
+	if not multiplayer.has_multiplayer_peer() or not multiplayer.is_server() or state == State.DEAD:
+		return
+	if _mechanics:
+		_mechanics.on_damaged(amount, source_peer_id)
+	if source_peer_id > 0 and (target == null or target is Mob):
+		var attacker := _find_player_by_peer(source_peer_id)
+		if attacker:
+			target = attacker
+			if state != State.ATTACKING:
+				state = State.CHASING
+
+
 func _on_died(killer_peer_id: int) -> void:
 	state = State.DEAD
 	target = null
 	velocity = Vector3.ZERO
 	_last_damage_source = killer_peer_id
 	_stun_remaining = 0.0
+	if _mechanics:
+		_mechanics.reset()
 	if is_casting and multiplayer.has_multiplayer_peer() and multiplayer.is_server():
 		end_cast(true)
 		end_cast.rpc(true)

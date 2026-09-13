@@ -68,6 +68,7 @@ func _ready() -> void:
 	_check_kit_props(zone, kingsmourn)
 	_check_class_weapons()
 	_check_enemy_models(zone)
+	await _check_boss_mechanics(kingsmourn)
 
 	print("")
 	if _failures == 0:
@@ -450,7 +451,11 @@ func _check_status_effects(zone: Node) -> void:
 	var silence := AbilityDatabase.get_ability(&"bard_silence")
 	_report("Broken Verse is an interrupt", silence != null and silence.effect == AbilityData.Effect.INTERRUPT, "")
 	var kell := MobDatabase.get_mob(&"master_kell")
-	_report("Master Kell has Burn the Page as a cast", kell != null and kell.casts.size() > 0 and str(kell.casts[0].get("name", "")) == "Burn the Page", "")
+	var kell_burns := false
+	for mechanic in (kell.mechanics if kell else []):
+		if str(mechanic.get("name", "")) == "Burn the Page" and float(mechanic.get("cast", 0.0)) > 0.0:
+			kell_burns = true
+	_report("Master Kell has Burn the Page as an interruptible cast", kell_burns, "")
 
 	var stats := _fake_player.get_node("Stats") as Stats
 	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
@@ -1337,6 +1342,199 @@ func _check_character_models() -> void:
 					unresolved.append(str(property))
 		player_node.free()
 	_report("every synchronised player property still has a node", unresolved.is_empty(), ", ".join(unresolved))
+
+
+# THE GAP THIS CLOSES: the endgame spec describes six bosses by what they do,
+# and until now they all just hit. Every mechanic kind is fired for real here
+# against the real bosses standing in the real Hall and Throne.
+func _check_boss_mechanics(kingsmourn: Node3D) -> void:
+	print("")
+	print("-- boss mechanics --")
+	var stats := _fake_player.get_node("Stats") as Stats
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+	stats.revive()
+
+	# Every boss's data is well formed: recognised effects, real spawn ids.
+	var known := ["damage", "heal", "slow", "stun", "pool", "pools_fire", "line", "charge", "named", "spawn", "stat"]
+	var bad: Array[String] = []
+	var boss_count := 0
+	for mob_id in MobDatabase.get_all_ids():
+		var data := MobDatabase.get_mob(mob_id)
+		if not data.is_boss or data.mechanics.is_empty():
+			continue
+		boss_count += 1
+		for mechanic in data.mechanics:
+			if not known.has(str(mechanic.get("effect", "damage"))):
+				bad.append("%s: %s" % [mob_id, mechanic.get("effect", "")])
+			if not mechanic.has("every") and not mechanic.has("at"):
+				bad.append("%s: %s never fires" % [mob_id, mechanic.get("name", "")])
+			for group in mechanic.get("spawn", []):
+				if MobDatabase.get_mob(StringName(str(group.get("id", "")))) == null:
+					bad.append("%s spawns unknown %s" % [mob_id, group.get("id", "")])
+	# Kell, the Ledger, Ashcombe, Severin and the King: the endgame spec's five.
+	_report("the five endgame bosses carry mechanics", boss_count == 5, "%d bosses" % boss_count)
+	_report("every mechanic is well formed", bad.is_empty(), ", ".join(bad))
+
+	var container := kingsmourn.get_node_or_null("MobContainer")
+	var bosses := {}
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and mob.mob_data and mob.mob_data.is_boss:
+			bosses[mob.mob_data.id] = mob
+	var ledger: Mob = bosses.get(&"the_bound_ledger")
+	var kell_mob: Mob = bosses.get(&"master_kell")
+	var king: Mob = bosses.get(&"first_king_crowned")
+	var ashcombe: Mob = bosses.get(&"lord_ashcombe")
+	var severin: Mob = bosses.get(&"lady_severin")
+	_report("the bosses stand in the Hall and the Throne", ledger and kell_mob and king and ashcombe and severin, "%d found" % bosses.size())
+	if not (ledger and kell_mob and king and ashcombe and severin):
+		return
+	var engines := 0
+	for boss in bosses.values():
+		if boss.get_node_or_null("BossMechanics") != null:
+			engines += 1
+	_report("every boss runs a mechanics engine", engines == bosses.size(), "%d of %d" % [engines, bosses.size()])
+
+	# --- The Bound Ledger: pools, braziers, and the page turning ---
+	var brazier := Interactable.find(get_tree(), &"brazier_nw")
+	_report("the vault has braziers", brazier != null and brazier.action == "clear_pools", "")
+	var dais := Interactable.find(get_tree(), &"throne_dais")
+	_report("the throne room has a dais", dais != null and dais.action == "stand", "")
+	if brazier == null or dais == null:
+		return
+	_fake_player.global_position = brazier.global_position + Vector3(2.0, 0, 0)
+	ledger.target = _fake_player
+	ledger.state = Mob.State.ATTACKING
+	ledger._attack_timer = 999.0
+	var engine: BossMechanics = ledger.get_node("BossMechanics")
+	var fired := engine.fire_by_name("Ink Pool")
+	var pools := GroundEffect.all_in(get_tree())
+	_report("Ink Pool leaves a pool under a player", fired and pools.size() == 1 and pools[0].contains(_fake_player.global_position), "%d pools" % pools.size())
+	var before: int = stats.health
+	await get_tree().create_timer(1.3).timeout
+	_report("standing in the pool hurts", stats.health < before, "%d -> %d" % [before, stats.health])
+	_report("the pool persists", GroundEffect.all_in(get_tree()).size() == 1, "")
+	before = stats.health
+	engine.fire_by_name("Turn the Page")
+	await get_tree().create_timer(1.8).timeout
+	_report("Turn the Page fires every pool at its nearest player", stats.health < before - 20, "%d -> %d" % [before, stats.health])
+	brazier.perform(_fake_player)
+	_report("a lit brazier burns the pools nearby away", GroundEffect.all_in(get_tree()).is_empty(), "%d left" % GroundEffect.all_in(get_tree()).size())
+	_report("the brazier then cools", not brazier.is_ready() and brazier.seconds_until_ready() > 20.0, "%.0fs" % brazier.seconds_until_ready())
+	ledger.state = Mob.State.IDLE
+	ledger.target = null
+	ledger._attack_timer = 0.0
+	stats.revive()
+
+	# --- Master Kell: Bind and Call the Shelves, which then feud ---
+	_fake_player.global_position = kell_mob.global_position + Vector3(0, 0, 3.0)
+	kell_mob.target = _fake_player
+	kell_mob.state = Mob.State.ATTACKING
+	kell_mob._attack_timer = 999.0
+	var kell_engine: BossMechanics = kell_mob.get_node("BossMechanics")
+	var mobs_before: int = container.get_child_count()
+	var kell_stats := kell_mob.get_node("Stats") as Stats
+	# Drop him to 60%: the 70% threshold fires once, and only once.
+	kell_stats._set_health(int(kell_stats.max_health * 0.6), 0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var added: int = container.get_child_count() - mobs_before
+	_report("Call the Shelves brings four adds at 70%", added == 4, "%d added" % added)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_report("a health trigger fires once", container.get_child_count() - mobs_before == 4, "")
+	var feuding := 0
+	var adds: Array = container.get_children().slice(mobs_before)
+	for add in adds:
+		if add is Mob and add.mob_data and add.mob_data.feud != &"":
+			feuding += 1
+	_report("the shelves' adds carry the feud", feuding == 4, "%d of %d" % [feuding, adds.size()])
+	_report("Bind roots the tank", kell_engine.fire_by_name("Bind"), "")
+	kell_stats.revive()
+	kell_mob.state = Mob.State.IDLE
+	kell_mob.target = null
+	kell_mob._attack_timer = 0.0
+	for add in adds:
+		if is_instance_valid(add):
+			add.queue_free()
+
+	# --- The claimants: a charge with a throw, and a line through the tank ---
+	_fake_player.global_position = ashcombe.global_position + Vector3(20.0, 0, 0)
+	ashcombe.state = Mob.State.CHASING
+	ashcombe.target = _fake_player
+	before = stats.health
+	var ash_engine: BossMechanics = ashcombe.get_node("BossMechanics")
+	ash_engine.fire_by_name("Charge")
+	_report("Charge lands the boss beside the furthest player and hits", ashcombe.global_position.distance_to(_fake_player.global_position) < 3.0 and stats.health < before, "%.1fm away" % ashcombe.global_position.distance_to(_fake_player.global_position))
+	ashcombe.state = Mob.State.IDLE
+	ashcombe.target = null
+	ashcombe.global_position = ashcombe.home_position
+	stats.revive()
+	_fake_player.global_position = severin.global_position + Vector3(0, 0, 6.0)
+	severin.state = Mob.State.ATTACKING
+	severin.target = _fake_player
+	severin._attack_timer = 999.0
+	before = stats.health
+	var sev_engine: BossMechanics = severin.get_node("BossMechanics")
+	sev_engine.fire_by_name("Sun Lance")
+	_report("Sun Lance is a cast", severin.is_casting and not severin.cast_interruptible, severin.cast_name)
+	await get_tree().create_timer(1.5).timeout
+	_report("Sun Lance hits everyone in the line through the tank", stats.health < before, "%d -> %d" % [before, stats.health])
+	_fake_player.global_position = severin.global_position + Vector3(6.0, 0, 0)
+	severin.target = _fake_player
+	stats.revive()
+	before = stats.health
+	# Aim the line along +Z while the tank stands on +X: it should miss.
+	var decoy := _fake_player.global_position
+	_fake_player.global_position = severin.global_position + Vector3(6.0, 0, 0)
+	sev_engine.land({"name": "Sun Lance", "effect": "line", "width": 3.0, "length": 40.0, "power": 80}, severin)
+	_report("Sun Lance misses whoever is not in the line", stats.health == before, "%d -> %d" % [before, stats.health])
+	severin.state = Mob.State.IDLE
+	severin.target = null
+	severin._attack_timer = 0.0
+	_fake_player.global_position = decoy
+
+	# --- The First King: the Crown, the dais, the heralds ---
+	# He stands on the dais himself, so "off the dais" means well down the hall.
+	_fake_player.global_position = king.global_position + Vector3(0, 0, 30.0)
+	king.state = Mob.State.ATTACKING
+	king.target = _fake_player
+	king._attack_timer = 999.0
+	var king_engine: BossMechanics = king.get_node("BossMechanics")
+	var king_stats := king.get_node("Stats") as Stats
+	king_stats._set_health(king_stats.max_health - 400, 0)
+	king_engine.fire_by_name("The Crown")
+	_report("The Crown names a player", king_engine.is_naming(_fake_player), "")
+	var king_before: int = king_stats.health
+	king_stats.apply_damage(100, 1)
+	_report("hitting the King while the named player is off the dais heals him", king_stats.health > king_before - 100, "%d -> %d" % [king_before, king_stats.health])
+	_fake_player.global_position = dais.global_position + Vector3(0, 0.5, 0)
+	_report("the dais knows who stands on it", dais.is_player_on(_fake_player), "")
+	king_before = king_stats.health
+	king_stats.apply_damage(100, 1)
+	_report("with the named player on the dais, hits land in full", king_stats.health == king_before - 100, "%d -> %d" % [king_before, king_stats.health])
+	var base_damage: int = king._scaled_damage()
+	mobs_before = container.get_child_count()
+	king_engine.fire_by_name("Heralds")
+	await get_tree().physics_frame
+	var heralds: int = container.get_child_count() - mobs_before
+	_report("the Heralds walk in", heralds == 2, "%d heralds" % heralds)
+	_report("each living herald makes the King hit harder", king._scaled_damage() > base_damage, "%d -> %d" % [base_damage, king._scaled_damage()])
+	var enraged_before: int = king._scaled_damage()
+	king_engine.fire_by_name("Kingsmourn")
+	_report("the enrage stacks damage", king._scaled_damage() > enraged_before, "%d -> %d" % [enraged_before, king._scaled_damage()])
+	for add in container.get_children().slice(mobs_before):
+		if is_instance_valid(add):
+			add.queue_free()
+	king_engine.reset()
+	king_stats.revive()
+	king.state = Mob.State.IDLE
+	king.target = null
+	king._attack_timer = 0.0
+	stats.revive()
+	_fake_player.global_position = Vector3(0, 1, 10)
 
 
 # THE GAP THIS CLOSES: an enemy with a model that never loads, or loads with

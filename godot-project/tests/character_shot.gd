@@ -174,6 +174,33 @@ func _ready() -> void:
 		print("stun: player stunned=%s" % _player.is_stunned())
 		_camera.current = true
 
+	# The Ledger's vault: an ink pool under the player, a brazier beside it.
+	var ledger: Mob = null
+	for node in get_tree().get_nodes_in_group("Hostiles"):
+		var mob := node as Mob
+		if mob and mob.mob_data and mob.mob_data.id == &"the_bound_ledger":
+			ledger = mob
+			break
+	var brazier := Interactable.find(get_tree(), &"brazier_nw")
+	if ledger and brazier:
+		# Teleporting below the vale's fall limit would bounce us straight back.
+		_player.fall_limit_y = -3000.0
+		await _place(Vector3(brazier.global_position.x + 3.0, -1499.0, brazier.global_position.z + 2.5))
+		await _frames(20)
+		ledger.target = _player
+		ledger.state = Mob.State.ATTACKING
+		ledger._attack_timer = 999.0
+		var engine: BossMechanics = ledger.get_node("BossMechanics")
+		var made := engine.fire_by_name("Ink Pool")
+		engine.fire_by_name("Turn the Page")
+		await _frames(12)
+		var centre := _player.global_position
+		await _shot("boss_ink_pool", centre + Vector3(7.0, 5.0, 9.0), centre + Vector3(0, 0.5, 0))
+		print("pool: made=%s pools=%d ledger_casting=%s" % [made, GroundEffect.all_in(get_tree()).size(), ledger.is_casting])
+		ledger.state = Mob.State.IDLE
+		ledger.target = null
+		ledger._attack_timer = 0.0
+
 	print("SHOTS COMPLETE")
 	get_tree().quit(0)
 

@@ -60,6 +60,15 @@ extends Resource
 ## Bosses get more of these from the mechanics engine; ordinary casters get one.
 @export var casts: Array = []
 
+## Boss mechanics, each a dictionary BossMechanics reads (see that script's
+## header for the fields). Empty for everything that isn't a boss.
+@export var mechanics: Array = []
+
+## A tag this enemy fights when no player is close enough to matter: the
+## Records packs (Stag vs Sunburst) and the two claimants. Empty means it only
+## ever fights players.
+@export var feud: StringName = &""
+
 ## Item ids that can drop, each with a 0..1 chance.
 @export var loot_table: Dictionary = {}
 

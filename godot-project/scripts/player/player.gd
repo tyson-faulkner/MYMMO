@@ -94,6 +94,11 @@ var mount_speed_multiplier: float = 1.0
 ## one whose input has to be ignored.
 var _stun_remaining: float = 0.0
 
+## Thrown: a boss's charge shoves you. The owner's input is replaced by the
+## shove for a moment, or their next frame of movement would cancel it.
+var _knockback: Vector3 = Vector3.ZERO
+var _knockback_remaining: float = 0.0
+
 ## Being dead. A ghost moves faster than the living, which is the entire reason
 ## a corpse run is tolerable — WoW's mistake was making the walk back cost the
 ## same as the walk out. You cannot be mounted and dead at once, so this never
@@ -197,6 +202,18 @@ func _physics_process(delta):
 	if is_attacking or is_collecting:
 		velocity.x = 0
 		velocity.z = 0
+		_apply_gravity(delta)
+		move_and_slide()
+		return
+
+	if _knockback_remaining > 0.0:
+		_knockback_remaining -= delta
+		velocity.x = _knockback.x
+		velocity.z = _knockback.z
+		if _knockback.y > 0.0:
+			velocity.y = _knockback.y
+			_knockback.y = 0.0
+		_knockback *= 0.92
 		_apply_gravity(delta)
 		move_and_slide()
 		return
@@ -486,6 +503,21 @@ func sync_stun(seconds: float) -> void:
 
 func is_stunned() -> bool:
 	return _stun_remaining > 0.0
+
+
+# Server: a charge or a slam throws this body. Relayed to the owner, who is
+# the one moving it.
+func apply_knockback(impulse: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	sync_knockback(impulse)
+	sync_knockback.rpc(impulse)
+
+
+@rpc("authority", "reliable")
+func sync_knockback(impulse: Vector3) -> void:
+	_knockback = impulse
+	_knockback_remaining = 0.35
 
 
 func _check_out_of_bounds():

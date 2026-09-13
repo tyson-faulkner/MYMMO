@@ -484,7 +484,8 @@ const DEFINITIONS := {
 		"scale": 1.04,
 		"loot": {},
 		"currency": 22,
-		"dungeon": true
+		"dungeon": true,
+		"feud": &"stag"
 	},
 	&"record_forger":
 	{
@@ -500,7 +501,8 @@ const DEFINITIONS := {
 		"scale": 1.04,
 		"loot": {},
 		"currency": 22,
-		"dungeon": true
+		"dungeon": true,
+		"feud": &"sunburst"
 	},
 	&"master_kell":
 	{
@@ -518,9 +520,13 @@ const DEFINITIONS := {
 		"currency": 120,
 		"dungeon": true,
 		"boss": true,
-		# The endgame spec: a 2s cast at a random non-tank, every 12s, and the
-		# Tinker's job to stop. The rest of Kell's kit is the mechanics engine's.
-		"casts": [{"name": "Burn the Page", "cast": 2.0, "every": 12.0, "power": 150, "target": "random", "range": 30.0}]
+		# docs/kingsmourn-endgame-spec.md, boss 1. Burn the Page is the
+		# Tinker's interrupt; the Bind is what the Bard will cleanse.
+		"mechanics": [
+			{"name": "Burn the Page", "every": 12.0, "first": 6.0, "cast": 2.0, "effect": "damage", "power": 150, "target": "random", "range": 30.0, "avoidable": true},
+			{"name": "Bind", "every": 20.0, "first": 9.0, "effect": "slow", "target": "tank", "slow": 0.05, "duration": 4.0},
+			{"name": "Call the Shelves", "at": [70, 35], "effect": "spawn", "spawn": [{"id": "record_burner", "count": 2}, {"id": "record_forger", "count": 2}]}
+		]
 	},
 	&"the_bound_ledger":
 	{
@@ -537,7 +543,12 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_head": 0.5, "gear_sovereign_chest": 0.4, "gear_sovereign_legs": 0.4, "gear_sovereign_offhand_valkyr": 0.3, "gear_sovereign_offhand_bard": 0.3, "gear_sovereign_offhand_necromancer": 0.3, "gear_sovereign_offhand_tinker": 0.3, "mount_wraithcat": 0.12},
 		"currency": 180,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		# Boss 2. Pools persist; the braziers in the vault are what clear them.
+		"mechanics": [
+			{"name": "Ink Pool", "every": 8.0, "first": 5.0, "effect": "pool", "target": "random", "range": 40.0, "radius": 3.0, "slow": 0.5, "power": 20, "tick": 1.0, "persist": true, "avoidable": true},
+			{"name": "Turn the Page", "every": 30.0, "first": 30.0, "cast": 1.5, "effect": "pools_fire", "power": 60, "range": 60.0, "target": "self", "interruptible": false}
+		]
 	},
 	# --- The Throne of Kingsmourn (raid, level 20) ------------------------------
 	&"lord_ashcombe":
@@ -555,7 +566,12 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_chest": 0.6, "gear_sovereign_hands": 0.5, "gear_sovereign_weapon_valkyr": 0.35, "gear_sovereign_weapon_bard": 0.35, "mount_twin_furnace_hound": 0.1},
 		"currency": 250,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"feud": &"sunburst",
+		"mechanics": [
+			{"name": "Charge", "every": 15.0, "first": 10.0, "effect": "charge", "target": "furthest", "range": 60.0, "power": 70, "knockback": 14.0, "avoidable": true},
+			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "stag_guard", "count": 3}]}
+		]
 	},
 	&"lady_severin":
 	{
@@ -572,7 +588,12 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_legs": 0.6, "gear_sovereign_feet": 0.5, "gear_sovereign_weapon_necromancer": 0.35, "gear_sovereign_weapon_tinker": 0.35, "mount_furnace_rhino": 0.1},
 		"currency": 250,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"feud": &"stag",
+		"mechanics": [
+			{"name": "Sun Lance", "every": 10.0, "first": 8.0, "cast": 1.2, "effect": "line", "target": "tank", "width": 3.0, "length": 40.0, "power": 80, "interruptible": false, "avoidable": true},
+			{"name": "Call the Guards", "at": [30], "effect": "spawn", "spawn": [{"id": "sunburst_guard", "count": 3}]}
+		]
 	},
 	&"first_king_crowned":
 	{
@@ -589,7 +610,12 @@ const DEFINITIONS := {
 		"loot": {"gear_sovereign_head": 0.7, "gear_sovereign_chest": 0.5, "gear_sovereign_offhand_valkyr": 0.4, "gear_sovereign_offhand_bard": 0.4, "gear_sovereign_offhand_necromancer": 0.4, "gear_sovereign_offhand_tinker": 0.4, "mount_ironhide": 0.08},
 		"currency": 500,
 		"dungeon": true,
-		"boss": true
+		"boss": true,
+		"mechanics": [
+			{"name": "The Crown", "every": 25.0, "first": 15.0, "effect": "named", "target": "random", "range": 60.0, "duration": 8.0, "heal_share": 0.5, "dais": "throne_dais"},
+			{"name": "Heralds", "at": [75, 50, 25], "effect": "spawn", "spawn": [{"id": "first_king_herald", "count": 2}], "alive_bonus": 0.10},
+			{"name": "Kingsmourn", "at": [15], "every": 5.0, "effect": "stat", "damage_bonus": 0.10}
+		]
 	}
 }
 
@@ -673,6 +699,8 @@ func _build(mob_id: StringName, entry: Dictionary) -> MobData:
 		data.model_path = "res://assets/enemies/%s.glb" % model
 	data.loot_table = entry.get("loot", {})
 	data.casts = entry.get("casts", [])
+	data.mechanics = entry.get("mechanics", [])
+	data.feud = StringName(str(entry.get("feud", "")))
 	data.is_boss = bool(entry.get("boss", false))
 	data.is_dungeon = bool(entry.get("dungeon", false)) or data.is_boss
 	if data.is_boss:
