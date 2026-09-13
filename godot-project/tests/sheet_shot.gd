@@ -15,6 +15,9 @@ var _player: CharacterBody3D
 
 
 func _ready() -> void:
+	# A throwaway account: this script hands out items every run, and they
+	# must never land in a real character's bag.
+	Account.device_id_override = "throwaway-sheet-shot"
 	_level = LEVEL_SCENE.instantiate()
 	add_child(_level)
 	await _frames(10)

@@ -23,8 +23,15 @@ const SERVER_PORT := 7350
 const SERVER_KEY := "defaultkey"
 const SERVER_SCHEME := "http"
 
+## The Nakama storage collection every character is saved under. It kept
+## the old game name on purpose when the game was renamed to Ironveil:
+## renaming it orphans every existing save. Do not tidy it up.
 const COLLECTION := "kingsmourn"
 const CHARACTER_KEY := "character"
+
+## Set before login to log in as a different device: screenshot and test
+## scripts use a throwaway id so they never touch a real character's save.
+var device_id_override: String = ""
 
 var session = null
 var client = null
@@ -57,7 +64,7 @@ func login() -> bool:
 	Nakama.get_client_adapter().use_threads = false
 	# Device authentication: no passwords for anyone to forget, and a returning
 	# player lands on the same account automatically.
-	var device_id: String = Nakama.get_device_id()
+	var device_id: String = device_id_override if not device_id_override.is_empty() else Nakama.get_device_id()
 	var result = await client.authenticate_device_async(device_id)
 
 	if result.is_exception():

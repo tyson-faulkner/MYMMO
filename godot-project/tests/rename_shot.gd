@@ -11,6 +11,7 @@ var _level: Node3D
 
 
 func _ready() -> void:
+	Account.device_id_override = "throwaway-rename-shot"
 	_level = LEVEL_SCENE.instantiate()
 	add_child(_level)
 	await _frames(20)

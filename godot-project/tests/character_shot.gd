@@ -21,6 +21,9 @@ var _camera: Camera3D
 
 
 func _ready() -> void:
+	# A throwaway account, so the gear and mounts staged here never reach a
+	# real character's save.
+	Account.device_id_override = "throwaway-character-shot"
 	_level = LEVEL_SCENE.instantiate()
 	add_child(_level)
 	await _frames(10)
