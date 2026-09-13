@@ -150,6 +150,23 @@ const DEFINITIONS := {
 		"loot": {},
 		"currency": 0
 	},
+	&"tinker_medic_turret_pet":
+	{
+		"name": "Mending Turret",
+		"level": 18,
+		"health": 90,
+		"damage": 0,
+		"heal": 18,
+		"attack_cooldown": 2.0,
+		"speed": 0.6,
+		"aggro": 16.0,
+		"xp": 0,
+		"tags": [&"construct", &"summon"],
+		"color": Color(0.62, 0.72, 0.42),
+		"scale": 0.8,
+		"loot": {},
+		"currency": 0
+	},
 	# --- The Barrow of the First King (dungeon) ---
 	&"barrow_guardian":
 	{
@@ -760,6 +777,8 @@ func _build(mob_id: StringName, entry: Dictionary) -> MobData:
 		data.model_path = "res://assets/enemies/%s.glb" % model
 	data.loot_table = entry.get("loot", {})
 	data.casts = entry.get("casts", [])
+	data.heal_power = int(entry.get("heal", 0))
+	data.attack_cooldown = float(entry.get("attack_cooldown", data.attack_cooldown))
 	data.mechanics = entry.get("mechanics", [])
 	data.feud = StringName(str(entry.get("feud", "")))
 	data.is_boss = bool(entry.get("boss", false))

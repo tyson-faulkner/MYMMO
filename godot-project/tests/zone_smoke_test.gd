@@ -50,6 +50,7 @@ func _ready() -> void:
 	_check_persistence()
 	_check_parties()
 	_check_runes(zone)
+	await _check_specs_and_rune_moves(zone)
 	_check_gear(zone)
 
 	# Zones two and three. Built last because they are the biggest, and the
@@ -353,17 +354,23 @@ func _check_abilities(zone: Node) -> void:
 	var ids: Array = AbilityDatabase.get_all_ids()
 	_report("ability database loaded", ids.size() >= 28, "%d abilities" % ids.size())
 
-	# Every class needs a full bar, one ability per slot, no gaps, no clashes.
+	# Every build needs a full bar: the shared five, its spec's own, a
+	# capstone at 9, and nothing from the other spec.
 	for class_id in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
-		var abilities: Array = AbilityDatabase.abilities_for_class(class_id)
-		var slots := {}
-		for ability in abilities:
-			slots[ability.slot] = true
-		_report(
-			"%s has a full bar" % class_id,
-			abilities.size() == 7 and slots.size() == 7,
-			"%d abilities in %d slots" % [abilities.size(), slots.size()]
-		)
+		for spec_id in SpecDatabase.specs_for(class_id):
+			var bar: Array = AbilityDatabase.abilities_on_bar(class_id, spec_id, 20)
+			var wrong_spec := false
+			var capstone := false
+			for ability in bar:
+				if ability.spec != &"" and ability.spec != spec_id:
+					wrong_spec = true
+				if ability.slot == AbilityDatabase.CAPSTONE_SLOT:
+					capstone = true
+			_report(
+				"%s %s has a full bar" % [class_id, spec_id],
+				bar.size() >= 8 and capstone and not wrong_spec,
+				"%d abilities%s" % [bar.size(), "" if capstone else ", no capstone"]
+			)
 
 	# A summon that names an enemy which doesn't exist is a dead button.
 	var bad_summons: Array[String] = []
@@ -384,6 +391,7 @@ func _check_abilities(zone: Node) -> void:
 	var targeting := _fake_player.get_node("Targeting") as Targeting
 	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
 	stats.level = 20
+	stats.spec_id = &"bulwark"
 
 	var container := zone.get_node_or_null("MobContainer")
 	var victim: Mob = null
@@ -434,6 +442,7 @@ func _check_abilities(zone: Node) -> void:
 	# Summons change sides.
 	stats.apply_class(load("res://resources/classes/necromancer.tres") as ClassData)
 	stats.level = 20
+	stats.spec_id = &"grave"
 	var mobs_before: int = container.get_child_count()
 	bar.request_cast("necro_raise", _fake_player.get_path())
 	await get_tree().process_frame
@@ -878,6 +887,205 @@ func _check_runes(zone: Node) -> void:
 	CharacterState.apply(_fake_player, saved)
 	_report("rune choices survive a save", loadout.rune_for_ability(&"necro_bolt") != null,
 		str(loadout.chosen))
+
+
+# THE GAP THIS CLOSES: two people picking Valkyr used to mean one rerolled.
+# Specs give every class a second role; rune moves give every build the four
+# levers. Each passive, each new effect and the gating that keeps one spec's
+# buttons off the other's bar are pressed for real here.
+func _check_specs_and_rune_moves(zone: Node) -> void:
+	print("")
+	print("-- specs and rune moves --")
+	var stats := _fake_player.get_node("Stats") as Stats
+	var bar := _fake_player.get_node("AbilityBar") as AbilityBar
+	var loadout := _fake_player.get_node("RuneLoadout") as RuneLoadout
+	var targeting := _fake_player.get_node("Targeting") as Targeting
+	_report("eight specs, two per class", SpecDatabase.get_all_ids().size() == 8 and SpecDatabase.specs_for(&"bard").size() == 2, "")
+	var moves := 0
+	var bad_moves: Array[String] = []
+	for rune_id in RuneDatabase.get_all_ids():
+		var rune: RuneData = RuneDatabase.get_rune(rune_id)
+		if rune.effect != RuneData.Effect.GRANT:
+			continue
+		moves += 1
+		var move := AbilityDatabase.get_ability(rune.ability_id)
+		if move == null or not move.rune_move or move.class_id != rune.class_id:
+			bad_moves.append(String(rune_id))
+	_report("twelve runes grant a new move of their own class", moves == 12 and bad_moves.is_empty(), ", ".join(bad_moves))
+	var grants := 0
+	for class_id in [&"valkyr", &"bard", &"necromancer", &"tinker"]:
+		for slot in range(1, 4):
+			var kinds := {}
+			for rune in RuneDatabase.options_for(class_id, slot):
+				kinds[rune.effect == RuneData.Effect.GRANT] = true
+			if kinds.size() == 2:
+				grants += 1
+	_report("every rune slot offers one modifier and one new move", grants == 12, "%d of 12" % grants)
+
+	# A victim from the zone.
+	var container := zone.get_node("MobContainer")
+	var victim: Mob = null
+	for child in container.get_children():
+		var mob := child as Mob
+		if mob and not mob.is_friendly and not mob.mob_data.is_boss and not mob.get_node("Stats").is_dead:
+			victim = mob
+			break
+	if victim == null:
+		_report("found an enemy for spec checks", false, "")
+		return
+	var victim_stats := victim.get_node("Stats") as Stats
+	victim._attack_timer = 999.0
+	# A level-3 bandit dies under three Chords and a bleed, which frees the
+	# bleed and refuses every cast after. Give it a boss's bar for the test.
+	victim_stats.max_health = 5000
+	victim_stats.revive()
+	_fake_player.global_position = victim.global_position + Vector3(0, 0, 3.0)
+	targeting.set_target(victim)
+
+	# Choosing: level ten, your own class, and it changes the bar.
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 9
+	_report("no spec before level ten", not stats.choose_spec(&"bulwark", true), "")
+	stats.level = 20
+	_report("another class's spec is refused", not stats.choose_spec(&"hymn", true), "")
+	_report("a spec is chosen at level ten", stats.choose_spec(&"bulwark", true) and stats.spec_id == &"bulwark", "")
+	_report("Bulwark has the taunt, Lance does not",
+		AbilityDatabase.slot_of(AbilityDatabase.get_ability(&"valkyr_taunt"), &"valkyr", &"bulwark", 20) == 2
+		and AbilityDatabase.slot_of(AbilityDatabase.get_ability(&"valkyr_taunt"), &"valkyr", &"lance", 20) == 0, "")
+	var armour_bulwark := stats.total_armor()
+	var health_bulwark := stats.max_health
+	stats.choose_spec(&"lance", true)
+	_report("Bulwark's passive adds armour", armour_bulwark > stats.total_armor(), "%d vs %d" % [armour_bulwark, stats.total_armor()])
+	victim_stats.revive()
+	bar._server_ready_at.clear()
+	stats.restore_resource(999)
+	var before: int = victim_stats.health
+	bar.request_cast("valkyr_taunt", victim.get_path())
+	_report("the server refuses the other spec's ability", victim_stats.health == before, "")
+	bar.request_cast("valkyr_pierce", victim.get_path())
+	_report("Piercing Fall stuns and hurts", victim.is_stunned() and victim_stats.health < before, "%d -> %d" % [before, victim_stats.health])
+	victim._stun_remaining = 0.0
+	# Lance hits 15% harder than Bulwark with the same strike.
+	victim_stats.revive()
+	before = victim_stats.health
+	bar._server_ready_at.clear()
+	bar.request_cast("valkyr_strike", victim.get_path())
+	var lance_hit: int = before - victim_stats.health
+	stats.choose_spec(&"bulwark", true)
+	victim_stats.revive()
+	before = victim_stats.health
+	bar._server_ready_at.clear()
+	bar.request_cast("valkyr_strike", victim.get_path())
+	var bulwark_hit: int = before - victim_stats.health
+	_report("Lance's passive hits harder", lance_hit > bulwark_hit, "%d vs %d" % [lance_hit, bulwark_hit])
+	# Wingguard is a shield now; Last Stand cannot be killed through.
+	bar._server_ready_at.clear()
+	stats.restore_resource(999)
+	bar.request_cast("valkyr_guard", _fake_player.get_path())
+	_report("Wingguard is damage reduction", StatusEffect.damage_multiplier(_fake_player) < 1.0, "share %.2f" % StatusEffect.damage_multiplier(_fake_player))
+	bar.request_cast("valkyr_last_stand", _fake_player.get_path())
+	stats.apply_damage(999999, 0)
+	_report("Last Stand holds you at one health", not stats.is_dead and stats.health == 1, "%d hp" % stats.health)
+	for effect in StatusEffect.all_on(_fake_player):
+		effect.free()
+	stats.revive()
+
+	# Hymn: Marching Air also lays Soothing Verse. Dirge: Chord bleeds, Crescendo eats it.
+	stats.apply_class(load("res://resources/classes/bard.tres") as ClassData)
+	stats.level = 20
+	stats.choose_spec(&"hymn", true)
+	stats.restore_resource(999)
+	bar._server_ready_at.clear()
+	bar.request_cast("bard_march", _fake_player.get_path())
+	_report("Hymn's Marching Air also sings Soothing Verse", StatusEffect.find(_fake_player, StatusEffect.Kind.HOT, &"bard_soothe") != null, "")
+	stats.choose_spec(&"dirge", true)
+	victim_stats.revive()
+	bar._server_ready_at.clear()
+	stats.restore_resource(999)
+	for i in range(3):
+		bar.request_cast("bard_chord", victim.get_path())
+	_report("Dirge's Cutting Chord stacks a bleed", StatusEffect.stack_count(victim, &"bard_bleed") == 3, "%d stacks" % StatusEffect.stack_count(victim, &"bard_bleed"))
+	before = victim_stats.health
+	bar.request_cast("bard_crescendo", victim.get_path())
+	var crescendo_hit: int = before - victim_stats.health
+	# The stack bonus is flat (25 each); the base is scaled by the Grave-Chill
+	# the test player still carries from the death checks, so judge the bonus.
+	_report("Crescendo eats the stacks for a burst", StatusEffect.stack_count(victim, &"bard_bleed") == 0 and crescendo_hit >= 3 * 25 + 10, "hit %d" % crescendo_hit)
+	bar.request_cast("bard_mock", victim.get_path())
+	_report("Mocking Verse weakens the target", StatusEffect.weaken_multiplier(victim) < 1.0, "x%.2f" % StatusEffect.weaken_multiplier(victim))
+	bar.request_cast("bard_last_note", _fake_player.get_path())
+	_report("The Last Note banks three charges", StatusEffect.charges(_fake_player, &"bard_chord") == 3, "")
+	var verse_before: int = stats.mana
+	bar.request_cast("bard_chord", victim.get_path())
+	_report("a charged Chord costs nothing", stats.mana == verse_before and StatusEffect.charges(_fake_player, &"bard_chord") == 2, "%d charges left" % StatusEffect.charges(_fake_player, &"bard_chord"))
+	for effect in StatusEffect.all_on(victim):
+		effect.free()
+	for effect in StatusEffect.all_on(_fake_player):
+		effect.free()
+
+	# Pact: more health, Refuse the Grave. Grave: Mass Grave raises three.
+	stats.apply_class(load("res://resources/classes/necromancer.tres") as ClassData)
+	stats.level = 20
+	var plain_health := stats.max_health
+	stats.choose_spec(&"pact", true)
+	_report("Pact's passive adds health", stats.max_health > plain_health, "%d -> %d" % [plain_health, stats.max_health])
+	stats.revive()
+	bar._server_ready_at.clear()
+	bar.request_cast("necro_refuse", _fake_player.get_path())
+	stats.apply_damage(999999, 0)
+	_report("Refuse the Grave turns a killing blow into a third", not stats.is_dead and stats.health >= int(stats.max_health * 0.3), "%d of %d" % [stats.health, stats.max_health])
+	stats.choose_spec(&"grave", true)
+	stats.restore_resource(999)
+	bar._server_ready_at.clear()
+	var mobs_before: int = container.get_child_count()
+	bar.request_cast("necro_mass", _fake_player.get_path())
+	await get_tree().process_frame
+	_report("Mass Grave raises three at once", container.get_child_count() - mobs_before == 3, "%d raised" % (container.get_child_count() - mobs_before))
+	for child in container.get_children().slice(mobs_before):
+		if is_instance_valid(child):
+			child.queue_free()
+
+	# Medic: Field Repair reaches an ally; Artillery does not.
+	stats.apply_class(load("res://resources/classes/tinker.tres") as ClassData)
+	stats.level = 20
+	stats.choose_spec(&"medic", true)
+	_report("a Medic's Field Repair targets allies", bar._target_rule(AbilityDatabase.get_ability(&"tinker_patch")) == AbilityData.TargetRule.ALLY, "")
+	stats.choose_spec(&"artillery", true)
+	_report("an Artillery Tinker's Field Repair is self-only", bar._target_rule(AbilityDatabase.get_ability(&"tinker_patch")) == AbilityData.TargetRule.SELF, "")
+
+	# Rune moves: a GRANT rune puts a new button on slot 10-12, and it works.
+	loadout.chosen.clear()
+	stats.apply_class(load("res://resources/classes/valkyr.tres") as ClassData)
+	stats.level = 20
+	stats.choose_spec(&"lance", true)
+	_report("no rune, no rune move", bar.ability_in_slot(11) == null, "")
+	_report("a grant rune is accepted", loadout.choose(2, &"valkyr_2b"), "")
+	var move := bar.ability_in_slot(11)
+	_report("the rune's move sits on bar slot 11", move != null and move.id == &"valkyr_rally", str(move.id) if move else "none")
+	stats.apply_damage(80, 0)
+	var hurt: int = stats.health
+	bar._server_ready_at.clear()
+	stats.restore_resource(999)
+	bar.request_cast("valkyr_rally", _fake_player.get_path())
+	_report("a rune move casts", stats.health > hurt, "%d -> %d" % [hurt, stats.health])
+	loadout.choose(3, &"valkyr_3a")
+	var start := _fake_player.global_position
+	bar._server_ready_at.clear()
+	bar.request_cast("valkyr_wingbeat", _fake_player.get_path())
+	_report("a dash moves the caster", _fake_player.global_position.distance_to(start) > 5.0, "%.1fm" % _fake_player.global_position.distance_to(start))
+
+	# The spec survives logging out.
+	var saved := CharacterState.capture(_fake_player)
+	stats.spec_id = &""
+	CharacterState.apply(_fake_player, saved)
+	_report("the spec is saved with the character", stats.spec_id == &"lance", str(stats.spec_id))
+	loadout.chosen.clear()
+	stats.spec_id = &""
+	victim._attack_timer = 0.0
+	victim_stats.max_health = victim._scaled_health()
+	victim_stats.revive()
+	stats.revive()
+	_fake_player.global_position = Vector3(0, 1, 10)
 
 
 func _check_gear(zone: Node) -> void:

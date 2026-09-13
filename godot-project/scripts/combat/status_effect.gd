@@ -14,8 +14,15 @@ enum Kind {
 	DAMAGE_REDUCTION,  ## value = share of incoming damage removed (0.4 = 40% less).
 	STACK,             ## value = damage per tick PER STACK. Re-applying adds a stack.
 	HOT,               ## value = healing per tick.
-	BUFF               ## value = flat power added to every hit and heal.
+	BUFF,              ## value = flat power added to every hit and heal.
+	WEAKEN,            ## value = share taken off the bearer's own hits (Mocking Verse).
+	UNKILLABLE,        ## the bearer cannot drop below 1 health (Last Stand).
+	CHEAT_DEATH,       ## value = share of max health lethal damage leaves instead (Refuse the Grave).
+	CHARGES            ## stacks = free, doubled casts of the ability named by effect_id.
 }
+
+## Chorus: heals-over-time from this peer tick twice as fast until then.
+var hasted_until_msec: int = 0
 
 ## Floor on what damage reduction can leave. Two Wingguards do not make you immortal.
 const MIN_DAMAGE_SHARE := 0.15
@@ -90,6 +97,56 @@ static func damage_multiplier(target: Node) -> float:
 	return maxf(MIN_DAMAGE_SHARE, share)
 
 
+static func find_kind(target: Node, kind_in: Kind) -> StatusEffect:
+	for effect in all_on(target):
+		if effect.kind == kind_in:
+			return effect
+	return null
+
+
+static func has_kind(target: Node, kind_in: Kind) -> bool:
+	return find_kind(target, kind_in) != null
+
+
+## What the bearer's own hits are multiplied by: 0.9 under one Mocking Verse.
+static func weaken_multiplier(target: Node) -> float:
+	var share := 1.0
+	for effect in all_on(target):
+		if effect.kind == Kind.WEAKEN:
+			share *= clampf(1.0 - effect.value, 0.0, 1.0)
+	return maxf(0.25, share)
+
+
+## Free casts banked for an ability (The Last Note).
+static func charges(target: Node, ability_id: StringName) -> int:
+	var effect := find(target, Kind.CHARGES, ability_id)
+	return effect.stacks if effect else 0
+
+
+static func use_charge(target: Node, ability_id: StringName) -> bool:
+	var effect := find(target, Kind.CHARGES, ability_id)
+	if effect == null or effect.stacks <= 0:
+		return false
+	effect.stacks -= 1
+	if effect.stacks <= 0:
+		effect.queue_free()
+	return true
+
+
+## Chorus: every heal-over-time this peer has running, anywhere, doubles its
+## rate for a while.
+static func haste_hots(tree: SceneTree, caster_peer_id: int, seconds: float) -> int:
+	var hasted := 0
+	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
+	for container in tree.get_nodes_in_group("Players"):
+		for character in container.get_children():
+			for effect in all_on(character):
+				if effect.kind == Kind.HOT and effect.source_peer_id == caster_peer_id:
+					effect.hasted_until_msec = until
+					hasted += 1
+	return hasted
+
+
 ## Flat power from every buff on them, added to hits and heals.
 static func power_bonus(target: Node) -> int:
 	var total := 0.0
@@ -125,8 +182,11 @@ func _process(delta: float) -> void:
 		return
 	remaining_seconds -= delta
 	_accumulated += delta
-	while _accumulated >= tick_seconds:
-		_accumulated -= tick_seconds
+	var interval := tick_seconds
+	if kind == Kind.HOT and Time.get_ticks_msec() < hasted_until_msec:
+		interval = tick_seconds * 0.5
+	while _accumulated >= interval:
+		_accumulated -= interval
 		match kind:
 			Kind.STACK:
 				stats.apply_damage(maxi(1, int(round(value * float(stacks)))), source_peer_id, effect_id)

@@ -216,14 +216,16 @@ func _scaled_health() -> int:
 func _scaled_damage() -> int:
 	if not mob_data:
 		return 5
-	if not scale_with_player_count and not mob_data.is_boss:
-		return mob_data.damage
-	# Damage scales far more gently than health, or a full group melts the tank.
-	var player_count: int = maxi(1, _count_players())
-	var scaled := float(mob_data.damage) * (1.0 + 0.12 * float(player_count - 1))
-	# Enrage stacks and living heralds make a boss hit harder still.
-	if _mechanics:
-		scaled *= _mechanics.damage_multiplier()
+	var scaled := float(mob_data.damage)
+	if scale_with_player_count or mob_data.is_boss:
+		# Damage scales far more gently than health, or a full group melts the tank.
+		var player_count: int = maxi(1, _count_players())
+		scaled *= 1.0 + 0.12 * float(player_count - 1)
+		# Enrage stacks and living heralds make a boss hit harder still.
+		if _mechanics:
+			scaled *= _mechanics.damage_multiplier()
+	# A Mocking Verse takes the edge off.
+	scaled *= StatusEffect.weaken_multiplier(self)
 	return int(round(scaled))
 
 
@@ -292,6 +294,15 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= GRAVITY * delta
 	else:
 		velocity.y = 0.0
+
+	# A mending turret does not fight. It stands where it was bolted and
+	# patches whoever nearby is worst off.
+	if is_friendly and mob_data and mob_data.heal_power > 0:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_tick_medic()
+		move_and_slide()
+		return
 
 	match state:
 		State.IDLE:
@@ -362,6 +373,32 @@ func _tick_chasing() -> void:
 		state = State.ATTACKING
 		return
 	_move_toward(target.global_position)
+
+
+func _tick_medic() -> void:
+	if _attack_timer > 0.0:
+		return
+	var worst: Node3D = null
+	var worst_fraction := 1.0
+	for container in get_tree().get_nodes_in_group("Players"):
+		for child in container.get_children():
+			var character := child as Node3D
+			if character == null or not character.is_inside_tree():
+				continue
+			var character_stats := character.get_node_or_null("Stats") as Stats
+			if character_stats == null or character_stats.is_dead:
+				continue
+			if global_position.distance_to(character.global_position) > _aggro_radius():
+				continue
+			var fraction := float(character_stats.health) / float(maxi(1, character_stats.max_health))
+			if fraction < worst_fraction:
+				worst_fraction = fraction
+				worst = character
+	if worst == null or worst_fraction >= 1.0:
+		return
+	_attack_timer = mob_data.attack_cooldown
+	(worst.get_node("Stats") as Stats).heal(mob_data.heal_power, owner_peer_id, &"tinker_mend_turret")
+	_face(worst.global_position)
 
 
 func _tick_attacking() -> void:
@@ -689,7 +726,10 @@ func _find_nearest_player(radius: float) -> Node3D:
 			var character_stats := character.get_node_or_null("Stats") as Stats
 			if character_stats and character_stats.is_dead:
 				continue
-			var distance := global_position.distance_to(character.global_position)
+			# Threat: a tank spec counts as closer than it is, so the mob
+			# prefers it over a healer standing at the same distance.
+			var threat := character_stats.threat_multiplier() if character_stats else 1.0
+			var distance := global_position.distance_to(character.global_position) / maxf(0.1, threat)
 			if distance < best_distance:
 				best_distance = distance
 				best = character

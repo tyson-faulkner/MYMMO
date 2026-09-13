@@ -39,7 +39,7 @@ Milestone checkboxes live in `docs/BUILD_PLAN.md` — tick them there as they la
   engine, grudge bosses and seasons, the combat recorder, specs and rune
   moves, then the QoL pass (minimap, healer frames, chests, chronicle).
 - **Loop status:** running
-- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 277/277 checks passing (on Tyson's PC, Godot 4.7.2)
+- **Last verified playable:** 2026-09-13, `tests/zone_smoke_test.gd`, 311/311 checks passing (on Tyson's PC, Godot 4.7.2)
 
 ## Verified against a live backend (2026-09-12)
 
@@ -200,6 +200,13 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   off. Each is normalised so its average IS its palette colour, which lets a
   darker plate of the same ground tint the one texture rather than need its own.
 
+- 2026-09-13 — **Specs are a database, not fields on the class .tres.** The
+  spec doc said `ClassData` gains a list; every other content table in the
+  game is an autoload dictionary, so specs are too (`spec_database.gd`), and
+  the class resources stay untouched.
+- 2026-09-13 — **The bar grew to twelve slots** (1-8 class/spec, 9 capstone,
+  10-12 rune moves; keys 1-9, 0, -, =). Hymn genuinely needs nine buttons,
+  and three rune moves cannot share one.
 - 2026-09-13 — **Group records live in the host's save, not in shared Nakama
   storage.** Personal bests go with each character; the record table is the
   host's RecordBook. If a different friend hosts, they keep their own. This
@@ -239,6 +246,12 @@ Recorded here so the design stays coherent and nothing gets asked twice.
   rows, because that is how Godot serialises a Basis.
 
 ## Log
+
+### 2026-09-13 — Eight specs and twelve rune moves
+
+- **Changed:** `scripts/autoload/spec_database.gd` (new autoload) holds the eight specs and their passives; `Stats.spec_id` (saved, chosen at level 10 at an inn or graveyard via `choose_spec`/`request_choose_spec`, a "Spec" button and panel in the HUD) applies armour, health and threat; `AbilityBar` applies damage/healing multipliers, per-ability cooldown and tick factors, summon length, drain share, pet swing speed, ally-targeting and chains (Hymn's March also sings Soothing Verse, Dirge's Chord bleeds). The bar is now 12 slots (keys 1-9, 0, -, =): 1-8 class and spec abilities, 9 the capstone, 10-12 rune moves. Abilities carry a `spec` field; the server refuses anything not on this build's bar. 26 new or reworked entries: Wingguard is a shield, Anthem a party HoT, Rally and Ballad are rune moves, plus Unbroken Wing, Last Stand, Piercing Fall, Widow's Thrust, Valkyrie's Choice, Soothing Verse, Battle Hymn, Chorus, Mocking Verse, Crescendo, The Last Note, Mass Grave, Bone Ward, Grave Claim, Refuse the Grave, Triage, Mending Turret (a healing pet), Tonic of the Marches, Bombardment, and the twelve rune moves (a nuke, a self-heal and a snare-breaking dash per class). New effects: dash, unkillable, cheat_death, charges, haste_hots, weaken, execute, consumes, line blasts, roots, cleanse. Twelve runes are now GRANT runes, one per slot per class; every slot offers one modifier and one move.
+- **Test:** smoke 311/311 with 34 new checks (full bars per spec, gating both ways, passives measured, every new effect pressed against a live enemy, rune moves on slots 10-12, dash distance, save round-trip).
+- **Surprising:** the level-3 test victim died under three Chords and a bleed, which freed the bleed and refused every later cast — it now gets a boss's bar for that block. Grave-Chill from the earlier death checks scales the test player's output, so absolute damage expectations in later checks have to be relative. "All your hits crit" (Valkyrie's Choice) is a flat power buff because there is no crit.
 
 ### 2026-09-13 — Combat recorder, the meter and recap, the parse
 

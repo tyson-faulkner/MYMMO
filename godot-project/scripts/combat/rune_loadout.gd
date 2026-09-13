@@ -48,13 +48,24 @@ func rune_in_slot(slot: int) -> RuneData:
 
 
 ## The active rune that changes a given ability, if any. Abilities are only
-## touched by a rune sitting in an unlocked slot.
+## touched by a rune sitting in an unlocked slot. A GRANT rune adds a move
+## rather than changing one, so it never counts here.
 func rune_for_ability(ability_id: StringName) -> RuneData:
 	for slot in range(1, SLOT_COUNT + 1):
 		var rune := rune_in_slot(slot)
-		if rune and rune.ability_id == ability_id:
+		if rune and rune.ability_id == ability_id and rune.effect != RuneData.Effect.GRANT:
 			return rune
 	return null
+
+
+## The three rune moves this build carries, by rune slot: an ability id or
+## "" where the slot holds a modifier (or nothing). Bar slots 10-12.
+func granted_ids() -> Array:
+	var moves := []
+	for slot in range(1, SLOT_COUNT + 1):
+		var rune := rune_in_slot(slot)
+		moves.append(String(rune.ability_id) if rune and rune.effect == RuneData.Effect.GRANT else "")
+	return moves
 
 
 # --- Choosing --------------------------------------------------------------

@@ -1,13 +1,21 @@
-# AbilityDatabase — seven abilities for each of the four classes.
+# AbilityDatabase — every ability in the game, as data.
 #
-# Per the design doc: seven unique abilities per class, plus three armour slots
-# that each grant a choice between two options, which is where the eight builds
-# per class come from. Those rune slots are M8 work; these seven are the spine
-# they hang off.
+# Per docs/kingsmourn-class-spec.md: each class shares five abilities across
+# its two specs, each spec adds two or three of its own plus a capstone at 20
+# (`spec` field), and twelve rune moves (`rune_move`, slot 0) reach the bar
+# only through a GRANT rune. Bar slots 1-8 are the class and spec abilities,
+# 9 the capstone, 10-12 the three rune moves.
 #
 # Levels are spread so a class gains something roughly every other level on the
-# way to 20, with ranks (same ability, bigger numbers) filling the gaps later.
+# way to 20; spec abilities carry their own levels, and anything you are
+# already past unlocks the moment you pick the spec.
 extends Node
+
+## The bar: 1-8 class and spec, 9 capstone, 10-12 rune moves.
+const CLASS_SLOTS := 8
+const CAPSTONE_SLOT := 9
+const FIRST_RUNE_SLOT := 10
+const BAR_SLOTS := 12
 
 const DEFINITIONS := {
 	# --- Valkyr: tank. Valor BUILDS by fighting, so her openers cost nothing
@@ -29,6 +37,7 @@ const DEFINITIONS := {
 	{
 		"name": "Claim the Slain",
 		"class": &"valkyr",
+		"spec": &"bulwark",
 		"slot": 2,
 		"effect": "taunt",
 		"power": 6,
@@ -57,13 +66,15 @@ const DEFINITIONS := {
 		"name": "Wingguard",
 		"class": &"valkyr",
 		"slot": 4,
-		"effect": "heal",
+		"effect": "damage_reduction",
 		"target": "self",
-		"power": 55,
-		"cost": 30,
-		"cooldown": 20.0,
+		"reduction": 0.3,
+		"duration": 6.0,
+		"power": 0,
+		"cost": 20,
+		"cooldown": 15.0,
 		"level": 6,
-		"text": "Wings folded across the body. Spends Valor to buy back health."
+		"text": "Wings folded across the body. A third less of everything gets through, for six seconds. The every-pull button."
 	},
 	&"valkyr_descend":
 	{
@@ -82,15 +93,120 @@ const DEFINITIONS := {
 	{
 		"name": "Rally the Fallen",
 		"class": &"valkyr",
-		"slot": 6,
+		"slot": 0,
+		"rune_move": true,
 		"effect": "aoe_heal",
 		"target": "ground",
 		"power": 30,
 		"cost": 40,
 		"cooldown": 45.0,
 		"aoe": 12.0,
+		"level": 11,
+		"text": "Nobody else falls here today. Everyone nearby takes heart. A rune move, for a healer-less night."
+	},
+	&"valkyr_wall":
+	{
+		"name": "Unbroken Wing",
+		"class": &"valkyr",
+		"spec": &"bulwark",
+		"slot": 6,
+		"effect": "damage_reduction",
+		"target": "self",
+		"reduction": 0.6,
+		"duration": 10.0,
+		"power": 0,
+		"cost": 0,
+		"cooldown": 120.0,
 		"level": 12,
-		"text": "Nobody else falls here today. Everyone nearby takes heart."
+		"text": "The big one. Sixty percent less for ten seconds, once every two minutes. For the moment it goes wrong."
+	},
+	&"valkyr_last_stand":
+	{
+		"name": "Last Stand of the Vale",
+		"class": &"valkyr",
+		"spec": &"bulwark",
+		"slot": 9,
+		"effect": "unkillable",
+		"target": "self",
+		"duration": 8.0,
+		"power": 0,
+		"cost": 0,
+		"cooldown": 180.0,
+		"level": 20,
+		"text": "For eight seconds you cannot fall below one point of health. Cheap, big, unkillable: the third tier."
+	},
+	&"valkyr_pierce":
+	{
+		"name": "Piercing Fall",
+		"class": &"valkyr",
+		"spec": &"lance",
+		"slot": 2,
+		"effect": "stun",
+		"power": 40,
+		"duration": 1.5,
+		"cost": 15,
+		"cooldown": 12.0,
+		"range": 22.0,
+		"level": 10,
+		"text": "Descend, spear first. Heavy damage on landing and a moment where they cannot answer."
+	},
+	&"valkyr_thrust":
+	{
+		"name": "Widow's Thrust",
+		"class": &"valkyr",
+		"spec": &"lance",
+		"slot": 6,
+		"effect": "damage",
+		"execute": true,
+		"power": 36,
+		"cost": 20,
+		"cooldown": 8.0,
+		"range": 4.5,
+		"level": 18,
+		"text": "The closer they are to done, the harder it lands. Up to double on something nearly dead."
+	},
+	&"valkyr_choice":
+	{
+		"name": "Valkyrie's Choice",
+		"class": &"valkyr",
+		"spec": &"lance",
+		"slot": 9,
+		"effect": "buff",
+		"target": "self",
+		"power": 40,
+		"duration": 10.0,
+		"cost": 0,
+		"cooldown": 90.0,
+		"level": 20,
+		"text": "Choose one, and for ten seconds every hit you land is the one that counts."
+	},
+	&"valkyr_spearcast":
+	{
+		"name": "Spearcast",
+		"class": &"valkyr",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "damage",
+		"power": 70,
+		"cost": 25,
+		"cooldown": 30.0,
+		"range": 24.0,
+		"level": 5,
+		"text": "Throw the spear. It comes back, eventually. A rune move."
+	},
+	&"valkyr_wingbeat":
+	{
+		"name": "Wingbeat",
+		"class": &"valkyr",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "dash",
+		"target": "self",
+		"power": 0,
+		"cost": 0,
+		"cooldown": 20.0,
+		"level": 17,
+		"text": "One beat of the wings carries you eight metres and out of whatever was holding you. A rune move."
 	},
 	&"valkyr_judgment":
 	{
@@ -164,19 +280,164 @@ const DEFINITIONS := {
 		"level": 5,
 		"text": "An old road song. Feet follow it whether their owner agrees or not."
 	},
+	&"bard_soothe":
+	{
+		"name": "Soothing Verse",
+		"class": &"bard",
+		"spec": &"hymn",
+		"slot": 5,
+		"effect": "hot",
+		"target": "ally",
+		"power": 6,
+		"tick": 1.0,
+		"duration": 12.0,
+		"cost": 8,
+		"cooldown": 0.0,
+		"range": 24.0,
+		"level": 4,
+		"text": "A quiet tune that keeps going. Keep it rolling on whoever is being hit."
+	},
 	&"bard_anthem":
 	{
 		"name": "Anthem of the Vale",
 		"class": &"bard",
-		"slot": 5,
-		"effect": "aoe_heal",
+		"spec": &"hymn",
+		"slot": 7,
+		"effect": "hot",
 		"target": "ground",
-		"power": 26,
-		"cost": 35,
+		"power": 5,
+		"tick": 1.0,
+		"duration": 12.0,
+		"cost": 30,
 		"cooldown": 15.0,
 		"aoe": 14.0,
 		"level": 8,
-		"text": "Everyone who can hear it stands a little straighter."
+		"text": "Everyone who can hear it stands a little straighter, and keeps standing, for twelve seconds."
+	},
+	&"bard_hymn":
+	{
+		"name": "Battle Hymn",
+		"class": &"bard",
+		"spec": &"hymn",
+		"slot": 8,
+		"effect": "buff",
+		"target": "ground",
+		"power": 12,
+		"aoe": 20.0,
+		"duration": 20.0,
+		"cost": 25,
+		"cooldown": 60.0,
+		"level": 12,
+		"text": "The old marching song, the loud verse. Everyone hits harder for twenty seconds."
+	},
+	&"bard_chorus":
+	{
+		"name": "Chorus",
+		"class": &"bard",
+		"spec": &"hymn",
+		"slot": 9,
+		"effect": "haste_hots",
+		"target": "self",
+		"duration": 8.0,
+		"power": 0,
+		"cost": 30,
+		"cooldown": 90.0,
+		"level": 20,
+		"text": "Every song you have running sings twice as fast for eight seconds. The panic button that rewards having set up."
+	},
+	&"bard_mock":
+	{
+		"name": "Mocking Verse",
+		"class": &"bard",
+		"spec": &"dirge",
+		"slot": 5,
+		"effect": "dot",
+		"power": 8,
+		"weaken": 0.1,
+		"cost": 14,
+		"cooldown": 6.0,
+		"range": 24.0,
+		"duration": 10.0,
+		"level": 10,
+		"text": "A song about them, and not a kind one. It hurts, and they hit softer while it lasts."
+	},
+	&"bard_bleed":
+	{
+		"name": "Bleeding Chord",
+		"class": &"bard",
+		"spec": &"dirge",
+		"slot": 0,
+		"effect": "stack",
+		"power": 4,
+		"tick": 1.0,
+		"duration": 8.0,
+		"max_stacks": 5,
+		"cost": 0,
+		"cooldown": 0.0,
+		"range": 24.0,
+		"level": 10,
+		"text": "The cut a Cutting Chord leaves. Stacks."
+	},
+	&"bard_crescendo":
+	{
+		"name": "Crescendo",
+		"class": &"bard",
+		"spec": &"dirge",
+		"slot": 7,
+		"effect": "damage",
+		"consumes": &"bard_bleed",
+		"consume_bonus": 25,
+		"power": 30,
+		"cost": 20,
+		"cooldown": 10.0,
+		"range": 22.0,
+		"level": 18,
+		"text": "Every bleed you have on them, all at once, and then silence."
+	},
+	&"bard_last_note":
+	{
+		"name": "The Last Note",
+		"class": &"bard",
+		"spec": &"dirge",
+		"slot": 9,
+		"effect": "charges",
+		"charges": 3,
+		"charges_ability": &"bard_chord",
+		"target": "self",
+		"duration": 30.0,
+		"power": 0,
+		"cost": 0,
+		"cooldown": 60.0,
+		"level": 20,
+		"text": "Your next three Cutting Chords cost nothing and land for double."
+	},
+	&"bard_discord":
+	{
+		"name": "Discord",
+		"class": &"bard",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "damage",
+		"power": 60,
+		"cost": 20,
+		"cooldown": 30.0,
+		"range": 24.0,
+		"level": 5,
+		"text": "Every string at once, all of them wrong. A rune move."
+	},
+	&"bard_skip":
+	{
+		"name": "Skip Step",
+		"class": &"bard",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "dash",
+		"target": "self",
+		"power": 0,
+		"cost": 0,
+		"cooldown": 20.0,
+		"level": 17,
+		"text": "A dance step, eight metres long, out of whatever was holding you. A rune move."
 	},
 	&"bard_silence":
 	{
@@ -195,7 +456,8 @@ const DEFINITIONS := {
 	{
 		"name": "Ballad of the Long Barrow",
 		"class": &"bard",
-		"slot": 7,
+		"slot": 0,
+		"rune_move": true,
 		"effect": "heal",
 		"target": "ally",
 		"power": 130,
@@ -251,6 +513,7 @@ const DEFINITIONS := {
 	{
 		"name": "Raise Levy",
 		"class": &"necromancer",
+		"spec": &"grave",
 		"slot": 4,
 		"effect": "summon",
 		"target": "ground",
@@ -261,10 +524,116 @@ const DEFINITIONS := {
 		"level": 6,
 		"text": "He was a farmer, then a soldier, then dead. Now he is busy again."
 	},
+	&"necro_mass":
+	{
+		"name": "Mass Grave",
+		"class": &"necromancer",
+		"spec": &"grave",
+		"slot": 9,
+		"effect": "summon",
+		"target": "ground",
+		"summon": &"risen_levy",
+		"summon_count": 3,
+		"summon_seconds": 15.0,
+		"cost": 40,
+		"cooldown": 120.0,
+		"level": 20,
+		"text": "Three at once, for fifteen seconds. The whole field gets up."
+	},
+	&"necro_ward":
+	{
+		"name": "Bone Ward",
+		"class": &"necromancer",
+		"spec": &"pact",
+		"slot": 4,
+		"effect": "damage_reduction",
+		"target": "self",
+		"reduction": 0.4,
+		"duration": 10.0,
+		"power": 0,
+		"cost": 20,
+		"cooldown": 30.0,
+		"level": 10,
+		"text": "Armour of bone, grown from your own. Forty percent less gets through for ten seconds."
+	},
+	&"necro_claim":
+	{
+		"name": "Grave Claim",
+		"class": &"necromancer",
+		"spec": &"pact",
+		"slot": 5,
+		"effect": "taunt",
+		"power": 10,
+		"root": 2.0,
+		"cost": 10,
+		"cooldown": 10.0,
+		"range": 18.0,
+		"level": 18,
+		"text": "It is yours, and for two seconds it is not going anywhere."
+	},
+	&"necro_refuse":
+	{
+		"name": "Refuse the Grave",
+		"class": &"necromancer",
+		"spec": &"pact",
+		"slot": 9,
+		"effect": "cheat_death",
+		"target": "self",
+		"reduction": 0.3,
+		"duration": 12.0,
+		"power": 30,
+		"cost": 0,
+		"cooldown": 180.0,
+		"level": 20,
+		"text": "For twelve seconds the blow that should kill you instead leaves you at a third, and drains everything within eight metres."
+	},
+	&"necro_graveshot":
+	{
+		"name": "Graveshot",
+		"class": &"necromancer",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "damage",
+		"power": 75,
+		"cost": 25,
+		"cooldown": 30.0,
+		"range": 26.0,
+		"level": 5,
+		"text": "One bolt with everything behind it. A rune move."
+	},
+	&"necro_brace":
+	{
+		"name": "Bracing Draught",
+		"class": &"necromancer",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "heal",
+		"target": "self",
+		"power": 60,
+		"cost": 15,
+		"cooldown": 30.0,
+		"level": 11,
+		"text": "Something from the flask. It works; do not ask. A rune move."
+	},
+	&"necro_bonestep":
+	{
+		"name": "Bone Step",
+		"class": &"necromancer",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "dash",
+		"target": "self",
+		"power": 0,
+		"cost": 0,
+		"cooldown": 20.0,
+		"level": 17,
+		"text": "Eight metres, sideways through somewhere cold, and out of whatever held you. A rune move."
+	},
 	&"necro_burst":
 	{
 		"name": "Corpse Burst",
 		"class": &"necromancer",
+		"spec": &"grave",
 		"slot": 5,
 		"effect": "aoe_damage",
 		"power": 26,
@@ -345,10 +714,119 @@ const DEFINITIONS := {
 		"level": 4,
 		"text": "Short fuse. Shorter than advertised, usually."
 	},
+	&"tinker_triage":
+	{
+		"name": "Triage",
+		"class": &"tinker",
+		"spec": &"medic",
+		"slot": 4,
+		"effect": "heal",
+		"target": "ally",
+		"power": 24,
+		"low_health_bonus": 1.6,
+		"cost": 8,
+		"cooldown": 3.0,
+		"range": 24.0,
+		"level": 10,
+		"text": "Quick, cheap, and a good deal stronger on someone under forty percent."
+	},
+	&"tinker_mend_turret":
+	{
+		"name": "Mending Turret",
+		"class": &"tinker",
+		"spec": &"medic",
+		"slot": 5,
+		"effect": "summon",
+		"target": "ground",
+		"summon": &"tinker_medic_turret_pet",
+		"summon_seconds": 30.0,
+		"cost": 25,
+		"cooldown": 30.0,
+		"level": 18,
+		"text": "Bolt it down and it patches whoever nearby is worst off, every two seconds."
+	},
+	&"tinker_tonic":
+	{
+		"name": "Tonic of the Marches",
+		"class": &"tinker",
+		"spec": &"medic",
+		"slot": 9,
+		"effect": "hot",
+		"target": "ground",
+		"aoe": 20.0,
+		"power": 8,
+		"tick": 1.0,
+		"duration": 12.0,
+		"cleanses": true,
+		"cost": 40,
+		"cooldown": 90.0,
+		"level": 20,
+		"text": "A round for everyone. Mends for twelve seconds and shakes off whatever was slowing or holding them."
+	},
+	&"tinker_bombard":
+	{
+		"name": "Bombardment",
+		"class": &"tinker",
+		"spec": &"artillery",
+		"slot": 9,
+		"effect": "aoe_damage",
+		"power": 28,
+		"aoe": 5.0,
+		"line_count": 3,
+		"cost": 35,
+		"cooldown": 60.0,
+		"range": 22.0,
+		"level": 20,
+		"text": "Three Blackpowder Charges, walking away from you in a line."
+	},
+	&"tinker_mortar":
+	{
+		"name": "Mortar",
+		"class": &"tinker",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "aoe_damage",
+		"power": 55,
+		"aoe": 6.0,
+		"cost": 25,
+		"cooldown": 30.0,
+		"range": 24.0,
+		"level": 5,
+		"text": "Up, over, and down on all of them. A rune move."
+	},
+	&"tinker_field_tonic":
+	{
+		"name": "Field Tonic",
+		"class": &"tinker",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "heal",
+		"target": "self",
+		"power": 55,
+		"cost": 15,
+		"cooldown": 30.0,
+		"level": 11,
+		"text": "The bottle in the kit that is not for machines. A rune move."
+	},
+	&"tinker_grapnel":
+	{
+		"name": "Grapnel",
+		"class": &"tinker",
+		"slot": 0,
+		"rune_move": true,
+		"effect": "dash",
+		"target": "self",
+		"power": 0,
+		"cost": 0,
+		"cooldown": 20.0,
+		"level": 17,
+		"text": "Fire the hook, hold on. Eight metres, and nothing holds you on the way. A rune move."
+	},
 	&"tinker_turret":
 	{
 		"name": "Field Turret",
 		"class": &"tinker",
+		"spec": &"artillery",
 		"slot": 4,
 		"effect": "summon",
 		"target": "ground",
@@ -363,15 +841,15 @@ const DEFINITIONS := {
 	{
 		"name": "Field Repair",
 		"class": &"tinker",
-		"slot": 5,
+		"slot": 8,
 		"effect": "heal",
-		"target": "ally",
+		"target": "self",
 		"power": 40,
 		"cost": 22,
 		"cooldown": 12.0,
 		"range": 18.0,
 		"level": 8,
-		"text": "The same kit for people and for machines. Nobody has complained yet."
+		"text": "The same kit for people and for machines. A Medic can use it on anyone in reach; anyone else patches themselves."
 	},
 	&"tinker_net":
 	{
@@ -420,7 +898,12 @@ const EFFECT_NAMES := {
 	"stun": AbilityData.Effect.STUN,
 	"stack": AbilityData.Effect.STACK,
 	"hot": AbilityData.Effect.HOT,
-	"buff": AbilityData.Effect.BUFF
+	"buff": AbilityData.Effect.BUFF,
+	"dash": AbilityData.Effect.DASH,
+	"unkillable": AbilityData.Effect.UNKILLABLE,
+	"cheat_death": AbilityData.Effect.CHEAT_DEATH,
+	"charges": AbilityData.Effect.CHARGES,
+	"haste_hots": AbilityData.Effect.HASTE_HOTS
 }
 
 const TARGET_NAMES := {
@@ -455,19 +938,53 @@ func get_all_ids() -> Array:
 	return DEFINITIONS.keys()
 
 
-## Every ability a class has, in bar order.
+## Every ability a class has — shared, both specs' and the rune moves.
 func abilities_for_class(class_id: StringName) -> Array:
 	if _by_class.is_empty():
 		_ready()
 	return _by_class.get(class_id, [])
 
 
-## The ability in a given bar slot, if the player is high enough level for it.
-func ability_in_slot(class_id: StringName, slot: int, level: int) -> AbilityData:
+## The abilities this build can actually press: shared ones, the chosen
+## spec's, and whatever the worn runes grant, all at or below `level`.
+func abilities_on_bar(class_id: StringName, spec_id: StringName, level: int, granted: Array = []) -> Array:
+	var found := []
+	for slot in range(1, BAR_SLOTS + 1):
+		var ability := ability_in_slot(class_id, slot, level, spec_id, granted)
+		if ability:
+			found.append(ability)
+	return found
+
+
+## The ability in a given bar slot, if the player is high enough level for it
+## and the build (spec, runes) puts it there. Slots 10-12 hold what the three
+## rune slots grant.
+func ability_in_slot(class_id: StringName, slot: int, level: int, spec_id: StringName = &"", granted: Array = []) -> AbilityData:
+	if slot >= FIRST_RUNE_SLOT:
+		var rune_index := slot - FIRST_RUNE_SLOT
+		if rune_index >= granted.size():
+			return null
+		var move := get_ability(StringName(str(granted[rune_index])))
+		if move == null or move.class_id != class_id or not move.rune_move:
+			return null
+		return move if level >= move.level_required else null
 	for ability in abilities_for_class(class_id):
-		if ability.slot == slot:
-			return ability if level >= ability.level_required else null
+		if ability.slot != slot or ability.rune_move:
+			continue
+		if ability.spec != &"" and ability.spec != spec_id:
+			continue
+		return ability if level >= ability.level_required else null
 	return null
+
+
+## The bar slot an ability sits in for this build, or 0 if it is not on it.
+func slot_of(ability: AbilityData, class_id: StringName, spec_id: StringName, level: int, granted: Array = []) -> int:
+	if ability == null:
+		return 0
+	for slot in range(1, BAR_SLOTS + 1):
+		if ability_in_slot(class_id, slot, level, spec_id, granted) == ability:
+			return slot
+	return 0
 
 
 func _build(ability_id: StringName, entry: Dictionary) -> AbilityData:
@@ -491,6 +1008,20 @@ func _build(ability_id: StringName, entry: Dictionary) -> AbilityData:
 	ability.speed_multiplier = float(entry.get("speed", 1.0))
 	ability.reduction = clampf(float(entry.get("reduction", 0.3)), 0.0, 1.0)
 	ability.max_stacks = maxi(1, int(entry.get("max_stacks", 5)))
+	ability.tick_seconds = float(entry.get("tick", 1.0))
+	ability.spec = StringName(str(entry.get("spec", "")))
+	ability.rune_move = bool(entry.get("rune_move", false))
+	ability.execute = bool(entry.get("execute", false))
+	ability.consumes = StringName(str(entry.get("consumes", "")))
+	ability.consume_bonus = int(entry.get("consume_bonus", 0))
+	ability.weaken = float(entry.get("weaken", 0.0))
+	ability.low_health_bonus = float(entry.get("low_health_bonus", 1.0))
+	ability.cleanses = bool(entry.get("cleanses", false))
+	ability.line_count = maxi(1, int(entry.get("line_count", 1)))
+	ability.summon_count = maxi(1, int(entry.get("summon_count", 1)))
+	ability.root_seconds = float(entry.get("root", 0.0))
+	ability.charges = maxi(1, int(entry.get("charges", 3)))
+	ability.charges_ability = StringName(str(entry.get("charges_ability", "")))
 	ability.level_required = int(entry.get("level", 1))
 	ability.description = str(entry.get("text", ""))
 	return ability

@@ -223,6 +223,28 @@ func _ready() -> void:
 		ledger.target = null
 		ledger._attack_timer = 0.0
 
+	# The twelve-slot bar at level 20 with a spec and a rune move, and the
+	# spec chooser open.
+	var player_stats: Stats = _player.get_node("Stats")
+	player_stats._set_progression(20, 0)
+	_player.apply_class(&"bard")
+	player_stats.choose_spec(&"hymn", true)
+	var runes: RuneLoadout = _player.get_node("RuneLoadout")
+	runes.choose(2, &"bard_2b")
+	var huds := _level.find_children("*", "GameHUD", true, false)
+	if not huds.is_empty():
+		var hud: GameHUD = huds[0]
+		hud._refresh_slot_labels()
+		hud._toggle_spec_panel()
+	await _frames(8)
+	await _save("spec_chooser_bar")
+	var bar_ui: AbilityBar = _player.get_node("AbilityBar")
+	var names := []
+	for slot in range(1, 13):
+		var on_bar := bar_ui.ability_in_slot(slot)
+		names.append(on_bar.display_name if on_bar else "-")
+	print("bar: %s" % ", ".join(names))
+
 	print("SHOTS COMPLETE")
 	get_tree().quit(0)
 

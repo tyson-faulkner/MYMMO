@@ -22,7 +22,12 @@ enum Effect {
 	STUN,         ## The target can't move, cast or swing for duration_seconds.
 	STACK,        ## A stacking bleed: each cast adds a stack, up to max_stacks.
 	HOT,          ## Healing repeated over duration_seconds — the mirror of DOT.
-	BUFF          ## Flat power to everyone friendly nearby for duration_seconds.
+	BUFF,         ## Flat power to everyone friendly nearby for duration_seconds.
+	DASH,         ## The caster leaps forward and shakes off snares.
+	UNKILLABLE,   ## For duration_seconds the caster cannot drop below 1 health.
+	CHEAT_DEATH,  ## For duration_seconds, lethal damage instead leaves `reduction` of max health.
+	CHARGES,      ## Gives the caster `charges` free, doubled casts of a linked ability.
+	HASTE_HOTS    ## Every heal-over-time the caster has running ticks twice as fast.
 }
 
 enum TargetRule {
@@ -74,6 +79,42 @@ enum TargetRule {
 
 ## For STACK: how high the bleed can stack.
 @export var max_stacks: int = 5
+
+## Which spec this belongs to, or "" for the five every build shares.
+@export var spec: StringName = &""
+
+## True for the twelve rune moves: never on the class bar, only granted by
+## a rune sitting in an unlocked slot.
+@export var rune_move: bool = false
+
+## DAMAGE: hits harder the lower the target's health (up to double).
+@export var execute: bool = false
+
+## DAMAGE: eats every stack of this bleed on the target, `consume_bonus` each.
+@export var consumes: StringName = &""
+@export var consume_bonus: int = 0
+
+## DOT: also weakens the target's own hits by this share while it lasts.
+@export var weaken: float = 0.0
+
+## HEAL: multiplier when the target is under 40% health (Triage).
+@export var low_health_bonus: float = 1.0
+
+## HOT on the ground: also clears snares and stuns off everyone it reaches.
+@export var cleanses: bool = false
+
+## AOE_DAMAGE: this many blasts in a line away from the caster (Bombardment).
+@export var line_count: int = 1
+
+## SUMMON: how many at once before runes (Mass Grave).
+@export var summon_count: int = 1
+
+## TAUNT: also roots the target for this long (Grave Claim).
+@export var root_seconds: float = 0.0
+
+## CHARGES: how many, and which ability they discount.
+@export var charges: int = 3
+@export var charges_ability: StringName = &""
 
 @export var level_required: int = 1
 

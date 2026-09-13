@@ -21,8 +21,16 @@ signal revived
 ## current xp, xp needed for the next level
 signal xp_changed(current: int, needed: int)
 signal leveled_up(new_level: int)
+## The spec was chosen or changed.
+signal spec_changed(spec_id: StringName)
+## Refuse the Grave went off: the blow that should have killed did not.
+signal cheated_death
 
 const MAX_LEVEL := 20
+
+## Which of the class's two specs, or "" before level 10. The passive's
+## numbers come from SpecDatabase; the spec's abilities from AbilityDatabase.
+var spec_id: StringName = &""
 
 @export var max_health: int = 100
 @export var max_mana: int = 100
@@ -67,6 +75,9 @@ func apply_class(new_class: ClassData) -> void:
 	class_data = new_class
 	if not class_data:
 		return
+	# A spec belongs to a class; changing class drops it.
+	if spec_id != &"" and not SpecDatabase.is_spec_of(spec_id, class_data.id):
+		spec_id = &""
 	max_health = _health_for_level(level)
 	max_mana = class_data.max_resource
 	_resource_label = class_data.resource_label
@@ -82,6 +93,73 @@ func apply_class(new_class: ClassData) -> void:
 
 func get_resource_label() -> String:
 	return _resource_label
+
+
+# --- Spec -------------------------------------------------------------------
+
+
+## The passive's numbers, or nothing before a spec is chosen.
+func passive() -> Dictionary:
+	if spec_id == &"" or class_data == null or not SpecDatabase.is_spec_of(spec_id, class_data.id):
+		return {}
+	return SpecDatabase.passive_for(spec_id)
+
+
+## How much more enemies want to hit this character. Tanks' specs double it.
+func threat_multiplier() -> float:
+	return float(passive().get("threat_mult", 1.0))
+
+
+## Server. Level 10, your own class's spec, and (unless forced) at an inn or
+## a graveyard. Free every time: a cost would only stop someone filling the
+## role the night needs.
+func choose_spec(new_spec: StringName, force: bool = false) -> bool:
+	if not multiplayer.is_server() or class_data == null:
+		return false
+	if level < SpecDatabase.CHOOSE_LEVEL or not SpecDatabase.is_spec_of(new_spec, class_data.id):
+		return false
+	if not force and not _at_rest_spot():
+		return false
+	_set_spec(new_spec)
+	_set_spec.rpc(new_spec)
+	return true
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_choose_spec(spec_text: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender == 0:
+		sender = 1
+	if sender != get_parent().get_multiplayer_authority():
+		return
+	choose_spec(StringName(spec_text))
+
+
+@rpc("authority", "reliable")
+func _set_spec(new_spec: StringName) -> void:
+	spec_id = new_spec
+	# The passive may change max health; keep the same fraction of the bar.
+	var fraction := float(health) / float(maxi(1, max_health))
+	max_health = _health_for_level(level)
+	health = clampi(int(round(float(max_health) * fraction)), 0 if is_dead else 1, max_health)
+	health_changed.emit(health, max_health)
+	spec_changed.emit(spec_id)
+
+
+## An inn or a graveyard within a few steps: where a build is allowed to change.
+func _at_rest_spot() -> bool:
+	var body := get_parent() as Node3D
+	if body == null:
+		return true
+	for node in get_tree().get_nodes_in_group("Graveyards"):
+		if node is Node3D and (node as Node3D).global_position.distance_to(body.global_position) <= 15.0:
+			return true
+	for node in get_tree().get_nodes_in_group("NPCs"):
+		if node is Node3D and str(node.get("title")).to_lower().contains("inn") and (node as Node3D).global_position.distance_to(body.global_position) <= 15.0:
+			return true
+	return false
 
 
 func _process(delta: float) -> void:
@@ -117,6 +195,19 @@ func apply_damage(amount: int, source_peer_id: int = 0, ability_id: StringName =
 	if share < 1.0:
 		mitigated = maxi(1, int(round(float(mitigated) * share)))
 	var new_health: int = maxi(0, health - mitigated)
+	if new_health == 0:
+		# Last Stand: the floor is one. Refuse the Grave: the floor is a third,
+		# once, and the caster's bar answers with a drain.
+		if StatusEffect.has_kind(get_parent(), StatusEffect.Kind.UNKILLABLE):
+			new_health = 1
+			mitigated = health - 1
+		else:
+			var cheat := StatusEffect.find_kind(get_parent(), StatusEffect.Kind.CHEAT_DEATH)
+			if cheat:
+				new_health = maxi(1, int(round(float(max_health) * cheat.value)))
+				mitigated = maxi(0, health - new_health)
+				cheat.queue_free()
+				cheated_death.emit()
 	_set_health(new_health, source_peer_id)
 	_set_health.rpc(new_health, source_peer_id)
 	damaged.emit(mitigated, source_peer_id)
@@ -170,6 +261,7 @@ func _set_health(value: int, killer_peer_id: int) -> void:
 
 func total_armor() -> int:
 	var base := class_data.base_armor if class_data else 0
+	base = int(round(float(base) * float(passive().get("armor_mult", 1.0))))
 	return base + bonus_armor
 
 
@@ -181,6 +273,7 @@ func _health_for_level(at_level: int) -> int:
 	var base := 100
 	if class_data:
 		base = class_data.base_health + class_data.health_per_level * (at_level - 1)
+	base = int(round(float(base) * float(passive().get("health_mult", 1.0))))
 	return base + bonus_stamina * 5
 
 

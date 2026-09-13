@@ -505,6 +505,21 @@ func is_stunned() -> bool:
 	return _stun_remaining > 0.0
 
 
+# Server: a tonic or a dash shakes off whatever was slowing or holding you.
+func apply_cleanse() -> void:
+	if not multiplayer.is_server():
+		return
+	sync_cleanse()
+	sync_cleanse.rpc()
+
+
+@rpc("authority", "reliable")
+func sync_cleanse() -> void:
+	_stun_remaining = 0.0
+	speed_multiplier = 1.0
+	_speed_modifier_remaining = 0.0
+
+
 # Server: a charge or a slam throws this body. Relayed to the owner, who is
 # the one moving it.
 func apply_knockback(impulse: Vector3) -> void:

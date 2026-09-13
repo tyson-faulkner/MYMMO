@@ -27,7 +27,8 @@ enum Effect {
 	MAKE_AOE,     ## Turn a single-target ability into one with a radius.
 	FOCUS,        ## Turn an area ability into a harder single-target one.
 	EXTRA_SUMMON, ## Summon this many more, each weaker.
-	SPLASH_HEAL   ## Heal also reaches nearby allies, at reduced power.
+	SPLASH_HEAL,  ## Heal also reaches nearby allies, at reduced power.
+	GRANT         ## A new move: puts `ability_id` on the bar while the rune is worn.
 }
 
 @export var id: StringName = &""

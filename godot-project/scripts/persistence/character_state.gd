@@ -35,6 +35,7 @@ static func capture(character: Node) -> Dictionary:
 		data["level"] = stats.level
 		data["experience"] = stats.experience
 		data["health"] = stats.health
+		data["spec"] = String(stats.spec_id)
 
 	var position: Vector3 = character.global_position if character is Node3D else Vector3.ZERO
 	data["position"] = {"x": position.x, "y": position.y, "z": position.z}
@@ -94,6 +95,10 @@ static func apply(character: Node, data: Dictionary) -> bool:
 		stats._set_progression(level, experience)
 		if stats.multiplayer.has_multiplayer_peer() and stats.multiplayer.is_server():
 			stats._set_progression.rpc(level, experience)
+		# The spec comes back before health, since its passive sets the bar.
+		var saved_spec := StringName(str(migrated.get("spec", "")))
+		if saved_spec != &"" and stats.multiplayer.has_multiplayer_peer() and stats.multiplayer.is_server():
+			stats.choose_spec(saved_spec, true)
 		var health := int(migrated.get("health", stats.max_health))
 		if health > 0:
 			stats.health = clampi(health, 1, stats.max_health)

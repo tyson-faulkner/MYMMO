@@ -14,13 +14,13 @@ const DEFINITIONS := {
 	# --- Valkyr ---
 	&"valkyr_1a":
 	{
-		"name": "Widow's Edge",
+		"name": "Spearcast",
 		"class": &"valkyr",
 		"slot": 1,
-		"ability": &"valkyr_strike",
-		"effect": "power",
-		"value": 1.7,
-		"text": "Mourning Strike lands far harder, on one target. For holding a boss."
+		"ability": &"valkyr_spearcast",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: throw the spear for heavy damage at range, once every thirty seconds."
 	},
 	&"valkyr_1b":
 	{
@@ -45,24 +45,23 @@ const DEFINITIONS := {
 	},
 	&"valkyr_2b":
 	{
-		"name": "Bannerfall",
+		"name": "Rally the Fallen",
 		"class": &"valkyr",
 		"slot": 2,
-		"ability": &"valkyr_taunt",
-		"effect": "make_aoe",
-		"value": 9.0,
-		"falloff": 0.8,
-		"text": "You claim everything nearby at once, but not for as long. For picking up a wipe."
+		"ability": &"valkyr_rally",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a party heal on a long cooldown. Either spec can carry it for a healer-less night."
 	},
 	&"valkyr_3a":
 	{
-		"name": "Unbroken",
+		"name": "Wingbeat",
 		"class": &"valkyr",
 		"slot": 3,
-		"ability": &"valkyr_guard",
-		"effect": "power",
-		"value": 1.8,
-		"text": "Wingguard buys back far more of your own health."
+		"ability": &"valkyr_wingbeat",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a short dash that breaks snares. For a mechanic-heavy boss."
 	},
 	&"valkyr_3b":
 	{
@@ -70,21 +69,21 @@ const DEFINITIONS := {
 		"class": &"valkyr",
 		"slot": 3,
 		"ability": &"valkyr_guard",
-		"effect": "splash_heal",
+		"effect": "make_aoe",
 		"value": 11.0,
 		"falloff": 0.6,
-		"text": "Wingguard reaches everyone standing behind you, for less each."
+		"text": "Wingguard shelters everyone standing near you, for less each. For a stand-and-hold fight."
 	},
 	# --- Bard ---
 	&"bard_1a":
 	{
-		"name": "Perfect Pitch",
+		"name": "Discord",
 		"class": &"bard",
 		"slot": 1,
-		"ability": &"bard_mend",
-		"effect": "power",
-		"value": 1.65,
-		"text": "Mending Verse heals one person for much more. For keeping a tank upright."
+		"ability": &"bard_discord",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: one loud, wrong chord for heavy damage, every thirty seconds."
 	},
 	&"bard_1b":
 	{
@@ -109,24 +108,23 @@ const DEFINITIONS := {
 	},
 	&"bard_2b":
 	{
-		"name": "Chorus of Sorrow",
+		"name": "Ballad of the Long Barrow",
 		"class": &"bard",
 		"slot": 2,
-		"ability": &"bard_dirge",
-		"effect": "make_aoe",
-		"value": 7.0,
-		"falloff": 0.6,
-		"text": "The Dirge settles over everything near your target, for a shorter while."
+		"ability": &"bard_ballad",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: the big burst heal, so either spec can carry one emergency heal."
 	},
 	&"bard_3a":
 	{
-		"name": "Sharp Note",
+		"name": "Skip Step",
 		"class": &"bard",
 		"slot": 3,
-		"ability": &"bard_chord",
-		"effect": "power",
-		"value": 2.1,
-		"text": "Cutting Chord hits properly hard, but you'll wait for it."
+		"ability": &"bard_skip",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a short dash that breaks snares."
 	},
 	&"bard_3b":
 	{
@@ -141,13 +139,13 @@ const DEFINITIONS := {
 	# --- Necromancer ---
 	&"necro_1a":
 	{
-		"name": "Marrowseeker",
+		"name": "Graveshot",
 		"class": &"necromancer",
 		"slot": 1,
-		"ability": &"necro_bolt",
-		"effect": "power",
-		"value": 1.75,
-		"text": "Soulbolt bites much deeper into one target."
+		"ability": &"necro_graveshot",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a long-cooldown nuke. For a boss."
 	},
 	&"necro_1b":
 	{
@@ -162,13 +160,13 @@ const DEFINITIONS := {
 	},
 	&"necro_2a":
 	{
-		"name": "Honoured Dead",
+		"name": "Bracing Draught",
 		"class": &"necromancer",
 		"slot": 2,
-		"ability": &"necro_raise",
-		"effect": "duration",
-		"value": 2.0,
-		"text": "One levy, standing far longer. Somebody worth raising properly."
+		"ability": &"necro_brace",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a self-heal on a cooldown. For standing where you should not."
 	},
 	&"necro_2b":
 	{
@@ -183,13 +181,13 @@ const DEFINITIONS := {
 	},
 	&"necro_3a":
 	{
-		"name": "Deep Rot",
+		"name": "Bone Step",
 		"class": &"necromancer",
 		"slot": 3,
-		"ability": &"necro_rot",
-		"effect": "duration",
-		"value": 2.0,
-		"text": "Creeping Rot works on one body for twice as long."
+		"ability": &"necro_bonestep",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a short dash that breaks snares."
 	},
 	&"necro_3b":
 	{
@@ -205,13 +203,13 @@ const DEFINITIONS := {
 	# --- Tinker ---
 	&"tinker_1a":
 	{
-		"name": "Heavy Bolt",
+		"name": "Mortar",
 		"class": &"tinker",
 		"slot": 1,
-		"ability": &"tinker_shot",
-		"effect": "power",
-		"value": 1.8,
-		"text": "One bolt, considerably more of it."
+		"ability": &"tinker_mortar",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a long-cooldown blast on a crowd."
 	},
 	&"tinker_1b":
 	{
@@ -225,13 +223,13 @@ const DEFINITIONS := {
 	},
 	&"tinker_2a":
 	{
-		"name": "Siege Frame",
+		"name": "Field Tonic",
 		"class": &"tinker",
 		"slot": 2,
-		"ability": &"tinker_turret",
-		"effect": "duration",
-		"value": 2.0,
-		"text": "One turret, bolted down properly, lasting twice as long."
+		"ability": &"tinker_field_tonic",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a self-heal on a cooldown."
 	},
 	&"tinker_2b":
 	{
@@ -246,13 +244,13 @@ const DEFINITIONS := {
 	},
 	&"tinker_3a":
 	{
-		"name": "Shaped Charge",
+		"name": "Grapnel",
 		"class": &"tinker",
 		"slot": 3,
-		"ability": &"tinker_bomb",
-		"effect": "focus",
-		"value": 2.3,
-		"text": "The charge drives into one target instead of spreading. For a boss."
+		"ability": &"tinker_grapnel",
+		"effect": "grant",
+		"value": 1.0,
+		"text": "A new move: a short dash that breaks snares."
 	},
 	&"tinker_3b":
 	{
@@ -276,7 +274,8 @@ const EFFECT_NAMES := {
 	"make_aoe": RuneData.Effect.MAKE_AOE,
 	"focus": RuneData.Effect.FOCUS,
 	"extra_summon": RuneData.Effect.EXTRA_SUMMON,
-	"splash_heal": RuneData.Effect.SPLASH_HEAL
+	"splash_heal": RuneData.Effect.SPLASH_HEAL,
+	"grant": RuneData.Effect.GRANT
 }
 
 var _cache: Dictionary = {}

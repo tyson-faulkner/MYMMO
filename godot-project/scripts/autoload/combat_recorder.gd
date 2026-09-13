@@ -336,6 +336,7 @@ func build_recap(fight: Dictionary, events: Array, wiped: bool) -> Dictionary:
 		levels[peer_id] = _level_of(character)
 		gear[peer_id] = gear_score_of(character)
 		health[peer_id] = _max_health_of(character)
+		players[peer_id]["bar"] = _bar_of(character, StringName(str(classes[peer_id])), int(levels[peer_id]))
 
 	var recap := {
 		"boss_id": boss_id,
@@ -539,7 +540,7 @@ func cooldown_usage(player: Dictionary, class_id: StringName, level: int, second
 	var cast_counts := {}
 	for cast in player["casts"]:
 		cast_counts[cast["ability"]] = int(cast_counts.get(cast["ability"], 0)) + 1
-	for ability in AbilityDatabase.abilities_for_class(class_id):
+	for ability in _bar_from(player, class_id, level):
 		if ability.cooldown < 6.0 or level < ability.level_required:
 			continue
 		var ready := int(floor(seconds / ability.cooldown)) + 1
@@ -553,7 +554,7 @@ func cooldown_usage(player: Dictionary, class_id: StringName, level: int, second
 func effect_uptimes(player: Dictionary, class_id: StringName, level: int, seconds: float, started: int) -> Array:
 	var rows := []
 	var ended := started + int(seconds * 1000.0)
-	for ability in AbilityDatabase.abilities_for_class(class_id):
+	for ability in _bar_from(player, class_id, level):
 		if level < ability.level_required:
 			continue
 		var timed: bool = ability.effect in [AbilityData.Effect.DOT, AbilityData.Effect.HOT, AbilityData.Effect.STACK, AbilityData.Effect.BUFF]
@@ -703,6 +704,28 @@ func _level_of(character: Node) -> int:
 		return 1
 	var stats := character.get_node_or_null("Stats") as Stats
 	return stats.level if stats else 1
+
+
+## The abilities this character can actually press: their spec's and their
+## runes', not the other spec's. Scoring someone on a button they don't have
+## would be the fake kind of fair.
+func _bar_of(character: Node, class_id: StringName, level: int) -> Array:
+	var spec := &""
+	var granted := []
+	if character:
+		var stats := character.get_node_or_null("Stats") as Stats
+		if stats:
+			spec = stats.spec_id
+		var runes := character.get_node_or_null("RuneLoadout") as RuneLoadout
+		if runes:
+			granted = runes.granted_ids()
+	return AbilityDatabase.abilities_on_bar(class_id, spec, level, granted)
+
+
+func _bar_from(player: Dictionary, class_id: StringName, level: int) -> Array:
+	if player.has("bar"):
+		return player["bar"]
+	return AbilityDatabase.abilities_on_bar(class_id, &"", level)
 
 
 func _max_health_of(character: Node) -> int:

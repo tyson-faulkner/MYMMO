@@ -11,7 +11,10 @@ signal cast_succeeded(ability_id: StringName)
 signal cast_failed(ability_id: StringName, reason: String)
 signal cooldowns_changed
 
-const SLOT_COUNT := 7
+## 1-8 class and spec, 9 the capstone, 10-12 the rune moves.
+const SLOT_COUNT := 12
+## How far a dash carries you.
+const DASH_METRES := 8.0
 
 ## Server-side cooldowns, the authoritative ones: slot -> msec when ready.
 var _server_ready_at: Dictionary = {}
@@ -23,6 +26,15 @@ var _dot_hosts: Dictionary = {}
 ## The ability being executed right now, so every hit and heal it causes is
 ## recorded under its name.
 var _current_ability: StringName = &""
+## True while a passive is casting the ability it chains to, so a chain can
+## never chain into itself.
+var _chaining: bool = false
+
+
+func _ready() -> void:
+	var stats := _get_stats()
+	if stats:
+		stats.cheated_death.connect(_on_cheated_death)
 
 
 func _get_body() -> Node3D:
@@ -69,10 +81,28 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 
+func _spec_id() -> StringName:
+	var stats := _get_stats()
+	return stats.spec_id if stats else &""
+
+
+func _granted() -> Array:
+	var runes := _get_runes()
+	return runes.granted_ids() if runes else []
+
+
+## What the ability aims at for THIS build: a Medic's Field Repair reaches an
+## ally, everyone else's patches themselves.
+func _target_rule(ability: AbilityData) -> AbilityData.TargetRule:
+	if SpecDatabase.targets_allies(_spec_id(), ability.id):
+		return AbilityData.TargetRule.ALLY
+	return ability.target_rule
+
+
 func ability_in_slot(slot: int) -> AbilityData:
 	var stats := _get_stats()
 	var level := stats.level if stats else 1
-	return AbilityDatabase.ability_in_slot(_class_id(), slot, level)
+	return AbilityDatabase.ability_in_slot(_class_id(), slot, level, _spec_id(), _granted())
 
 
 func seconds_remaining(slot: int) -> float:
@@ -97,7 +127,7 @@ func press_slot(slot: int) -> void:
 		return
 
 	var target := _resolve_target(ability)
-	if ability.target_rule == AbilityData.TargetRule.ENEMY and target == null:
+	if _target_rule(ability) == AbilityData.TargetRule.ENEMY and target == null:
 		cast_failed.emit(ability.id, "no target")
 		return
 
@@ -117,7 +147,7 @@ func press_slot(slot: int) -> void:
 
 
 func _resolve_target(ability: AbilityData) -> Node3D:
-	match ability.target_rule:
+	match _target_rule(ability):
 		AbilityData.TargetRule.SELF, AbilityData.TargetRule.GROUND:
 			return _get_body()
 		AbilityData.TargetRule.ALLY:
@@ -157,19 +187,25 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 	# Stunned means stunned: the server refuses, whatever the client pressed.
 	if body.has_method("is_stunned") and body.is_stunned():
 		return
-	# The ability has to belong to this character's class and level.
+	# The ability has to belong to this character's class and level, and be
+	# on THIS build's bar: the right spec, or granted by a worn rune.
 	if ability.class_id != _class_id() or stats.level < ability.level_required:
 		return
-	var slot := ability.slot
+	var slot := AbilityDatabase.slot_of(ability, _class_id(), _spec_id(), stats.level, _granted())
+	if slot == 0:
+		return
 	if Time.get_ticks_msec() < int(_server_ready_at.get(slot, 0)):
 		return
 
+	var rule := _target_rule(ability)
 	var target: Node3D = null
 	if not target_path.is_empty():
 		target = get_node_or_null(target_path) as Node3D
-	if ability.target_rule == AbilityData.TargetRule.SELF or ability.target_rule == AbilityData.TargetRule.GROUND:
+	if rule == AbilityData.TargetRule.SELF or rule == AbilityData.TargetRule.GROUND:
 		target = body
-	if ability.target_rule == AbilityData.TargetRule.ENEMY:
+	if rule == AbilityData.TargetRule.ALLY and target == null:
+		target = body
+	if rule == AbilityData.TargetRule.ENEMY:
 		if target == null:
 			return
 		var target_stats := target.get_node_or_null("Stats") as Stats
@@ -191,6 +227,12 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 			cost = int(round(float(cost) * rune.value))
 		elif rune.effect == RuneData.Effect.COOLDOWN:
 			cooldown = cooldown * rune.value
+	# The spec passive: Lance halves Descend's cooldown.
+	cooldown *= SpecDatabase.per_ability(_spec_id(), "cooldown_mult", ability.id)
+	# The Last Note: a banked charge makes this one free and doubled.
+	var charged := StatusEffect.charges(body, ability.id) > 0
+	if charged:
+		cost = 0
 
 	# Pay for it.
 	var spent := 0
@@ -209,7 +251,9 @@ func request_cast(ability_id_text: String, target_path: NodePath) -> void:
 		_server_ready_at[slot] = Time.get_ticks_msec() + int(cooldown * 1000.0)
 
 	CombatRecorder.record_cast(body.get_multiplayer_authority(), ability.id)
-	_execute(ability, body, target, spent, rune)
+	_execute(ability, body, target, spent, rune, charged)
+	if charged:
+		StatusEffect.use_charge(body, ability.id)
 	confirm_cast.rpc_id(body.get_multiplayer_authority(), String(ability.id), slot)
 
 
@@ -225,7 +269,7 @@ func confirm_cast(ability_id_text: String, slot: int) -> void:
 # The one place an ability turns into something happening. Every effect is a
 # verb here, which is why a new ability is a data entry and not new code.
 func _execute(
-	ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int, rune: RuneData = null
+	ability: AbilityData, caster: Node3D, target: Node3D, spent_resource: int, rune: RuneData = null, charged: bool = false
 ) -> void:
 	var caster_peer := caster.get_multiplayer_authority()
 	_current_ability = ability.id
@@ -233,10 +277,13 @@ func _execute(
 	var effect := ability.effect
 	var radius := ability.aoe_radius
 	var duration := ability.duration_seconds
-	var summon_count := 1
+	var summon_count := ability.summon_count
 	var chain_targets := 0
 	var splash_radius := 0.0
 	var falloff := 0.5
+	var spec := _spec_id()
+	var tick := ability.tick_seconds * SpecDatabase.per_ability(spec, "tick_mult", ability.id)
+	var drain_ratio := ability.drain_ratio * SpecDatabase.multiplier(spec, "drain_mult")
 
 	# Runes reshape an existing ability rather than adding a new one, which is
 	# why the whole build system costs no art.
@@ -276,6 +323,15 @@ func _execute(
 		power = int(round(float(ability.power) * (0.5 + float(spent_resource) / 50.0)))
 	if output != 1.0:
 		power = maxi(1, int(round(float(power) * output)))
+	# The spec passive: a Lance hits harder, a Hymn heals for more.
+	var heals: bool = effect in [AbilityData.Effect.HEAL, AbilityData.Effect.AOE_HEAL, AbilityData.Effect.HOT]
+	var hurts: bool = effect in [AbilityData.Effect.DAMAGE, AbilityData.Effect.AOE_DAMAGE, AbilityData.Effect.DOT, AbilityData.Effect.DRAIN, AbilityData.Effect.STACK, AbilityData.Effect.STUN, AbilityData.Effect.INTERRUPT, AbilityData.Effect.TAUNT]
+	if heals:
+		power = int(round(float(power) * SpecDatabase.multiplier(spec, "healing_mult")))
+	elif hurts:
+		power = int(round(float(power) * SpecDatabase.multiplier(spec, "damage_mult")))
+	if charged:
+		power *= 2
 	# Gear. Flat, so a level-8 ring is still worth exactly what it says at 20.
 	var caster_stats := caster.get_node_or_null("Stats") as Stats
 	if caster_stats:
@@ -288,6 +344,15 @@ func _execute(
 
 	match effect:
 		AbilityData.Effect.DAMAGE:
+			if target and ability.execute:
+				# Widow's Thrust: up to double on something nearly dead.
+				var victim_stats := target.get_node_or_null("Stats") as Stats
+				if victim_stats and victim_stats.max_health > 0:
+					var fraction := float(victim_stats.health) / float(victim_stats.max_health)
+					power = int(round(float(power) * (2.0 - clampf(fraction, 0.0, 1.0))))
+			if target and ability.consumes != &"":
+				# Crescendo: every bleed at once, and then silence.
+				power += ability.consume_bonus * StatusEffect.consume_stacks(target, ability.consumes)
 			_damage(target, power, caster_peer)
 			# A forking rune carries a share to the nearest other enemies.
 			if chain_targets > 0 and target:
@@ -299,10 +364,27 @@ func _execute(
 					chained += 1
 		AbilityData.Effect.AOE_DAMAGE:
 			var centre: Node3D = target if target else caster
-			for victim in _hostiles_near(centre.global_position, radius):
-				_damage(victim, power, caster_peer)
+			var blasts := maxi(1, ability.line_count)
+			var step := Vector3.ZERO
+			if blasts > 1:
+				# Bombardment: the charges walk away from the caster in a line.
+				step = centre.global_position - caster.global_position
+				step.y = 0.0
+				step = step.normalized() * radius * 1.6 if step.length() > 0.1 else -caster.global_transform.basis.z * radius * 1.6
+			var struck := {}
+			for index in range(blasts):
+				for victim in _hostiles_near(centre.global_position + step * float(index), radius):
+					if struck.has(victim):
+						continue
+					struck[victim] = true
+					_damage(victim, power, caster_peer)
 		AbilityData.Effect.HEAL:
 			var healed: Node3D = target if target else caster
+			if ability.low_health_bonus > 1.0:
+				# Triage: a good deal stronger on someone under forty percent.
+				var healed_stats := healed.get_node_or_null("Stats") as Stats
+				if healed_stats and float(healed_stats.health) < 0.4 * float(healed_stats.max_health):
+					power = int(round(float(power) * ability.low_health_bonus))
 			_heal(healed, power)
 			if splash_radius > 0.0:
 				for friend in _friendlies_near(healed.global_position, splash_radius):
@@ -312,17 +394,20 @@ func _execute(
 			for friend in _friendlies_near(caster.global_position, radius):
 				_heal(friend, power)
 		AbilityData.Effect.DOT:
-			DamageOverTime.apply(target, power, duration, ability.tick_seconds, caster_peer, ability.id)
+			DamageOverTime.apply(target, power, duration, tick, caster_peer, ability.id)
+			if target and ability.weaken > 0.0:
+				# Mocking Verse: they hit softer while it lasts.
+				StatusEffect.apply(target, StatusEffect.Kind.WEAKEN, ability.id, ability.weaken, duration)
 			if radius > 0.0 and target:
 				# A spreading rune takes hold of everything around the target.
 				for victim in _hostiles_near(target.global_position, radius):
 					if victim != target:
 						DamageOverTime.apply(
-							victim, int(round(float(power) * falloff)), duration, ability.tick_seconds, caster_peer, ability.id
+							victim, int(round(float(power) * falloff)), duration, tick, caster_peer, ability.id
 						)
 		AbilityData.Effect.DRAIN:
 			_damage(target, power, caster_peer)
-			_heal(caster, int(round(float(power) * ability.drain_ratio)))
+			_heal(caster, int(round(float(power) * drain_ratio)))
 		AbilityData.Effect.TAUNT:
 			if radius > 0.0:
 				# Claiming everything nearby, rather than one thing for longer.
@@ -335,6 +420,9 @@ func _execute(
 				var mob := target as Mob
 				if mob:
 					mob.force_target(caster, duration)
+					if ability.root_seconds > 0.0:
+						# Grave Claim: yours, and going nowhere.
+						mob.apply_speed_modifier(0.05, ability.root_seconds)
 				_damage(target, power, caster_peer)
 		AbilityData.Effect.SUMMON:
 			for index in range(summon_count):
@@ -368,11 +456,42 @@ func _execute(
 			StatusEffect.apply(target, StatusEffect.Kind.STACK, ability.id, float(power), duration, ability.tick_seconds, caster_peer, ability.max_stacks)
 		AbilityData.Effect.HOT:
 			var mended: Node3D = target if target else caster
-			StatusEffect.apply(mended, StatusEffect.Kind.HOT, ability.id, float(power), duration, ability.tick_seconds, caster_peer)
-			if radius > 0.0:
-				for friend in _friendlies_near(mended.global_position, radius):
-					if friend != mended:
-						StatusEffect.apply(friend, StatusEffect.Kind.HOT, ability.id, float(power) * falloff, duration, ability.tick_seconds, caster_peer)
+			if _target_rule(ability) == AbilityData.TargetRule.GROUND and radius > 0.0:
+				# A party song (Anthem, Tonic): everyone in earshot, in full.
+				for friend in _friendlies_near(caster.global_position, radius):
+					StatusEffect.apply(friend, StatusEffect.Kind.HOT, ability.id, float(power), duration, tick, caster_peer)
+					if ability.cleanses and friend.has_method("apply_cleanse"):
+						friend.apply_cleanse()
+			else:
+				StatusEffect.apply(mended, StatusEffect.Kind.HOT, ability.id, float(power), duration, tick, caster_peer)
+				if radius > 0.0:
+					for friend in _friendlies_near(mended.global_position, radius):
+						if friend != mended:
+							StatusEffect.apply(friend, StatusEffect.Kind.HOT, ability.id, float(power) * falloff, duration, tick, caster_peer)
+		AbilityData.Effect.DASH:
+			# A short leap the way you are facing, and out of whatever held you.
+			var body_node := caster.get_node_or_null("Body") as Node3D
+			var forward: Vector3 = body_node.global_basis.z if body_node else -caster.global_transform.basis.z
+			forward.y = 0.0
+			if forward.length() < 0.1:
+				forward = Vector3.FORWARD
+			var landing := caster.global_position + forward.normalized() * DASH_METRES
+			if caster.has_method("teleport_to"):
+				caster.teleport_to(landing)
+			else:
+				caster.global_position = landing
+			if caster.has_method("apply_cleanse"):
+				caster.apply_cleanse()
+		AbilityData.Effect.UNKILLABLE:
+			StatusEffect.apply(caster, StatusEffect.Kind.UNKILLABLE, ability.id, 1.0, duration)
+		AbilityData.Effect.CHEAT_DEATH:
+			StatusEffect.apply(caster, StatusEffect.Kind.CHEAT_DEATH, ability.id, ability.reduction, duration)
+		AbilityData.Effect.CHARGES:
+			var bank := StatusEffect.apply(caster, StatusEffect.Kind.CHARGES, ability.charges_ability, 1.0, duration, 1.0, caster_peer, ability.charges)
+			if bank:
+				bank.stacks = ability.charges
+		AbilityData.Effect.HASTE_HOTS:
+			StatusEffect.haste_hots(get_tree(), caster_peer, duration)
 		AbilityData.Effect.BUFF:
 			# A party buff reaches everyone in earshot; with no radius it is
 			# just the caster (or the ally they picked).
@@ -381,6 +500,33 @@ func _execute(
 					StatusEffect.apply(friend, StatusEffect.Kind.BUFF, ability.id, float(power), duration)
 			else:
 				StatusEffect.apply(target if target else caster, StatusEffect.Kind.BUFF, ability.id, float(power), duration)
+
+	# The spec passive's chain: Hymn's Marching Air also sings Soothing Verse;
+	# Dirge's Cutting Chord also opens a bleed.
+	var chained_id := SpecDatabase.chained(spec, ability.id)
+	if chained_id != &"" and not _chaining:
+		var chained_ability := AbilityDatabase.get_ability(chained_id)
+		if chained_ability:
+			_chaining = true
+			_execute(chained_ability, caster, target, 0)
+			_chaining = false
+			_current_ability = ability.id
+
+
+## Refuse the Grave went off: everything within eight metres pays for it.
+func _on_cheated_death() -> void:
+	var body := _get_body()
+	if body == null or not multiplayer.is_server():
+		return
+	var refuse := AbilityDatabase.get_ability(&"necro_refuse")
+	var share := refuse.power if refuse else 30
+	_current_ability = &"necro_refuse"
+	var drained := 0
+	for victim in _hostiles_near(body.global_position, 8.0):
+		_damage(victim, share, body.get_multiplayer_authority())
+		drained += share
+	if drained > 0:
+		_heal(body, drained)
 
 
 ## The world-owned uniques: rings that do something no raid drop does.
@@ -463,17 +609,22 @@ func _summon(
 		seconds = ability.summon_seconds * (duration_override / ability.duration_seconds)
 	elif duration_override > 0.0:
 		seconds = duration_override
+	# Grave: levies last longer.
+	seconds *= SpecDatabase.multiplier(_spec_id(), "summon_mult")
 	pet.become_pet(caster.get_multiplayer_authority(), seconds)
-	# More of them means weaker ones.
-	if strength < 1.0 and pet.mob_data:
-		var weakened: MobData = pet.mob_data.duplicate()
-		weakened.max_health = maxi(1, int(round(float(weakened.max_health) * strength)))
-		weakened.damage = maxi(1, int(round(float(weakened.damage) * strength)))
-		pet.mob_data = weakened
+	# Artillery: turrets fire faster. More of them means weaker ones.
+	var swing := SpecDatabase.multiplier(_spec_id(), "pet_attack_mult")
+	if (strength < 1.0 or swing != 1.0) and pet.mob_data:
+		var tuned: MobData = pet.mob_data.duplicate()
+		tuned.attack_cooldown = maxf(0.3, tuned.attack_cooldown * swing)
+		if strength < 1.0:
+			tuned.max_health = maxi(1, int(round(float(tuned.max_health) * strength)))
+			tuned.damage = maxi(1, int(round(float(tuned.damage) * strength)))
+		pet.mob_data = tuned
 		var pet_stats := pet.get_node_or_null("Stats") as Stats
-		if pet_stats:
-			pet_stats.max_health = weakened.max_health
-			pet_stats.health = weakened.max_health
+		if pet_stats and strength < 1.0:
+			pet_stats.max_health = tuned.max_health
+			pet_stats.health = tuned.max_health
 
 
 ## Turn a single-target effect into its area equivalent, for MAKE_AOE runes.

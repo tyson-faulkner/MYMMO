@@ -64,6 +64,10 @@ extends Resource
 ## header for the fields). Empty for everything that isn't a boss.
 @export var mechanics: Array = []
 
+## A friendly summon that heals instead of fighting: every attack_cooldown it
+## mends the lowest-health player within aggro_radius by this much.
+@export var heal_power: int = 0
+
 ## A tag this enemy fights when no player is close enough to matter: the
 ## Records packs (Stag vs Sunburst) and the two claimants. Empty means it only
 ## ever fights players.
