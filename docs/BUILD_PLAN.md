@@ -132,7 +132,8 @@ Work top to bottom. Each milestone ends in a playable state.
 - [x] Group/party system + shared quest credit + the dungeon group check.
 - [ ] Duels.
 - [x] The three rune-slot choices. (Gear stats and tiers still open.)
-- [ ] Minimap, XP bar, buff bar, chat channels.
+- [x] Minimap and map, XP bar. (2026-09-13: quest markers derived from data.)
+- [ ] Buff bar, chat channels.
 
 ### M9 — Content expansion (the loop keeps running here)
 - [x] Zone two, zone three.
